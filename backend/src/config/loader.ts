@@ -1,6 +1,6 @@
 import { readFileSync, existsSync } from 'node:fs';
-import { MCPConfig } from './schema';
-import type { MCPClient, TransportKind } from './types';
+import { MCPConfig } from './schema.js';
+import type { MCPClient, TransportKind } from './types.js';
 
 export interface LoadResult {
   clients: MCPClient[];

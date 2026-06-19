@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { loadMCPConfig } from '../config/loader';
+import { loadMCPConfig } from '../config/loader.js';
 import { resolve } from 'node:path';
 
 const MCP_CONFIG_PATH = process.env.MCP_CONFIG_PATH || resolve(process.cwd(), '.mcp.json');

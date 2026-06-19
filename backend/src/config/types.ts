@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TransportType, TransportConfig, MCPServerEntry, MCPConfig } from './schema';
+import { TransportType, TransportConfig, MCPServerEntry, MCPConfig } from './schema.js';
 
 export type TransportType = z.infer<typeof TransportType>;
 

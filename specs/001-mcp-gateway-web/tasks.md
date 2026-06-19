@@ -97,14 +97,14 @@ description: "Task list for MCP Gateway Web (Weir)"
 
 ### Tests for User Story 2
 
-- [ ] T031 [P] [US2] Write Docker startup test via docker compose run --rm test in backend/tests/integration/docker.test.ts
+- [x] T031 [P] [US2] Write Docker startup test via docker compose run --rm test in backend/tests/integration/docker.test.ts
   Nota: docker-compose.dev.yml precisa de servico docker-test com /var/run/docker.sock montado (requer acesso ao daemon Docker no CI)
 
 ### Implementation for User Story 2
 
 - [x] T032 [US2] Complete Dockerfile with multi-stage build (frontend build + tsc + runtime stage)
 - [x] T033 [US2] Update docker-compose.yml (producao) with volume mount for .mcp.json
-- [ ] T034 [US2] Update docker-compose.dev.yml with production-like service for validation
+- [x] T034 [US2] Update docker-compose.dev.yml with production-like service for validation
 
 **Checkpoint**: User Story 2 should work -- container inicia e exibe MCPs sem configuracao extra
 
@@ -140,7 +140,7 @@ description: "Task list for MCP Gateway Web (Weir)"
 
 - [x] T043 [P] Add error handling for JSON parse failures in .mcp.json loader (implementado em loader.ts)
 - [x] T044 [P] Add logging (pino) for file changes, API requests, and errors (implementado em index.ts via Fastify logger + watcher log)
-- [ ] T045 Run quickstart.md validation scenarios (cenarios 1-6) — requer ambiente Docker funcional
+- [x] T045 Run quickstart.md validation scenarios (cenarios 1-6) — requer ambiente Docker funcional
 
 ---
 

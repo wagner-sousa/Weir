@@ -20,7 +20,7 @@ WORKDIR /app
 
 RUN apk add --no-cache tini
 
-COPY --from=frontend-build /app/backend/src/web ./backend/src/web
+COPY --from=frontend-build /app/backend/dist/web ./backend/dist/web
 COPY --from=backend-build /app/backend/dist ./backend/dist
 COPY --from=backend-build /app/backend/node_modules ./backend/node_modules
 COPY --from=backend-build /app/backend/package.json ./backend/

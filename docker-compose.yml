@@ -4,4 +4,4 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./caminho/para/.mcp.json:/app/.mcp.json
+      - ./.mcp.json:/app/.mcp.json

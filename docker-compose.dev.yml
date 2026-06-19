@@ -10,6 +10,8 @@ services:
   dev:
     image: node:22-alpine
     working_dir: /app
+    environment:
+      MCP_CONFIG_PATH: /app/.mcp.json
     ports:
       - "3000:3000"
       - "5173:5173"
@@ -18,8 +20,10 @@ services:
       - /app/backend/node_modules
       - /app/frontend/node_modules
     command: >
-      sh -c "cd backend && npx tsx watch src/index.ts &
-             cd ../frontend && npx vite --host 0.0.0.0"
+      sh -c "
+        cd backend && npm install && npx tsx watch src/index.ts &
+        cd /app/frontend && npm install && npx vite --host 0.0.0.0
+      "
 
   test:
     image: node:22-alpine
@@ -29,6 +33,26 @@ services:
     volumes:
       - .:/app
     command: sh -c "npm install && npx vitest run"
+
+  docker-test:
+    image: docker:28-cli
+    working_dir: /app/backend
+    environment:
+      NODE_ENV: test
+      DOCKER_HOST: unix:///var/run/docker.sock
+    volumes:
+      - .:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    network_mode: host
+    command: >
+      sh -c "
+        apk add --no-cache nodejs npm &&
+        cd /app/backend &&
+        npm install &&
+        npx vitest run tests/integration/docker.test.ts
+      "
+    profiles:
+      - validation
 
   build:
     image: node:22-alpine
@@ -57,3 +81,12 @@ services:
     volumes:
       - .:/app
     command: sh -c "npm install && npx prettier --check src/ tests/"
+
+  prod:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./.mcp.json:/app/.mcp.json
+    profiles:
+      - validation
