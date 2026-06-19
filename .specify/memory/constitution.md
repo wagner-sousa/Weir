@@ -1,17 +1,20 @@
 <!--
   Sync Impact Report
   ==================
-  Version change: (template) → 1.0.0
-  Modified principles: All principles set from template placeholders to named Weir principles
-  Added sections: Stack Tecnologica, Fluxo de Desenvolvimento (replacing template sections)
-  Removed sections: None (template had no concrete sections)
+  Version change: 1.0.0 → 1.1.0
+  Modified principles: None (principles unchanged)
+  Added sections: None (guidance added to Fluxo de Desenvolvimento item 6)
+  Removed sections: None
   Templates requiring updates:
-    - .specify/templates/plan-template.md: ✅ Plan template already references "Constitution Check" generically — no change needed
+    - .specify/templates/plan-template.md: ✅ Plan template generic — no change needed
     - .specify/templates/spec-template.md: ✅ No principle-specific content — no change needed
     - .specify/templates/tasks-template.md: ✅ No principle-specific content — no change needed
     - .specify/templates/checklist-template.md: ✅ No principle-specific content — no change needed
     - .specify/templates/constitution-template.md: ✅ Template is source — no change needed
-  Follow-up TODOs: None — all placeholders resolved
+  Documentation requiring updates (MANUAL):
+    - quickstart.md: Update command examples to use docker-compose
+    - plan.md: Update Technical Context to reflect docker-compose constraint
+  Follow-up TODOs: None
 -->
 
 # Weir Constitution
@@ -85,6 +88,9 @@ Toda dependencia externa DEVE ser justificada.
    necessidade atual, nao futura (YAGNI).
 5. Commits frequentes e atomicos apos cada tarefa ou
    grupo logico de tarefas.
+6. Todos os comandos de desenvolvimento, teste, build e
+   execucao DEVEM ser invocados via docker-compose.*.yml.
+   Nenhum comando node/npm diretamente no host.
 
 ## Governance
 
@@ -98,4 +104,4 @@ verificar conformidade com os principios aqui definidos.
 Casos omissos serao resolvidos pelos principios gerais
 de simplicidade e experiencia do desenvolvedor.
 
-**Version**: 1.0.0 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-06-19
+**Version**: 1.1.0 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-06-19
