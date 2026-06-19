@@ -14,6 +14,110 @@
       },
       "registered_skills": [],
       "installed_at": "2026-06-19T16:09:50.228521+00:00"
+    },
+    "git": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:2fdd9f73427932a85394880df8a0081647ab6ec4c6cf3073ec81c13a4d5bbc70",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "opencode": [
+          "speckit.git.create-branch"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-06-19T16:30:00.000000+00:00"
+    },
+    "review": {
+      "version": "1.0.1",
+      "source": "catalog",
+      "manifest_hash": "sha256:3f9eedfc8079662edfb8d1f9c07a161be4e66111ea57621061f1658e91710d83",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "opencode": [
+          "speckit.review.run",
+          "speckit.review.code",
+          "speckit.review.comments",
+          "speckit.review.tests",
+          "speckit.review.errors",
+          "speckit.review.types",
+          "speckit.review.simplify"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-06-19T16:40:00.000000+00:00"
+    },
+    "verify": {
+      "version": "1.0.3",
+      "source": "catalog",
+      "manifest_hash": "sha256:74202b2c3bb17058b10787838cdf30c9ebe11e8793fc1de04bee75d5f111949a",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "opencode": [
+          "speckit.verify.run"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-06-19T16:40:00.000000+00:00"
+    },
+    "conduct": {
+      "version": "1.0.1",
+      "source": "catalog",
+      "manifest_hash": "sha256:0035625ba49176a3cf03680a6168e230db1a6c648337a08b162896d61913cbf3",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "opencode": [
+          "speckit.conduct.run"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-06-19T16:40:00.000000+00:00"
+    },
+    "companion": {
+      "version": "0.3.0",
+      "source": "catalog",
+      "manifest_hash": "sha256:44155284927cbd8472eeb5d97dddc364283403e3ec29f407e3a4ac440367f3f8",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "opencode": [
+          "speckit.companion.capture",
+          "speckit.companion.capture-plan",
+          "speckit.companion.capture-tasks",
+          "speckit.companion.capture-implement",
+          "speckit.companion.status",
+          "speckit.companion.resume",
+          "speckit.companion.specify",
+          "speckit.companion.plan",
+          "speckit.companion.tasks",
+          "speckit.companion.implement"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-06-19T16:40:00.000000+00:00"
+    },
+    "docguard": {
+      "version": "0.25.1",
+      "source": "catalog",
+      "manifest_hash": "sha256:93870a0fbfecd9300d28f58668cca63d12e6592afe3b8b311f6e0145638bb208",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "opencode": [
+          "speckit.docguard.guard",
+          "speckit.docguard.fix",
+          "speckit.docguard.review",
+          "speckit.docguard.score",
+          "speckit.docguard.diagnose",
+          "speckit.docguard.generate"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-06-19T16:40:00.000000+00:00"
     }
   }
 }

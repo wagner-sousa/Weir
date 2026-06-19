@@ -1,0 +1,396 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    MORPH — MCP Optimized Response Protocol Handler         ║
+║                    Especificações Completas do Projeto                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📋 DESCRIÇÃO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Gateway proxy que se posiciona entre agentes de IA e servidores MCP backend.
+Agentes conectam-se ao MORPH como um único servidor MCP; o MORPH agrega as
+ferramentas de todos os backends configurados e converte cada resultado JSON
+em TOON (Token-Oriented Object Notation), reduzindo o uso de tokens em 30-60%.
+
+Backends são alcançados via stdio, HTTP ou SSE (com OAuth opcional).
+
+Repositório: https://github.com/wagner-sousa/morph
+Documentação: https://wagner-sousa.github.io/morph/
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  STACKS TECNOLÓGICAS                                                       ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ BACKEND (src/)                                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Runtime        │ Node.js >=22 (ESM)                                         │
+│ Linguagem      │ TypeScript 5.7+                                            │
+│ Servidor HTTP  │ Fastify 5                                                  │
+│                │   @fastify/cors     — CORS                                 │
+│                │   @fastify/multipart — upload de arquivos                  │
+│                │   @fastify/static   — arquivos estáticos                   │
+│                │   @fastify/websocket — WebSocket para Studio               │
+│ Protocolo MCP  │ @modelcontextprotocol/sdk 1.29                             │
+│ Schemas        │ Zod 3.24 (fonte da verdade executável)                     │
+│                │ zod-to-json-schema 3.24 (gera schema.json)                 │
+│ Serialização   │ @toon-format/toon 2.3 — TOON (Token-Oriented Object       │
+│                │   Notation), conversão JSON→TOON para economia de tokens   │
+│ Persistência   │ better-sqlite3 11 — histórico de chamadas + métricas      │
+│ File Watcher   │ chokidar 4 — hot-reload de configuração                   │
+│ Logging        │ pino 9 (estruturado) + pino-pretty 13 (formatação dev)    │
+│ Compilador     │ TypeScript 5.7 (tsc → dist/)                              │
+│ Dev Runner     │ tsx 4 — execução direta de TypeScript em desenvolvimento  │
+│ Testes         │ Vitest 3                                                   │
+│ Lint           │ ESLint 9 + typescript-eslint 8 + eslint-config-prettier   │
+│ Formatação     │ Prettier 3                                                 │
+│ CI/Release     │ semantic-release 24 + @semantic-release/* plugins         │
+│ Infra          │ Docker + Docker Compose (dev e produção)                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ FRONTEND — Morph Studio (web-frontend/)                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Framework     │ React 19                                                    │
+│ Bundler       │ Vite 6                                                      │
+│ Roteamento    │ @tanstack/react-router 1.170                                │
+│ Server State  │ @tanstack/react-query 5.101                                │
+│ Estilos       │ Tailwind CSS 4                                              │
+│ Componentes   │ Radix UI (dialog, dropdown-menu, label, select, slot,      │
+│               │   switch, tabs, toast, tooltip)                             │
+│ Ícones        │ lucide-react 0.470                                         │
+│ Formulários   │ react-hook-form 7.79 + @hookform/resolvers 4               │
+│ Gráficos      │ recharts 2.15                                               │
+│ Upload        │ react-dropzone 14                                           │
+│ Notificações  │ sonner 2                                                    │
+│ HTTP Client   │ ofetch 1.5                                                  │
+│ Utilidades    │ class-variance-authority 0.7 + clsx 2.1 + tailwind-merge   │
+│               │   3.6                                                       │
+│ Lint          │ ESLint 9 + react-hooks + react-refresh plugins             │
+│ Build/Dev     │ Vite 6 + @vitejs/plugin-react 4                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ DOCUMENTAÇÃO (docs/)                                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Gerador       │ MKDocs + Material Theme                                     │
+│ Diagramas     │ Mermaid2 (plugin mkdocs)                                    │
+│ Ícones tema   │ Material Design Icons + FontAwesome                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  ÍCONES                                                                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ LUCIE-REACT (web-frontend)                                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Navegação (Sidebar)                                                         │
+│   Gauge      → Dashboard                                                    │
+│   Container  → MCPs                                                         │
+│   Terminal   → Logs                                                         │
+│   Activity   → Stats                                                        │
+│   Settings   → Settings                                                     │
+│                                                                             │
+│ Ações (MCPCard)                                                             │
+│   RefreshCw  → Restart (backend)                                            │
+│   List       → Ver Tools                                                    │
+│   Shield     → OAuth Authorize                                              │
+│   Trash2     → Deletar backend                                              │
+│                                                                             │
+│ Utilitários                                                                 │
+│   Plus       → Adicionar MCP                                                │
+│   Loader2    → Spinner de carregamento                                      │
+│   X          → Fechar (dialog/toast)                                        │
+│   ChevronDown → Dropdown indicator (select)                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ MKDOCS — MATERIAL DESIGN / FONTAWESOME                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Logo           │ material/swap-horizontal-bold                              │
+│ Repositório    │ fontawesome/brands/github                                  │
+│ Dark mode      │ material/weather-night                                     │
+│ Light mode     │ material/weather-sunny                                     │
+│ Social link    │ fontawesome/brands/github                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  CORES                                                                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TEMA PRINCIPAL — Tailwind CSS (styles.css)                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Nome               │ Valor     │ Uso                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ morph-bg           │ #0e1116   │ Fundo principal (quase preto)              │
+│ morph-panel        │ #161b22   │ Painéis / cards / sidebar                  │
+│ morph-border       │ #2a2f3a   │ Bordas                                     │
+│ morph-text         │ #e6edf3   │ Texto principal (branco sujo)              │
+│ morph-muted        │ #8b949e   │ Texto secundário / muted                   │
+│ morph-accent       │ #5eead4   │ Destaque / links ativos / badge default    │
+│ morph-accent-dark  │ #14b8a6   │ Hover do accent                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ BADGES DE STATUS                                                            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Variante     │ Background              │ Texto       │ Uso                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ default      │ bg-morph-accent (#5eead4) │ black     │ Badge padrão         │
+│ secondary    │ bg-morph-panel (#161b22)   │ morph-text │ Badge secundário    │
+│ destructive  │ bg-red-600               │ white      │ Erro / log error     │
+│ success      │ bg-green-600/20          │ green-400   │ Conectado / TOON    │
+│ warning      │ bg-yellow-600/20         │ yellow-400  │ Conectando / warn   │
+│ outline      │ transparent              │ morph-text  │ Borda apenas         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ INDICADOR DE CONEXÃO (Sidebar)                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Conectado     │ bg-green-400                                                │
+│ Desconectado  │ bg-red-500                                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ MKDOCS — PALETA (Material Theme)                                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Esquema       │ Cor primária │ Cor de acento                                │
+│ Light (default) │ teal       │ teal                                         │
+│ Dark (slate)    │ teal       │ teal                                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  ARQUITETURA                                                                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Fluxo de requisição:
+  AI Agent → MorphMCPServer → Hub → Router → MCPClientRegistry → backend
+                                    → ToonConverter (JSON → TOON)
+
+Componentes principais:
+  src/index.ts              → CLI entry (start, import), graceful shutdown
+  src/hub.ts                → Coordinator central (registry, router, converter,
+                              health, metrics, logs, stores, config watcher)
+  src/mcp-server/           → Servidor MCP agent-facing
+  src/mcp-client/           → Clientes backend (stdio/http/sse + OAuth)
+  src/router/               → Mapeamento tool name → (backend, tool)
+  src/toon/                 → Conversor JSON→TOON + optimizer + stats
+  src/config/               → Schema zod + loader + watcher (hot-reload)
+  src/web/                  → API Fastify + WebSocket (:3101) + OAuth routes
+  src/persistence/          → SQLite (call history + time-series stats)
+  src/logging/              → Logger pino + in-memory log store
+  src/examples/             → 5 demo MCP servers (stdio, http, sse, oauth, param)
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  package.json (raiz)                                                        ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+{
+  "name": "morph",
+  "version": "2.0.0",
+  "description": "MORPH — MCP Optimized Response Protocol Handler. A gateway proxy that unifies MCP servers and converts JSON responses to token-efficient TOON.",
+  "type": "module",
+  "bin": { "morph": "./dist/index.js" },
+  "main": "./dist/index.js",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts start",
+    "start": "node dist/index.js start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "gen:schema": "tsx scripts/gen-schema.ts",
+    "release": "semantic-release",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.0.0",
+    "@fastify/multipart": "^9.0.0",
+    "@fastify/static": "^8.0.0",
+    "@fastify/websocket": "^11.0.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@toon-format/toon": "^2.3.0",
+    "better-sqlite3": "^11.0.0",
+    "chokidar": "^4.0.0",
+    "fastify": "^5.0.0",
+    "pino": "^9.0.0",
+    "pino-pretty": "^13.0.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.0",
+    "@semantic-release/exec": "^7.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.0",
+    "@semantic-release/npm": "^12.0.0",
+    "@semantic-release/release-notes-generator": "^14.0.0",
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.0",
+    "semantic-release": "^24.2.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0",
+    "zod-to-json-schema": "^3.24.0"
+  }
+}
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  package.json (web-frontend)                                                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+{
+  "name": "morph-studio",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^4.1.3",
+    "@radix-ui/react-dialog": "^1.1.17",
+    "@radix-ui/react-dropdown-menu": "^2.1.18",
+    "@radix-ui/react-label": "^2.1.10",
+    "@radix-ui/react-select": "^2.3.1",
+    "@radix-ui/react-slot": "^1.3.0",
+    "@radix-ui/react-switch": "^1.3.1",
+    "@radix-ui/react-tabs": "^1.1.15",
+    "@radix-ui/react-toast": "^1.2.17",
+    "@radix-ui/react-tooltip": "^1.2.10",
+    "@tailwindcss/vite": "^4.3.1",
+    "@tanstack/react-query": "^5.101.0",
+    "@tanstack/react-router": "^1.170.15",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.470.0",
+    "ofetch": "^1.5.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-dropzone": "^14.4.1",
+    "react-hook-form": "^7.79.0",
+    "recharts": "^2.15.4",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.7.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.14",
+    "globals": "^15.0.0",
+    "prettier": "^3.3.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.0.0",
+    "vite": "^6.4.3"
+  }
+}
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  COMANDOS PRINCIPAIS                                                        ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Build:        docker run --rm -v "$PWD":/app -w /app node:22 sh -c "npm install && npm run build"
+Test:         docker run --rm -v "$PWD":/app -w /app node:22 sh -c "npm install && npm test"
+Typecheck:    docker run --rm -v "$PWD":/app -w /app node:22 sh -c "npm install && npm run typecheck"
+Gen Schema:   docker run --rm -v "$PWD":/app -w /app node:22 sh -c "npm install && npm run gen:schema"
+Dev Stack:    docker compose -f docker-compose.dev.yml up -d
+
+Sem Docker:
+  dev:           npm run dev              (tsx watch)
+  test:          npx vitest run [file]    (ou -t "nome do teste")
+  build:         npm run build            (tsc → dist/)
+  typecheck:     npm run typecheck
+  gen:schema:    npm run gen:schema
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  CONFIGURAÇÃO                                                               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Dois arquivos hot-reloadable (git-ignored, como .env):
+
+  morph.json        → comportamento do gateway (morph, toon, webUi, health)
+  .mcp.json         → servidores MCP backend (stdio/http/sse com ${ENV})
+
+Templates commitados:
+  morph.example.json / .mcp.example.json  → templates para copiar
+  morph.demo.json / .mcp.demo.json        → usados no dev stack
+
+Suporte a import de configs do Claude Desktop / VS Code via:
+  morph import
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  METODOLOGIA DE DESENVOLVIMENTO                                             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Specification-Driven Development (SDD):
+  1. Contrato primeiro: schema zod em src/config/schema.ts
+  2. Tipos inferidos em src/config/types.ts
+  3. Teste falhando
+  4. Implementação
+
+Arquivos são marcados com SPEC: (contratos) e IMPL: (implementações).
+
+Schema JSON é gerado (npm run gen:schema) — nunca editado manualmente.
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  TESTES                                                                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Framework: Vitest 3
+Estrutura: tests/unit/ e tests/integration/
+Um arquivo de teste por módulo fonte.
+Demo servers exercitados via tsx (não compilado).
+
+Exemplo:
+  npx vitest run tests/unit/router.test.ts
+  npx vitest run -t "auto-prefixes conflicting tool names"
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  TRANSPORTES DE BACKEND                                                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+- stdio  → processo filho (command + args)
+- HTTP   → requisições REST
+- SSE    → Server-Sent Events (streaming)
+- OAuth  → Dynamic Client Registration (acoplado a SSE/HTTP)
+
+Resolução de conflitos de tool names:
+  1. Aliases explícitos
+  2. toolPrefix global
+  3. Auto-prefix: ${mcp}_${tool}
+  4. allowConflicts: last-wins com warning
+

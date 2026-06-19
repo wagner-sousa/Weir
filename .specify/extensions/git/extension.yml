@@ -1,0 +1,30 @@
+schema_version: "1.0"
+
+extension:
+  id: git
+  name: "Git Branch Management"
+  version: "1.0.0"
+  description: "Automatically creates and switches to a git branch before specification"
+  author: spec-kit-core
+  repository: https://github.com/github/spec-kit
+  license: MIT
+
+requires:
+  speckit_version: ">=0.2.0"
+
+provides:
+  commands:
+    - name: speckit.git.create-branch
+      file: commands/speckit.git.create-branch.md
+      description: "Create a git branch for the current feature and output BRANCH_NAME + FEATURE_NUM"
+
+hooks:
+  before_specify:
+    command: speckit.git.create-branch
+    optional: true
+    description: "Create or switch to a git branch before running specification"
+
+tags:
+  - "git"
+  - "branch"
+  - "core"

@@ -1,9 +1,32 @@
 installed:
 - agent-context
+- git
+- review
+- verify
+- conduct
+- companion
+- docguard
 settings:
   auto_execute_hooks: true
 hooks:
+  before_specify:
+  - extension: git
+    command: speckit.git.create-branch
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Create a git branch for this feature?
+    description: Create or switch to a git branch before specification
+    condition: null
   after_specify:
+  - extension: companion
+    command: speckit.companion.capture
+    enabled: true
+    optional: true
+    priority: 5
+    prompt: Capture spec state with Companion?
+    description: Capture specification lifecycle state
+    condition: null
   - extension: agent-context
     command: speckit.agent-context.update
     enabled: true
@@ -13,6 +36,14 @@ hooks:
     description: Refresh agent context after specification
     condition: null
   after_plan:
+  - extension: companion
+    command: speckit.companion.capture-plan
+    enabled: true
+    optional: true
+    priority: 5
+    prompt: Capture plan state with Companion?
+    description: Capture plan lifecycle state
+    condition: null
   - extension: agent-context
     command: speckit.agent-context.update
     enabled: true
@@ -20,4 +51,63 @@ hooks:
     priority: 10
     prompt: Execute speckit.agent-context.update?
     description: Refresh agent context after planning
+    condition: null
+  before_tasks:
+  - extension: docguard
+    command: speckit.docguard.review
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Review docs with DocGuard before tasks?
+    description: Review specification documentation before task creation
+    condition: null
+  after_tasks:
+  - extension: companion
+    command: speckit.companion.capture-tasks
+    enabled: true
+    optional: true
+    priority: 5
+    prompt: Capture tasks state with Companion?
+    description: Capture tasks lifecycle state
+    condition: null
+  - extension: docguard
+    command: speckit.docguard.score
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Score docs with DocGuard after tasks?
+    description: Score documentation quality after task creation
+    condition: null
+  after_implement:
+  - extension: companion
+    command: speckit.companion.capture-implement
+    enabled: true
+    optional: true
+    priority: 5
+    prompt: Capture implementation state with Companion?
+    description: Capture implementation lifecycle state
+    condition: null
+  - extension: review
+    command: speckit.review.run
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Run code review after implementation?
+    description: Post-implementation code review
+    condition: null
+  - extension: verify
+    command: speckit.verify.run
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Verify implementation against spec?
+    description: Validate code against specification artifacts
+    condition: null
+  - extension: docguard
+    command: speckit.docguard.guard
+    enabled: true
+    optional: true
+    priority: 10
+    prompt: Guard docs with DocGuard after implementation?
+    description: Validate documentation after implementation
     condition: null

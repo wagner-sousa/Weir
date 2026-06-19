@@ -1,20 +1,59 @@
-# docker-compose.dev.yml — git-spec-kit (Specify CLI) em container de desenvolvimento
 services:
-  spec-kit:
-    image: python:3.12-slim
-    container_name: spec-kit
-    working_dir: /workspace
+  setup:
+    image: node:22-alpine
+    working_dir: /app
     volumes:
-      # Monta o diretório atual para que os artefatos do spec-kit fiquem no host
-      - .:/workspace
-    # entrypoint = preparo do ambiente (git + uv + Specify CLI), só na 1ª vez
-    entrypoint: >
-      bash -c "command -v specify >/dev/null ||
-      { apt-get update -qq && apt-get install -y -qq --no-install-recommends git &&
-      pip install -q uv && uv tool install -q git+https://github.com/github/spec-kit.git &&
-      ln -sf /root/.local/bin/specify /usr/local/bin/specify; };
-      exec \"$@\"" --
-    # command = mantém o container vivo; rode o framework via 'docker compose exec'
-    command: sleep infinity
-    tty: true
-    stdin_open: true
+      - .:/app
+    command: >
+      sh -c "cd backend && npm install && cd ../frontend && npm install"
+
+  dev:
+    image: node:22-alpine
+    working_dir: /app
+    ports:
+      - "3000:3000"
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/backend/node_modules
+      - /app/frontend/node_modules
+    command: >
+      sh -c "cd backend && npx tsx watch src/index.ts &
+             cd ../frontend && npx vite --host 0.0.0.0"
+
+  test:
+    image: node:22-alpine
+    working_dir: /app/backend
+    environment:
+      NODE_ENV: test
+    volumes:
+      - .:/app
+    command: sh -c "npm install && npx vitest run"
+
+  build:
+    image: node:22-alpine
+    working_dir: /app/backend
+    volumes:
+      - .:/app
+    command: sh -c "npm install && npx tsc"
+
+  typecheck:
+    image: node:22-alpine
+    working_dir: /app/backend
+    volumes:
+      - .:/app
+    command: sh -c "npm install && npx tsc --noEmit"
+
+  lint:
+    image: node:22-alpine
+    working_dir: /app/backend
+    volumes:
+      - .:/app
+    command: sh -c "npm install && npx eslint src/ tests/"
+
+  format:
+    image: node:22-alpine
+    working_dir: /app/backend
+    volumes:
+      - .:/app
+    command: sh -c "npm install && npx prettier --check src/ tests/"
