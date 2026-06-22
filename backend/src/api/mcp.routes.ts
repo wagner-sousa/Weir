@@ -101,7 +101,7 @@ export async function mcpRoutes(app: FastifyInstance) {
     } catch {
       return reply.status(503).send({
         success: false,
-        error: 'Erro ao salvar: backend indisponível.',
+        error: 'Error saving: backend unavailable.',
       });
     }
 
@@ -146,7 +146,7 @@ export async function mcpRoutes(app: FastifyInstance) {
       } catch {
         return reply.status(503).send({
           success: false,
-          error: 'Erro ao remover: backend indisponível.',
+          error: 'Error removing: backend unavailable.',
         });
       }
       broadcast('config:changed', { path: configPath });

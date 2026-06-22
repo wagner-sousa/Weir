@@ -15,15 +15,15 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
   if (clients.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <p className="text-lg text-gray-500">Nenhum MCP configurado.</p>
+        <p className="text-lg text-gray-500">No MCPs configured.</p>
         <p className="mt-1 text-sm text-gray-400">
-          Crie um arquivo .mcp.json com servidores MCP para comecar.
+          Create a .mcp.json file with MCP servers to get started.
         </p>
         <button
           onClick={() => setModalOpen(true)}
           className="mt-4 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
-          Adicionar MCP
+          Add MCP
         </button>
         <AddMCPModal
           open={modalOpen}
@@ -41,7 +41,7 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
           onClick={() => setModalOpen(true)}
           className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
-          Adicionar MCP
+          Add MCP
         </button>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -14,10 +14,10 @@ const badgeColors: Record<string, string> = {
 };
 
 const statusIcons: Record<string, { icon: string; color: string; label: string }> = {
-  connected: { icon: '\u2713', color: 'text-green-500', label: 'Conectado' },
-  error: { icon: '\u2717', color: 'text-red-500', label: 'Erro' },
-  connecting: { icon: '\u23F3', color: 'text-yellow-500', label: 'Conectando...' },
-  disconnected: { icon: '\u25CB', color: 'text-gray-400', label: 'Desconectado' },
+  connected: { icon: '\u2713', color: 'text-green-500', label: 'Connected' },
+  error: { icon: '\u2717', color: 'text-red-500', label: 'Error' },
+  connecting: { icon: '\u23F3', color: 'text-yellow-500', label: 'Connecting...' },
+  disconnected: { icon: '\u25CB', color: 'text-gray-400', label: 'Disconnected' },
 };
 
 export function MCPCard({ client, onRemove, removing }: MCPCardProps) {
@@ -50,7 +50,7 @@ export function MCPCard({ client, onRemove, removing }: MCPCardProps) {
           {client.toolCount !== undefined && (
             <span
               className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"
-              title={client.toolCount === 0 ? 'Nenhuma tool dispon\u00EDvel' : `${client.toolCount} tools`}
+              title={client.toolCount === 0 ? 'No tools available' : `${client.toolCount} tools`}
             >
               {client.toolCount === 0 && status !== 'connected' ? '?' : client.toolCount}
             </span>
@@ -59,7 +59,7 @@ export function MCPCard({ client, onRemove, removing }: MCPCardProps) {
       </div>
       {client.command && (
         <p className="mt-2 text-sm text-gray-500">
-          <span className="font-medium">Comando:</span> {client.command}
+          <span className="font-medium">Command:</span> {client.command}
         </p>
       )}
       {client.url && (
@@ -78,7 +78,7 @@ export function MCPCard({ client, onRemove, removing }: MCPCardProps) {
           disabled={removing}
           className="rounded px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:text-gray-400"
         >
-          {removing ? 'Removendo...' : 'Remover'}
+          {removing ? 'Removing...' : 'Remove'}
         </button>
       </div>
     </div>

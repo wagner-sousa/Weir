@@ -126,7 +126,7 @@ docker compose up
 
 ## Expected Outcomes
 
-- All toasts appear in pt-BR
+- All toasts appear in English
 - .mcp.json is the single source of truth (changes reflected immediately)
 - No parallel configuration mechanism exists
 - Backend API endpoints conform to contracts defined in [contracts/api.md](./contracts/api.md)

@@ -1,11 +1,10 @@
 <!--
   Sync Impact Report
   ==================
-  Version change: 1.1.0 → 1.2.0
-  Modified principles: None (principles unchanged)
-  Modified sections: "Fluxo de Desenvolvimento" → "Development Workflow"
-    - Translated items 1-6 from Portuguese to English
-    - Added items 7 (env vars), 8 (lint), 9 (docs)
+  Version change: 1.2.0 → 1.3.0
+  Modified principles:
+    - III. Brazilian Portuguese for Agents and Users → III. English for User-Facing Messages
+  Modified sections: Principle III — rewrote from pt-BR mandate to English mandate
   Added sections: None
   Removed sections: None
   Templates requiring updates:
@@ -15,8 +14,10 @@
     - .specify/templates/checklist-template.md: ✅ No principle-specific content — no change needed
     - .specify/templates/constitution-template.md: ✅ Template is source — no change needed
   Documentation requiring updates (MANUAL):
-    - README.md, docs/: Already reflect the rules via prior commits
-  Follow-up TODOs: None
+    - AGENTS.md: Remove the pt-BR constraint from the anchored summary
+    - specs/002-mcp-connection-manager/quickstart.md: Update expected outcomes (remove "All toasts appear in pt-BR")
+  Follow-up TODOs:
+    - Translate existing pt-BR strings in the codebase (toasts, modal labels, tooltips) to English
 -->
 
 # Weir Constitution
@@ -39,14 +40,14 @@ approved by the user, (2) tests fail on execution,
 cycle MUST be rigorously followed. No production code shall
 be written before the test that validates it.
 
-### III. Brazilian Portuguese for Agents and Users
+### III. English for User-Facing Messages
 
-All messages displayed to end users and all prompts sent
-to agents MUST be in Brazilian Portuguese (pt-BR). Source
-code (variable names, functions, classes, comments) and
-technical documentation MUST be in English. This separation
-ensures the code remains universal while the user experience
-feels natural.
+All messages displayed to end users (toasts, tooltips,
+labels, buttons, validation errors, status indicators)
+MUST be in English. Prompts sent to agents MUST be in the
+user's chosen language. Source code (variable names,
+functions, classes, comments) and technical documentation
+MUST be in English.
 
 ### IV. .mcp.json as the Source of Truth
 
@@ -107,4 +108,4 @@ Every PR review MUST verify compliance with the principles
 defined herein. Omissions shall be resolved by the general
 principles of simplicity and developer experience.
 
-**Version**: 1.2.0 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-06-22
+**Version**: 1.3.0 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-06-22

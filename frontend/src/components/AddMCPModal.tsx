@@ -59,7 +59,7 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
       return;
     }
     if (existingNames.includes(value.trim())) {
-      setNameError('Um MCP com este nome já existe.');
+      setNameError('An MCP with this name already exists.');
     } else {
       setNameError('');
     }
@@ -100,10 +100,10 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
     const transport = buildTransport();
     const result = await addMutation.mutateAsync({ name: name.trim(), transport });
     if (result.success) {
-      showToast(`MCP "${name.trim()}" adicionado com sucesso.`, 'success');
+      showToast(`MCP "${name.trim()}" added successfully.`, 'success');
       onClose();
     } else {
-      showToast(result.error || 'Erro ao adicionar MCP.', 'error');
+      showToast(result.error || 'Error adding MCP.', 'error');
     }
   }
 
@@ -119,11 +119,11 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
       <div className="flex min-h-full items-start justify-center py-8">
         <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900">Adicionar MCP</h2>
+          <h2 className="text-lg font-bold text-gray-900">Add MCP</h2>
           <button
             onClick={onClose}
             className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-            aria-label="Fechar"
+            aria-label="Close"
           >
             &times;
           </button>
@@ -131,7 +131,7 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
 
         <form onSubmit={handleSave} className="flex flex-col gap-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Nome</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
             <input
               type="text"
               value={name}
@@ -139,13 +139,13 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
               className={`w-full rounded border px-3 py-2 text-sm ${
                 nameError ? 'border-red-400' : 'border-gray-300'
               }`}
-              placeholder="ex: meu-servidor"
+              placeholder="e.g.: my-server"
             />
             {nameError && <p className="mt-1 text-xs text-red-500">{nameError}</p>}
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Tipo</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Type</label>
             <select
               value={type}
               onChange={(e) => setType(e.target.value as 'stdio' | 'http' | 'sse')}
@@ -160,40 +160,40 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
           {type === 'stdio' && (
             <>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Comando</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Command</label>
                 <input
                   type="text"
                   value={command}
                   onChange={(e) => setCommand(e.target.value)}
                   className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-                  placeholder="ex: npx"
+                  placeholder="e.g.: npx"
                 />
               </div>
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Argumentos (separados por espaço)
+                  Arguments (space-separated)
                 </label>
                 <input
                   type="text"
                   value={argsStr}
                   onChange={(e) => setArgsStr(e.target.value)}
                   className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-                  placeholder="ex: -y @modelcontextprotocol/server-filesystem /tmp"
+                  placeholder="e.g.: -y @modelcontextprotocol/server-filesystem /tmp"
                 />
               </div>
 
               <div>
                 <div className="mb-1 flex items-center justify-between">
                   <label className="text-sm font-medium text-gray-700">
-                    Variáveis de ambiente
+                    Environment variables
                   </label>
                   <button
                     type="button"
                     onClick={() => setEnvVars((prev) => [...prev, { key: '', value: '' }])}
                     className="text-xs text-blue-600 hover:text-blue-800"
                   >
-                    + Adicionar variável
+                    + Add variable
                   </button>
                 </div>
                 {envVars.map((ev, i) => (
@@ -207,7 +207,7 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
                         setEnvVars(next);
                       }}
                       className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm"
-                      placeholder="CHAVE"
+                      placeholder="KEY"
                     />
                     <input
                       type="text"
@@ -218,13 +218,13 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
                         setEnvVars(next);
                       }}
                       className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm"
-                      placeholder="valor"
+                      placeholder="value"
                     />
                     <button
                       type="button"
                       onClick={() => setEnvVars((prev) => prev.filter((_, j) => j !== i))}
                       className="px-2 text-red-500 hover:text-red-700"
-                      aria-label="Remover variável"
+                      aria-label="Remove variable"
                     >
                       &times;
                     </button>
@@ -242,7 +242,7 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-                placeholder="https://exemplo.com/mcp"
+                placeholder="https://example.com/mcp"
               />
             </div>
           )}
@@ -256,8 +256,8 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
               }`}
             >
               {testResult.success
-                ? 'Conexão bem-sucedida!'
-                : `Falha na conexão: ${testResult.error}`}
+                ? 'Connection successful!'
+                : `Connection failed: ${testResult.error}`}
             </div>
           )}
 
@@ -272,7 +272,7 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
                   : 'bg-gray-800 text-white hover:bg-gray-700'
               }`}
             >
-              {testing ? 'Testando...' : 'Testar Conexão'}
+              {testing ? 'Testing...' : 'Test Connection'}
             </button>
             <button
               type="submit"
@@ -283,7 +283,7 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
                   : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
             >
-              {addMutation.isPending ? 'Salvando...' : 'Salvar'}
+              {addMutation.isPending ? 'Saving...' : 'Save'}
             </button>
           </div>
         </form>
