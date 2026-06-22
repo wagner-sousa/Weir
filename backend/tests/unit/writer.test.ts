@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { writeFileSync, mkdirSync, rmSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { writeMCPConfig, addMCPEntry, removeMCPEntry } from '../../src/config/writer.js';
+import { writeMCPConfig, addMCPEntry, removeMCPEntry, updateEntry } from '../../src/config/writer.js';
 import type { MCPConfig } from '../../src/config/types.js';
 
 let tmpDir: string;
@@ -102,5 +102,62 @@ describe('removeMCPEntry', () => {
     });
     const result = removeMCPEntry(config, 'filesystem');
     expect(result.mcpServers['other']).toBeDefined();
+  });
+});
+
+describe('updateEntry', () => {
+  it('updates an entry with the same name', () => {
+    const config = makeConfig();
+    const result = updateEntry(config, 'filesystem', 'filesystem', {
+      transport: { type: 'http', url: 'https://updated.com' },
+    });
+    expect(result.mcpServers['filesystem']).toBeDefined();
+    expect(result.mcpServers['filesystem'].transport.type).toBe('http');
+    expect(result.mcpServers['filesystem'].transport.url).toBe('https://updated.com');
+  });
+
+  it('renames an entry when name differs from originalName', () => {
+    const config = makeConfig();
+    const result = updateEntry(config, 'filesystem', 'renamed-server', {
+      transport: { type: 'stdio', command: 'node' },
+    });
+    expect(result.mcpServers['filesystem']).toBeUndefined();
+    expect(result.mcpServers['renamed-server']).toBeDefined();
+    expect(result.mcpServers['renamed-server'].transport.command).toBe('node');
+  });
+
+  it('throws when originalName does not exist', () => {
+    const config: MCPConfig = { mcpServers: {} };
+    expect(() =>
+      updateEntry(config, 'nonexistent', 'new-name', {
+        transport: { type: 'stdio', command: 'echo' },
+      }),
+    ).toThrow('not found');
+  });
+
+  it('throws when new name conflicts with existing entry', () => {
+    const config = makeConfig({
+      mcpServers: {
+        other: { transport: { type: 'http', url: 'https://other.com' } },
+      },
+    });
+    expect(() =>
+      updateEntry(config, 'filesystem', 'other', {
+        transport: { type: 'stdio', command: 'echo' },
+      }),
+    ).toThrow('already exists');
+  });
+
+  it('preserves other entries after update', () => {
+    const config = makeConfig({
+      mcpServers: {
+        other: { transport: { type: 'http', url: 'https://other.com' } },
+      },
+    });
+    const result = updateEntry(config, 'filesystem', 'renamed', {
+      transport: { type: 'stdio', command: 'node' },
+    });
+    expect(result.mcpServers['other']).toBeDefined();
+    expect(result.mcpServers['renamed']).toBeDefined();
   });
 });

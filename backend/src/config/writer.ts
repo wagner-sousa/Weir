@@ -41,3 +41,29 @@ export function removeMCPEntry(config: MCPConfig, name: string): MCPConfig {
     mcpServers: rest,
   };
 }
+
+export function updateEntry(
+  config: MCPConfig,
+  originalName: string,
+  name: string,
+  entry: MCPServerEntry,
+): MCPConfig {
+  if (!config.mcpServers[originalName]) {
+    throw new Error(`MCP server "${originalName}" not found`);
+  }
+
+  if (name !== originalName && config.mcpServers[name]) {
+    throw new Error(`MCP server "${name}" already exists`);
+  }
+
+  const { [originalName]: _removed, ...rest } = config.mcpServers;
+  void _removed;
+
+  return {
+    ...config,
+    mcpServers: {
+      ...rest,
+      [name]: entry,
+    },
+  };
+}
