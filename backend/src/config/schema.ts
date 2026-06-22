@@ -8,6 +8,7 @@ export const TransportConfig = z
     command: z.string().optional(),
     args: z.array(z.string()).optional(),
     url: z.string().url().optional(),
+    env: z.record(z.string(), z.string()).optional(),
   })
   .refine(
     (data) => {
@@ -21,8 +22,8 @@ export const TransportConfig = z
 export const MCPServerEntry = z.preprocess(
   (input) => {
     if (typeof input === 'object' && input !== null && !('transport' in input)) {
-      const { type, command, args, url } = input as Record<string, unknown>;
-      return { transport: { type, command, args, url } };
+      const { type, command, args, url, env } = input as Record<string, unknown>;
+      return { transport: { type, command, args, url, env } };
     }
     return input;
   },
@@ -33,4 +34,23 @@ export const MCPServerEntry = z.preprocess(
 
 export const MCPConfig = z.object({
   mcpServers: z.record(z.string(), MCPServerEntry),
+});
+
+export const TestConnectionRequest = z.preprocess(
+  (input) => {
+    if (typeof input === 'object' && input !== null && !('transport' in input)) {
+      const { name, type, command, args, url, env } = input as Record<string, unknown>;
+      return { name, transport: { type, command, args, url, env } };
+    }
+    return input;
+  },
+  z.object({
+    name: z.string().optional(),
+    transport: TransportConfig,
+  }),
+);
+
+export const TestConnectionResponse = z.object({
+  success: z.boolean(),
+  error: z.string().optional(),
 });

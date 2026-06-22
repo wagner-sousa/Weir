@@ -3,5 +3,10 @@ services:
     build: .
     ports:
       - "3000:3000"
+    environment:
+      MCP_CONNECTION_TIMEOUT: ${MCP_CONNECTION_TIMEOUT:-5000}
+      MCP_ADD_TIMEOUT: ${MCP_ADD_TIMEOUT:-30000}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ${MCP_CONFIG_SOURCE:-./.mcp.json}:/app/.mcp.json
