@@ -35,9 +35,7 @@ function MCPDashboard() {
               <code className="rounded bg-gray-100 px-1">.mcp.json</code>
             </p>
           </div>
-          {isRefreshing && (
-            <span className="text-sm text-blue-600">Atualizando...</span>
-          )}
+          {isRefreshing && <span className="text-sm text-blue-600">Atualizando...</span>}
         </div>
       </header>
       <CardGrid clients={data?.clients || []} />
