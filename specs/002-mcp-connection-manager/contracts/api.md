@@ -8,7 +8,7 @@ All endpoints are prefixed with `/api/mcps`.
 
 ### GET /api/mcps (existing)
 
-Returns all configured MCPs with current connection state and tool count.
+Returns all configured MCPs with current connection state.
 
 **Response** `200`:
 ```json
@@ -16,9 +16,11 @@ Returns all configured MCPs with current connection state and tool count.
   "clients": [
     {
       "name": "filesystem",
-      "transport": { "type": "stdio", "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"] },
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
       "status": "connected",
-      "toolCount": 5,
+      "toolCount": 0,
       "error": null
     }
   ]
@@ -178,19 +180,15 @@ SSE stream for real-time connection status updates.
 
 ```
 event: status
-data: {"name": "filesystem", "status": "connected", "toolCount": 5, "error": null}
+data: {"name": "filesystem", "status": "connected", "toolCount": null, "error": null}
 
 event: status
-data: {"name": "my-server", "status": "error", "toolCount": 0, "error": "Connection refused"}
+data: {"name": "my-server", "status": "error", "toolCount": null, "error": "Connection refused"}
 
-event: status
-data: {"name": "filesystem", "status": "connecting", "toolCount": null, "error": null}
-
-event: status
-data: {"name": "filesystem", "status": "disconnected", "toolCount": null, "error": null}
+event: done
+data: null
 ```
 
-**Response** `503` (SSE not available):
-```json
-{ "success": false, "error": "SSE stream is not available." }
-```
+Statuses: `"connected"` (testConnection OK) or `"error"` (testConnection failed).
+
+Keepalive comments sent every 15s (`: keepalive`). Full batch re-evaluated every 30s.

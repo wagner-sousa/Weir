@@ -158,4 +158,52 @@ export async function mcpRoutes(app: FastifyInstance) {
       });
     }
   });
+
+  app.get('/api/mcps/events', async (_request, reply) => {
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    });
+
+    const sendStatuses = async () => {
+      const configPath = getConfigPath();
+      const result = loadMCPConfig(configPath);
+      if (result.error || !result.clients) return;
+
+      for (const client of result.clients) {
+        try {
+          const connResult = await testConnection({
+            type: client.transport as 'stdio' | 'http' | 'sse',
+            command: client.command,
+            args: client.args,
+            url: client.url,
+            env: client.env,
+          });
+          const data = JSON.stringify({
+            name: client.name,
+            status: connResult.success ? 'connected' : 'error',
+            toolCount: null,
+            error: connResult.error ?? null,
+          });
+          reply.raw.write(`event: status\ndata: ${data}\n\n`);
+        } catch {
+          // skip individual failures
+        }
+      }
+      reply.raw.write(`event: done\ndata: null\n\n`);
+    };
+
+    await sendStatuses();
+
+    const pollInterval = setInterval(sendStatuses, 30_000);
+    const keepalive = setInterval(() => {
+      reply.raw.write(': keepalive\n\n');
+    }, 15_000);
+
+    _request.raw.on('close', () => {
+      clearInterval(pollInterval);
+      clearInterval(keepalive);
+    });
+  });
 }

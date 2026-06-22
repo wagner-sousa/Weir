@@ -23,6 +23,7 @@ flowchart LR
     USER --> API
     SPA -- HTTP GET /api/mcps --> API
     SPA -- WebSocket /ws --> WS
+    SPA -- SSE /api/mcps/events --> API
     API --> ROUTES
     ROUTES --> LOADER
     LOADER --> FS
@@ -51,7 +52,17 @@ Le, faz parse e valida o .mcp.json. Retorna `LoadResult` com `clients: MCPClient
 Monitora o .mcp.json com chokidar. Dispara callback quando detecta alteracoes no arquivo. Usado para notificar o WebSocket apos cada modificacao.
 
 ### `src/api/mcp.routes.ts`
-`GET /api/mcps` — retorna lista de servidores MCP configurados. Usa o loader para ler o arquivo a cada requisicao (leitura sob demanda para dados sempre atualizados).
+`GET /api/mcps` — retorna lista de servidores MCP configurados, cada um com `status`, `error` e `toolCount` obtidos via `testConnection`.
+
+`GET /api/mcps/events` — SSE endpoint. Envia eventos `status` (conexao testada para cada MCP) e `done` (fim do lote) a cada 30s. Keepalive a cada 15s.
+
+`GET /api/mcps/:name/tools` — retorna lista de ferramentas de um MCP especifico via handshake JSON-RPC.
+
+`POST /api/mcps/test-connection` — testa conexao com um transporte (stdio/http/sse) sem salvar.
+
+`POST /api/mcps` — adiciona novo MCP ao .mcp.json. Valida, escreve e faz broadcast `config:changed`.
+
+`DELETE /api/mcps/:name` — remove MCP do .mcp.json. Faz broadcast `config:changed`.
 
 ### `src/api/health.routes.ts`
 `GET /api/health` — healthcheck simples do servidor.
@@ -77,10 +88,10 @@ Exibido quando nenhum .mcp.json encontrado ou sem servidores configurados.
 Exibido quando o .mcp.json esta mal formatado ou ha erro de leitura.
 
 ### `src/services/api.ts`
-Cliente HTTP + WebSocket. Fetch para `GET /api/mcps`, conexao WebSocket em `/ws` para receber eventos `config:changed`.
+Cliente HTTP + WebSocket + SSE. Fetch para `GET /api/mcps`, conexao WebSocket em `/ws` para `config:changed`, SSE em `/api/mcps/events` para eventos `status`.
 
 ### `src/hooks/useMCPs.ts`
-Hook TanStack React Query que gerencia o estado dos MCPs. Escuta eventos WebSocket para refetch automatico quando o .mcp.json e alterado.
+Hook TanStack React Query que gerencia o estado dos MCPs. Escuta eventos WebSocket para refetch e SSE para atualizar status de conexao (`statusMap`). Mantem `isRefreshing` durante refetch.
 
 ## Schema do .mcp.json
 
@@ -144,13 +155,16 @@ O Weir aceita dois formatos, que podem coexistir no mesmo arquivo.
 2. loader.ts le .mcp.json
 3. watcher.ts comeca a monitorar o arquivo
 4. GET /api/mcps → lista inicial de MCPs
-5. Browser conecta WebSocket /ws
-6. Usuario edita .mcp.json ↓
-7. watcher.ts detecta alteracao
-8. Callback → ws.ts broadcast('config:changed')
-9. Browser recebe evento
-10. useMCPs.ts faz refetch de GET /api/mcps
-11. CardGrid re-renderiza com dados atualizados
+5. Browser conecta WebSocket /ws + SSE /api/mcps/events
+6. SSE envia eventos status para cada MCP
+7. useMCPs.ts atualiza statusMap com cada evento
+8. CardGrid re-renderiza com icones de status
+9. Usuario edita .mcp.json ↓
+10. watcher.ts detecta alteracao
+11. Callback → ws.ts broadcast('config:changed')
+12. Browser recebe evento
+13. useMCPs.ts faz refetch de GET /api/mcps
+14. CardGrid re-renderiza com dados atualizados
 ```
 
 Tempo entre edicao e reflexao na tela: <5s (CS-002).
