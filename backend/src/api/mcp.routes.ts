@@ -131,6 +131,84 @@ export async function mcpRoutes(app: FastifyInstance) {
     return { tools, count: tools.length };
   });
 
+  app.put('/api/mcps/:name', async (request, reply) => {
+    const originalName = (request.params as { name: string }).name;
+    const { name, ...rest } = request.body as Record<string, unknown>;
+
+    if (!name || typeof name !== 'string') {
+      return reply.status(400).send({ success: false, error: 'Name is required.' });
+    }
+
+    const configPath = getConfigPath();
+    const transportInput = (rest as { transport?: unknown }).transport ?? rest;
+    const parsed = TestConnectionRequest.safeParse({ transport: transportInput });
+    if (!parsed.success) {
+      return reply.status(400).send({
+        success: false,
+        error: parsed.error.issues.map((i) => i.message).join('; '),
+      });
+    }
+
+    const raw = existsSync(configPath)
+      ? JSON.parse(readFileSync(configPath, 'utf-8'))
+      : { mcpServers: {} };
+
+    if (!raw.mcpServers[originalName]) {
+      return reply.status(404).send({
+        success: false,
+        error: `MCP '${originalName}' not found.`,
+      });
+    }
+
+    if (name !== originalName && raw.mcpServers[name as string]) {
+      return reply.status(409).send({
+        success: false,
+        error: `An MCP with the name '${name}' already exists.`,
+      });
+    }
+
+    // Merge: keep all original extra fields (fieldSelection, etc.),
+    // update only transport-related fields
+    const transportFields = parsed.data.transport;
+    const originalEntry = raw.mcpServers[originalName];
+    const newEntry: Record<string, unknown> = {};
+
+    // Copy all original keys
+    for (const key of Object.keys(originalEntry)) {
+      if (key !== 'transport') {
+        newEntry[key] = originalEntry[key];
+      }
+    }
+
+    // Override with new transport data (flat format)
+    newEntry.type = transportFields.type;
+    if (transportFields.command !== undefined) newEntry.command = transportFields.command;
+    if (transportFields.args !== undefined) newEntry.args = transportFields.args;
+    if (transportFields.url !== undefined) newEntry.url = transportFields.url;
+    if (transportFields.env !== undefined) newEntry.env = transportFields.env;
+
+    // Remove old + write new in one operation
+    delete raw.mcpServers[originalName];
+    raw.mcpServers[name as string] = newEntry;
+
+    const dir = dirname(configPath);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+
+    try {
+      writeMCPConfig(configPath, raw);
+    } catch {
+      return reply.status(503).send({
+        success: false,
+        error: 'Error saving: backend unavailable.',
+      });
+    }
+
+    broadcast('config:changed', { path: configPath });
+    return { success: true, name: name as string };
+  });
+
   app.delete('/api/mcps/:name', async (request, reply) => {
     const { name } = request.params as { name: string };
     const configPath = getConfigPath();

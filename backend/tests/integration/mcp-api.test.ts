@@ -222,3 +222,89 @@ describe('DELETE /api/mcps/:name', () => {
     expect(body.success).toBe(false);
   });
 });
+
+describe('PUT /api/mcps/:name', () => {
+  it('updates an existing MCP and returns 200', async () => {
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/mcps/existing',
+      payload: {
+        name: 'existing',
+        transport: { type: 'http', url: 'https://updated.com/mcp' },
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.success).toBe(true);
+    expect(body.name).toBe('existing');
+  });
+
+  it('renames an MCP and returns 200 with new name', async () => {
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/mcps/existing',
+      payload: {
+        name: 'renamed',
+        transport: { type: 'stdio', command: 'echo' },
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.success).toBe(true);
+    expect(body.name).toBe('renamed');
+  });
+
+  it('returns 404 for nonexistent MCP', async () => {
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/mcps/nonexistent',
+      payload: {
+        name: 'nonexistent',
+        transport: { type: 'stdio', command: 'echo' },
+      },
+    });
+    expect(res.statusCode).toBe(404);
+    const body = JSON.parse(res.body);
+    expect(body.success).toBe(false);
+    expect(body.error).toContain('not found');
+  });
+
+  it('returns 409 for duplicate name', async () => {
+    // Add a second server first
+    await app.inject({
+      method: 'POST',
+      url: '/api/mcps',
+      payload: {
+        name: 'other',
+        transport: { type: 'http', url: 'https://other.com' },
+      },
+    });
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/mcps/existing',
+      payload: {
+        name: 'other',
+        transport: { type: 'stdio', command: 'echo' },
+      },
+    });
+    expect(res.statusCode).toBe(409);
+    const body = JSON.parse(res.body);
+    expect(body.success).toBe(false);
+    expect(body.error).toContain('already exists');
+  });
+
+  it('returns 400 for validation error', async () => {
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/mcps/existing',
+      payload: {
+        name: 'existing',
+        transport: { type: 'stdio' },
+      },
+    });
+    expect(res.statusCode).toBe(400);
+    const body = JSON.parse(res.body);
+    expect(body.success).toBe(false);
+  });
+});
