@@ -87,6 +87,6 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./.mcp.json:/app/.mcp.json
+      - ${MCP_CONFIG_SOURCE:-./.mcp.json}:/app/.mcp.json
     profiles:
       - validation

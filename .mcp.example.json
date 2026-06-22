@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "filesystem-demo": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+    },
+    "weather-api": {
+      "transport": {
+        "type": "http",
+        "url": "https://api.weather.example/mcp"
+      }
+    },
+    "db-stream": {
+      "type": "sse",
+      "url": "https://db.internal/mcp/sse"
+    }
+  }
+}

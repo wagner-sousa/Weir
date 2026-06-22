@@ -18,9 +18,18 @@ export const TransportConfig = z
     { message: 'Transport config missing required fields for type' },
   );
 
-export const MCPServerEntry = z.object({
-  transport: TransportConfig,
-});
+export const MCPServerEntry = z.preprocess(
+  (input) => {
+    if (typeof input === 'object' && input !== null && !('transport' in input)) {
+      const { type, command, args, url } = input as Record<string, unknown>;
+      return { transport: { type, command, args, url } };
+    }
+    return input;
+  },
+  z.object({
+    transport: TransportConfig,
+  }),
+);
 
 export const MCPConfig = z.object({
   mcpServers: z.record(z.string(), MCPServerEntry),

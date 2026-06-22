@@ -3,6 +3,8 @@ dist/
 build/
 *.log
 .env*
+!.env.example
+.mcp.json
 .DS_Store
 Thumbs.db
 *.tmp
