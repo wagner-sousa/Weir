@@ -28,6 +28,31 @@ async function testStdioConnection(transport: TransportConfig): Promise<Connecti
       resolve({ success: false, error: 'Connection timed out' });
     }, parseInt(process.env.MCP_CONNECTION_TIMEOUT ?? '5000', 10));
 
+    let output = '';
+
+    child.stdout?.on('data', (data: Buffer) => {
+      output += data.toString();
+      // Check for valid JSON-RPC response (initialize or tools/list)
+      try {
+        const parsed = JSON.parse(output);
+        if (parsed.jsonrpc === '2.0' && (parsed.result || parsed.error)) {
+          clearTimeout(timeout);
+          child.kill();
+          if (parsed.error) {
+            resolve({ success: false, error: parsed.error.message || 'MCP error' });
+          } else {
+            resolve({ success: true });
+          }
+        }
+      } catch {
+        // not complete JSON yet, keep buffering
+      }
+    });
+
+    child.stderr?.on('data', () => {
+      // ignore stderr
+    });
+
     child.on('error', (err) => {
       clearTimeout(timeout);
       resolve({ success: false, error: err.message });
@@ -35,8 +60,32 @@ async function testStdioConnection(transport: TransportConfig): Promise<Connecti
 
     child.on('exit', (code) => {
       clearTimeout(timeout);
-      resolve({ success: code === 0, error: code !== 0 ? `Process exited with code ${code}` : undefined });
+      if (code === 0) {
+        resolve({ success: true });
+      } else {
+        resolve({ success: false, error: `Process exited with code ${code}` });
+      }
     });
+
+    // Send MCP initialize request
+    try {
+      const request = JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          capabilities: {},
+          clientInfo: { name: 'weir', version: '0.1.0' },
+        },
+      });
+      if (child.stdin) {
+        child.stdin.on('error', () => {});
+        child.stdin.write(request + '\n');
+      }
+    } catch {
+      // stdin may already be closed
+    }
   });
 }
 
@@ -50,11 +99,40 @@ async function testHttpConnection(transport: TransportConfig): Promise<Connectio
     );
 
     const response = await fetch(url, {
-      method: 'GET',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          capabilities: {},
+          clientInfo: { name: 'weir', version: '0.1.0' },
+        },
+      }),
       signal: controller.signal,
     });
     clearTimeout(timeout);
-    return { success: response.ok, error: response.ok ? undefined : `HTTP ${response.status}` };
+
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}` };
+    }
+
+    // Try to parse the response as JSON-RPC
+    try {
+      const data = await response.json();
+      if (data.jsonrpc === '2.0' && data.result) {
+        return { success: true };
+      }
+      if (data.error) {
+        return { success: false, error: data.error.message || 'MCP error' };
+      }
+      return { success: true };
+    } catch {
+      // Response is valid HTTP but not JSON-RPC — still treat as connected
+      return { success: true };
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
@@ -70,11 +148,35 @@ async function testSseConnection(transport: TransportConfig): Promise<Connection
     );
 
     const response = await fetch(url, {
-      method: 'GET',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          capabilities: {},
+          clientInfo: { name: 'weir', version: '0.1.0' },
+        },
+      }),
       signal: controller.signal,
     });
     clearTimeout(timeout);
-    return { success: response.ok, error: response.ok ? undefined : `SSE endpoint returned ${response.status}` };
+
+    if (!response.ok) {
+      return { success: false, error: `SSE endpoint returned ${response.status}` };
+    }
+
+    try {
+      const data = await response.json();
+      if (data.jsonrpc === '2.0' && data.result) {
+        return { success: true };
+      }
+      return { success: true };
+    } catch {
+      return { success: true };
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
