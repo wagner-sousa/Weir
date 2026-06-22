@@ -1,19 +1,21 @@
 <!--
   Sync Impact Report
   ==================
-  Version change: 1.0.0 → 1.1.0
+  Version change: 1.1.0 → 1.2.0
   Modified principles: None (principles unchanged)
-  Added sections: None (guidance added to Fluxo de Desenvolvimento item 6)
+  Modified sections: "Fluxo de Desenvolvimento" → "Development Workflow"
+    - Translated items 1-6 from Portuguese to English
+    - Added items 7 (env vars), 8 (lint), 9 (docs)
+  Added sections: None
   Removed sections: None
   Templates requiring updates:
-    - .specify/templates/plan-template.md: ✅ Plan template generic — no change needed
+    - .specify/templates/plan-template.md: ✅ No principle-specific content — no change needed
     - .specify/templates/spec-template.md: ✅ No principle-specific content — no change needed
     - .specify/templates/tasks-template.md: ✅ No principle-specific content — no change needed
     - .specify/templates/checklist-template.md: ✅ No principle-specific content — no change needed
     - .specify/templates/constitution-template.md: ✅ Template is source — no change needed
   Documentation requiring updates (MANUAL):
-    - quickstart.md: Update command examples to use docker-compose
-    - plan.md: Update Technical Context to reflect docker-compose constraint
+    - README.md, docs/: Already reflect the rules via prior commits
   Follow-up TODOs: None
 -->
 
@@ -23,85 +25,86 @@
 
 ### I. Schema-Driven Development (SDD)
 
-Schemas DEVEM ser definidos antes de qualquer implementacao.
-Todo endpoint, comando e configuracao DEVE ter um schema
-validavel. Schemas sao a fonte da verdade arquitetural —
-nenhuma funcionalidade pode existir sem um schema que a
-descreva formalmente.
+Schemas MUST be defined before any implementation.
+Every endpoint, command, and configuration MUST have a
+validatable schema. Schemas are the source of architectural
+truth — no feature may exist without a schema that formally
+describes it.
 
 ### II. Test-First (NON-NEGOTIABLE)
 
-TDD e obrigatorio nesta ordem: (1) testes escritos e
-aprovados pelo usuario, (2) testes falham na execucao,
-(3) implementacao escrita, (4) testes passam. O ciclo
-Red-Green-Refactor DEVE ser rigorosamente seguido.
-Nenhum codigo de producao deve ser escrito antes do teste
-que o valida.
+TDD is mandatory in this order: (1) tests written and
+approved by the user, (2) tests fail on execution,
+(3) implementation written, (4) tests pass. The Red-Green-Refactor
+cycle MUST be rigorously followed. No production code shall
+be written before the test that validates it.
 
-### III. Portugues Brasileiro para Agentes e Usuarios
+### III. Brazilian Portuguese for Agents and Users
 
-Todas as mensagens exibidas para usuarios finais e todos
-os prompts enviados para agentes DEVEM estar em portugues
-brasileiro (pt-BR). O codigo-fonte (nomes de variaveis,
-funcoes, classes, comentarios) e a documentacao tecnica
-DEVEM estar em ingles. Esta separacao garante que o
-codigo permaneca universal enquanto a experiencia do
-usuario e natural.
+All messages displayed to end users and all prompts sent
+to agents MUST be in Brazilian Portuguese (pt-BR). Source
+code (variable names, functions, classes, comments) and
+technical documentation MUST be in English. This separation
+ensures the code remains universal while the user experience
+feels natural.
 
-### IV. .mcp.json como Fonte da Verdade
+### IV. .mcp.json as the Source of Truth
 
-O arquivo .mcp.json e a fonte unica e vinculante de
-verdade para todas as configuracoes do Weir. Toda
-funcionalidade DEVE derivar do schema .mcp.json. O parser
-e validador de .mcp.json sao componentes fundamentais dos
-quais todos os outros dependem. Nenhuma configuracao
-manual paralela deve existir.
+The .mcp.json file is the single, binding source of truth
+for all Weir configurations. Every feature MUST derive from
+the .mcp.json schema. The parser and validator of .mcp.json
+are fundamental components upon which all others depend. No
+parallel manual configuration shall exist.
 
-### V. Simplicidade e Gateway Unificado
+### V. Simplicity and Unified Gateway
 
-O Weir DEVE priorizar simplicidade e experiencia do
-desenvolvedor. O modo web e o modo container DEVEM
-compartilhar a mesma logica subjacente — sem duplicacao.
-A configuracao DEVE exigir o minimo esforco possivel.
-Cobertura de caminhos felizes E casos extremos e
-obrigatoria para consideracao de producao.
+Weir MUST prioritize simplicity and developer experience.
+The web mode and the container mode MUST share the same
+underlying logic — no duplication. Configuration MUST
+require minimal effort. Coverage of happy paths AND edge
+cases is mandatory for production readiness.
 
 ## Stack Tecnologica
 
-Linguagem e framework serao definidos durante a fase de
-setup do projeto, priorizando ecossistemas que suportem
-tipagem estatica e testabilidade. Docker e obrigatorio
-para containerizacao. A interface web DEVE ser entregue
-como parte do mesmo processo (ou via embedded UI).
-Ferramenta de testes sera definida no setup, DEVendo
-suportar testes de unidade, integracao e contrato.
-Toda dependencia externa DEVE ser justificada.
+Language and framework will be defined during project setup,
+prioritizing ecosystems that support static typing and
+testability. Docker is mandatory for containerization. The
+web interface MUST be delivered as part of the same process
+(or via embedded UI). The testing tool will be defined during
+setup and MUST support unit, integration, and contract tests.
+Every external dependency MUST be justified.
 
-## Fluxo de Desenvolvimento
+## Development Workflow
 
-1. SDD — definir schema primeiro (config, API, dados).
-2. TDD — escrever teste → ver falha → implementar →
-   ver passar.
-3. Revisao de conformidade com a Constituicao e
-   obrigatoria em todo PR.
-4. Toda complexidade deve ser justificada por
-   necessidade atual, nao futura (YAGNI).
-5. Commits frequentes e atomicos apos cada tarefa ou
-   grupo logico de tarefas.
-6. Todos os comandos de desenvolvimento, teste, build e
-   execucao DEVEM ser invocados via docker-compose.*.yml.
-   Nenhum comando node/npm diretamente no host.
+1. SDD — define schema first (config, API, data).
+2. TDD — write test → see it fail → implement → see it pass.
+3. Constitutional compliance review is mandatory on every PR.
+4. Every complexity MUST be justified by current need, not
+   future speculation (YAGNI).
+5. Frequent, atomic commits after each task or logical group
+   of tasks.
+6. Every development, test, build, and execution command MUST
+   be invoked via docker-compose.*.yml. No node/npm commands
+   on the host directly.
+7. Every new configuration MUST have a corresponding parameter
+   in .env.example and .env, and MUST be wired in all
+   docker-compose.*.yml files. No hardcoded configuration
+   without an environment variable.
+8. Lints (ESLint, Prettier, typecheck) MUST pass before every
+   commit. No commit with lint warnings or errors is acceptable.
+9. Every new spec, adjustment, or correction MUST be reflected
+   in documentation (README, docs/, quickstart) in the same
+   commit. Outdated documentation is considered a bug.
 
 ## Governance
 
-Esta Constituicao substitui todas as outras praticas de
-desenvolvimento. Emendas REQUEREM: (a) documentacao da
-mudanca, (b) aprovacao por revisao, e (c) plano de
-migracao quando aplicavel. O versionamento segue
-Semantic Versioning (MAJOR.MINOR.PATCH) aplicado ao
-documento da Constituicao. Toda revisao de PR DEVE
-verificar conformidade com os principios aqui definidos.
-Casos omissos serao resolvidos pelos principios gerais
-de simplicidade e experiencia do desenvolvedor.
+This Constitution supersedes all other development practices.
+Amendments REQUIRE: (a) documentation of the change,
+(b) approval by review, and (c) a migration plan when
+applicable. Versioning follows Semantic Versioning
+(MAJOR.MINOR.PATCH) applied to the Constitution document.
+Every PR review MUST verify compliance with the principles
+defined herein. Omissions shall be resolved by the general
+principles of simplicity and developer experience.
 
-**Version**: 1.1.0 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-06-19
+**Version**: 1.2.0 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-06-22
