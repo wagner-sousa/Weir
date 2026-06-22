@@ -1,5 +1,5 @@
 import type { MCPClient } from '../services/api';
-import { CircleCheck, CircleX, LoaderCircle, Circle, Pencil, RotateCcw, Trash2 } from 'lucide-react';
+import { ShieldAlert, CircleCheck, CircleX, LoaderCircle, Circle, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 interface MCPCardProps {
@@ -7,6 +7,7 @@ interface MCPCardProps {
   onRemove?: (name: string) => void;
   onEdit?: (client: MCPClient) => void;
   onReconnect?: (client: MCPClient) => void;
+  onAuth?: (client: MCPClient) => void;
   removing?: boolean;
   reconnecting?: boolean;
 }
@@ -31,7 +32,7 @@ const statusIcons: Record<string, StatusIcon> = {
   disconnected: { icon: <Circle className="h-5 w-5" />, color: 'text-gray-400', label: 'Disconnected' },
 };
 
-export function MCPCard({ client, onRemove, onEdit, onReconnect, removing, reconnecting }: MCPCardProps) {
+export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removing, reconnecting }: MCPCardProps) {
   const badgeClass = badgeColors[client.transport] || badgeColors.unknown;
   const status = client.status || 'disconnected';
   const si = statusIcons[status] || statusIcons.disconnected;
@@ -84,6 +85,16 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, removing, recon
         </p>
       )}
       <div className="mt-3 flex justify-end gap-2 border-t border-gray-100 pt-2">
+        {client.needsAuth && client.authUrl && (
+          <button
+            onClick={() => onAuth?.(client)}
+            aria-label="Authorize MCP"
+            title="OAuth2 authorization required"
+            className="rounded p-1.5 text-amber-500 hover:bg-amber-50 hover:text-amber-700"
+          >
+            <ShieldAlert className="h-4 w-4" />
+          </button>
+        )}
         <button
           onClick={() => onEdit?.(client)}
           aria-label="Edit MCP"

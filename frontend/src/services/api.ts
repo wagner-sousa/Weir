@@ -12,6 +12,8 @@ export interface MCPClient {
   status?: 'connecting' | 'connected' | 'error' | 'disconnected';
   error?: string | null;
   toolCount?: number;
+  needsAuth?: boolean;
+  authUrl?: string;
 }
 
 export interface MCPResponse {

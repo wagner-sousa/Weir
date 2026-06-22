@@ -28,6 +28,40 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
     setEditingMCP(null);
   }
 
+  async function handleAuth(client: MCPClient) {
+    const popup = window.open('', '_blank', 'width=600,height=700');
+    if (!popup) {
+      showToast('Popup blocked. Please allow popups for this site.', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/auth/${encodeURIComponent(client.name)}/start`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+
+      if (!data.url) {
+        showToast(data.error || 'Failed to start OAuth2 authorization.', 'error');
+        popup.close();
+        return;
+      }
+
+      popup.location.href = data.url;
+
+      // Monitor popup close
+      const timer = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(timer);
+          queryClient.invalidateQueries({ queryKey: ['mcps'] });
+        }
+      }, 500);
+    } catch (err) {
+      popup.close();
+      showToast('Failed to start OAuth2 authorization.', 'error');
+    }
+  }
+
   async function handleReconnect(client: MCPClient) {
     setReconnectingName(client.name);
     const transport = {
@@ -87,6 +121,7 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
             onRemove={onRemove}
             onEdit={handleEdit}
             onReconnect={handleReconnect}
+            onAuth={handleAuth}
             removing={removePending}
             reconnecting={reconnectingName === client.name}
           />
