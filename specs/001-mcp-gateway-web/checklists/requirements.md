@@ -31,4 +31,10 @@
 
 ## Notes
 
+- 2026-06-22: Documentados 5 pontos levantados na revisao:
+  - RF-011: Estado vazio para .mcp.json sem mcpServers
+  - RF-012: Comportamento ao deletar .mcp.json em execucao
+  - RF-013: Mensagens de erro no terminal ao falhar inicio
+  - CS-005: Responsividade para janelas a partir de 320px
+  - Suposicao: Porta padrao 3000 documentada no quickstart
 - All items pass validation. Spec is ready for `/speckit.plan`.

@@ -96,6 +96,9 @@ As seguintes funcionalidades NAO serao implementadas nesta versao:
 - **RF-007**: O sistema DEVE exibir uma mensagem clara quando nenhum arquivo .mcp.json for encontrado.
 - **RF-008**: O sistema DEVE exibir uma mensagem de erro clara quando o .mcp.json estiver mal formatado.
 - **RF-009**: O modo web e o modo Docker DEVEM compartilhar a mesma logica central de leitura e parse do .mcp.json.
+- **RF-011**: O sistema DEVE exibir uma mensagem de estado vazio quando o .mcp.json for JSON valido mas nao contiver a chave `mcpServers` ou ela estiver vazia.
+- **RF-012**: O sistema DEVE tratar a delecao do arquivo .mcp.json durante a execucao exibindo a mensagem de "arquivo nao encontrado" na interface, similar ao estado inicial sem arquivo.
+- **RF-013**: O sistema DEVE exibir mensagens de erro descritivas no terminal quando nao for possivel iniciar o servidor web (ex: porta ocupada, permissao de leitura negada), permitindo ao usuario diagnosticar e corrigir o problema.
 
 ### Entidades Envolvidas
 
@@ -110,6 +113,7 @@ As seguintes funcionalidades NAO serao implementadas nesta versao:
 - **CS-002**: Alteracoes no .mcp.json refletem na interface em ate 5 segundos sem acao do usuario.
 - **CS-003**: O container Docker inicia e fica acessivel em menos de 5 segundos com um .mcp.json valido montado.
 - **CS-004**: Usuarios conseguem identificar o tipo de transporte de cada MCP sem clicar em nada adicional (apenas olhando o cartao).
+- **CS-005**: A interface se adapta a diferentes tamanhos de tela, mantendo legibilidade e funcionalidade em janelas a partir de 320px de largura.
 
 ## Suposicoes
 
@@ -118,3 +122,4 @@ As seguintes funcionalidades NAO serao implementadas nesta versao:
 - O tipo "http" refere-se a transporte SSE (Server-Sent Events) sobre HTTP, padrao do protocolo MCP.
 - Alem de http e stdio, outros tipos de transporte (como websocket) serao tratados como "desconhecido" e exibidos como tal, sem impedir a listagem.
 - A interface web roda na mesma maquina/container que o Weir (acesso local).
+- O Weir sera acessivel via navegador na porta padrao 3000 (http://localhost:3000), documentada no quickstart do projeto.

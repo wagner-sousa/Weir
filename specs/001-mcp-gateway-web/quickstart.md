@@ -115,7 +115,12 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./caminho/para/.mcp.json:/app/.mcp.json
+      - ${MCP_CONFIG_SOURCE:-./.mcp.json}:/app/.mcp.json
+```
+
+A variavel `MCP_CONFIG_SOURCE` permite apontar para um arquivo .mcp.json em outro diretorio:
+```bash
+MCP_CONFIG_SOURCE=~/outro-projeto/.mcp.json docker compose up
 ```
 
 ## Scripts via docker-compose
