@@ -1,10 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
-import { fetchMCPs, connectWebSocket, addMCP, testConnection } from '../services/api';
-import type { TransportConfig } from '../services/api';
+import { useEffect, useState, useCallback } from 'react';
+import {
+  fetchMCPs,
+  connectWebSocket,
+  connectSSE,
+  addMCP,
+  testConnection,
+} from '../services/api';
+import type { TransportConfig, StatusEvent, MCPClient } from '../services/api';
 
 export function useMCPs() {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [statusMap, setStatusMap] = useState<Record<string, StatusEvent>>({});
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -28,7 +35,31 @@ export function useMCPs() {
     }
   }, [query.isFetching]);
 
-  return { ...query, isRefreshing };
+  const handleStatusEvent = useCallback((event: StatusEvent) => {
+    setStatusMap((prev) => ({ ...prev, [event.name]: event }));
+  }, []);
+
+  useEffect(() => {
+    const disconnect = connectSSE(handleStatusEvent);
+    return disconnect;
+  }, [handleStatusEvent]);
+
+  const clientsWithStatus: MCPClient[] = (query.data?.clients ?? []).map(
+    (client: MCPClient) => {
+      const statusEvent = statusMap[client.name];
+      if (statusEvent) {
+        return {
+          ...client,
+          status: statusEvent.status,
+          error: statusEvent.error,
+          toolCount: statusEvent.toolCount ?? client.toolCount,
+        };
+      }
+      return client;
+    },
+  );
+
+  return { ...query, data: { ...query.data, clients: clientsWithStatus }, isRefreshing };
 }
 
 export function useAddMCP() {

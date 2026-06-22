@@ -146,3 +146,56 @@ describe('POST /api/mcps', () => {
     expect(body.success).toBe(false);
   });
 });
+
+describe('GET /api/mcps (extended)', () => {
+  it('returns status, error, and toolCount for each client', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/mcps' });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.clients).toHaveLength(1);
+    const client = body.clients[0];
+    expect(client).toHaveProperty('status');
+    expect(client).toHaveProperty('error');
+    expect(client).toHaveProperty('toolCount');
+  });
+
+  it('returns disconnected status for unreachable MCPs', async () => {
+    writeFileSync(
+      process.env.MCP_CONFIG_PATH!,
+      JSON.stringify({
+        mcpServers: {
+          unreachable: { transport: { type: 'http', url: 'http://localhost:1' } },
+        },
+      }, null, 2) + '\n',
+    );
+    const res = await app.inject({ method: 'GET', url: '/api/mcps' });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.clients).toHaveLength(1);
+    expect(body.clients[0].status).toBe('error');
+    expect(body.clients[0].error).toBeDefined();
+  });
+});
+
+describe('GET /api/mcps/:name/tools', () => {
+  it('returns empty tools array for unreachable MCP', async () => {
+    writeFileSync(
+      process.env.MCP_CONFIG_PATH!,
+      JSON.stringify({
+        mcpServers: {
+          unreachable: { transport: { type: 'http', url: 'http://localhost:1' } },
+        },
+      }, null, 2) + '\n',
+    );
+    const res = await app.inject({ method: 'GET', url: '/api/mcps/unreachable/tools' });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(Array.isArray(body.tools)).toBe(true);
+    expect(body).toHaveProperty('count');
+  });
+
+  it('returns 404 for nonexistent MCP', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/mcps/nonexistent/tools' });
+    expect(res.statusCode).toBe(404);
+  });
+});

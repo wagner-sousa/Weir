@@ -1,5 +1,6 @@
 const API_BASE = '/api';
 const WS_URL = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`;
+const SSE_URL = `${API_BASE}/mcps/events`;
 
 export interface MCPClient {
   name: string;
@@ -8,6 +9,9 @@ export interface MCPClient {
   args?: string[];
   url?: string;
   env?: Record<string, string>;
+  status?: 'connecting' | 'connected' | 'error' | 'disconnected';
+  error?: string | null;
+  toolCount?: number;
 }
 
 export interface MCPResponse {
@@ -22,6 +26,18 @@ export interface TransportConfig {
   args?: string[];
   url?: string;
   env?: Record<string, string>;
+}
+
+export interface StatusEvent {
+  name: string;
+  status: 'connecting' | 'connected' | 'error' | 'disconnected';
+  toolCount: number | null;
+  error: string | null;
+}
+
+export interface ToolsResponse {
+  tools: Array<{ name: string; description?: string }>;
+  count: number;
 }
 
 export async function fetchMCPs(): Promise<MCPResponse> {
@@ -65,6 +81,16 @@ export async function addMCP(
   return body;
 }
 
+export async function getMCPTools(
+  name: string,
+): Promise<ToolsResponse> {
+  const res = await fetch(`${API_BASE}/mcps/${encodeURIComponent(name)}/tools`);
+  if (!res.ok) {
+    return { tools: [], count: 0 };
+  }
+  return res.json();
+}
+
 export function connectWebSocket(onConfigChanged: () => void): () => void {
   let ws: WebSocket | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -104,5 +130,26 @@ export function connectWebSocket(onConfigChanged: () => void): () => void {
   return () => {
     if (reconnectTimer) clearTimeout(reconnectTimer);
     ws?.close();
+  };
+}
+
+export function connectSSE(onStatusEvent: (event: StatusEvent) => void): () => void {
+  const source = new EventSource(SSE_URL);
+
+  source.addEventListener('status', (e: MessageEvent) => {
+    try {
+      const data: StatusEvent = JSON.parse(e.data);
+      onStatusEvent(data);
+    } catch {
+      // ignore malformed events
+    }
+  });
+
+  source.onerror = () => {
+    // SSE will auto-reconnect
+  };
+
+  return () => {
+    source.close();
   };
 }

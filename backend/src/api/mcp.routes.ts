@@ -2,10 +2,11 @@ import type { FastifyInstance } from 'fastify';
 import { loadMCPConfig } from '../config/loader.js';
 import { writeMCPConfig, addMCPEntry } from '../config/writer.js';
 import { TestConnectionRequest } from '../config/schema.js';
-import { testConnection } from '../services/mcp-client.js';
+import { testConnection, queryTools } from '../services/mcp-client.js';
 import { resolve, dirname } from 'node:path';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { broadcast } from './ws.js';
+import type { MCPClient } from '../config/types.js';
 
 function getConfigPath(): string {
   return process.env.MCP_CONFIG_PATH || resolve(process.cwd(), '.mcp.json');
@@ -15,8 +16,27 @@ export async function mcpRoutes(app: FastifyInstance) {
   app.get('/api/mcps', async (_request, _reply) => {
     const configPath = getConfigPath();
     const result = loadMCPConfig(configPath);
+    const clientsWithStatus = await Promise.all(
+      result.clients.map(async (client: MCPClient) => {
+        const connResult = await testConnection({
+          type: client.transport as 'stdio' | 'http' | 'sse',
+          command: client.command,
+          args: client.args,
+          url: client.url,
+          env: client.env,
+        });
+
+        return {
+          ...client,
+          status: connResult.success ? 'connected' : ('error' as string),
+          error: connResult.error ?? null,
+          toolCount: 0,
+        };
+      }),
+    );
+
     return {
-      clients: result.clients,
+      clients: clientsWithStatus,
       error: result.error,
       timestamp: new Date().toISOString(),
     };
@@ -88,5 +108,26 @@ export async function mcpRoutes(app: FastifyInstance) {
     broadcast('config:changed', { path: configPath });
 
     return reply.status(201).send({ success: true, name });
+  });
+
+  app.get('/api/mcps/:name/tools', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    const configPath = getConfigPath();
+    const result = loadMCPConfig(configPath);
+    const client = result.clients.find((c) => c.name === name);
+
+    if (!client) {
+      return reply.status(404).send({ success: false, error: `MCP '${name}' not found.` });
+    }
+
+    const tools = await queryTools(name, {
+      type: client.transport as 'stdio' | 'http' | 'sse',
+      command: client.command,
+      args: client.args,
+      url: client.url,
+      env: client.env,
+    });
+
+    return { tools, count: tools.length };
   });
 }
