@@ -11,7 +11,7 @@ services:
     image: node:22-alpine
     working_dir: /app
     environment:
-      MCP_CONFIG_PATH: /app/.mcp.json
+      MCP_CONFIG_PATH: ${MCP_CONFIG_PATH:-/app/.mcp.json}
       MCP_CONNECTION_TIMEOUT: ${MCP_CONNECTION_TIMEOUT:-5000}
       MCP_ADD_TIMEOUT: ${MCP_ADD_TIMEOUT:-30000}
     extra_hosts:
