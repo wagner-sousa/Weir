@@ -104,6 +104,23 @@ export async function removeMCP(
   return body;
 }
 
+export async function updateMCP(
+  originalName: string,
+  name: string,
+  transport: TransportConfig,
+): Promise<{ success: boolean; name?: string; error?: string }> {
+  const res = await fetch(`${API_BASE}/mcps/${encodeURIComponent(originalName)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, transport }),
+  });
+  const body = await res.json();
+  if (!res.ok) {
+    return { success: false, error: body.error || `HTTP ${res.status}` };
+  }
+  return body;
+}
+
 export function connectWebSocket(onConfigChanged: () => void): () => void {
   let ws: WebSocket | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;

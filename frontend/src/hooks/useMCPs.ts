@@ -7,6 +7,7 @@ import {
   addMCP,
   testConnection,
   removeMCP,
+  updateMCP,
 } from '../services/api';
 import type { TransportConfig, StatusEvent, MCPClient } from '../services/api';
 
@@ -102,6 +103,27 @@ export function useRemoveMCP() {
   return useMutation({
     mutationFn: async (name: string) => {
       return removeMCP(name);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mcps'] });
+    },
+  });
+}
+
+export function useUpdateMCP() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      originalName,
+      name,
+      transport,
+    }: {
+      originalName: string;
+      name: string;
+      transport: TransportConfig;
+    }) => {
+      return updateMCP(originalName, name, transport);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mcps'] });
