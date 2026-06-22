@@ -2,9 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import { loadMCPConfig } from '../config/loader.js';
 import { writeMCPConfig, addMCPEntry, removeMCPEntry } from '../config/writer.js';
 import { TestConnectionRequest } from '../config/schema.js';
-import { testConnection, queryTools } from '../services/mcp-client.js';
+import { testConnection, queryTools, discoverOAuth2 } from '../services/mcp-client.js';
 import { resolve, dirname } from 'node:path';
-import { readFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { broadcast } from './ws.js';
 import type { MCPClient } from '../config/types.js';
 
@@ -16,14 +16,24 @@ export async function mcpRoutes(app: FastifyInstance) {
   app.get('/api/mcps', async (_request, _reply) => {
     const configPath = getConfigPath();
     const result = loadMCPConfig(configPath);
+
+    // Read raw config for accessToken
+    const raw = existsSync(configPath)
+      ? JSON.parse(readFileSync(configPath, 'utf-8'))
+      : { mcpServers: {} };
+
     const clientsWithStatus = await Promise.all(
       result.clients.map(async (client: MCPClient) => {
+        const rawEntry = raw.mcpServers[client.name];
+        const accessToken: string | undefined = rawEntry?.accessToken;
+
         const connResult = await testConnection({
           type: client.transport as 'stdio' | 'http' | 'sse',
           command: client.command,
           args: client.args,
           url: client.url,
           env: client.env,
+          accessToken,
         });
 
         return {
@@ -31,6 +41,8 @@ export async function mcpRoutes(app: FastifyInstance) {
           status: connResult.success ? 'connected' : ('error' as string),
           error: connResult.error ?? null,
           toolCount: 0,
+          needsAuth: connResult.needsAuth ?? false,
+          authUrl: connResult.authUrl ?? null,
         };
       }),
     );

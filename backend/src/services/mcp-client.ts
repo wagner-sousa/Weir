@@ -1,9 +1,19 @@
 import { spawn } from 'node:child_process';
 import type { TransportConfig } from '../config/types.js';
 
+export type TransportConfigWithToken = TransportConfig & { accessToken?: string };
+
 export interface ConnectionResult {
   success: boolean;
   error?: string;
+  needsAuth?: boolean;
+  authUrl?: string;
+  authConfig?: {
+    authorizationEndpoint: string;
+    tokenEndpoint: string;
+    registrationEndpoint?: string;
+    scopesSupported?: string[];
+  };
 }
 
 export interface ToolResult {
@@ -89,7 +99,7 @@ async function testStdioConnection(transport: TransportConfig): Promise<Connecti
   });
 }
 
-async function testHttpConnection(transport: TransportConfig): Promise<ConnectionResult> {
+async function testHttpConnection(transport: TransportConfigWithToken): Promise<ConnectionResult> {
   const url = replaceLocalhost(transport.url!);
   try {
     const controller = new AbortController();
@@ -98,9 +108,17 @@ async function testHttpConnection(transport: TransportConfig): Promise<Connectio
       parseInt(process.env.MCP_CONNECTION_TIMEOUT ?? '5000', 10),
     );
 
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json, text/event-stream',
+    };
+    if (transport.accessToken) {
+      headers['Authorization'] = `Bearer ${transport.accessToken}`;
+    }
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream' },
+      headers,
       body: JSON.stringify({
         jsonrpc: '2.0',
         id: 1,
@@ -114,6 +132,17 @@ async function testHttpConnection(transport: TransportConfig): Promise<Connectio
       signal: controller.signal,
     });
     clearTimeout(timeout);
+
+    if (response.status === 401) {
+      const authConfig = await discoverOAuth2(url);
+      return {
+        success: false,
+        error: `HTTP 401`,
+        needsAuth: true,
+        authUrl: authConfig?.authorizationEndpoint,
+        authConfig,
+      };
+    }
 
     if (!response.ok) {
       return { success: false, error: `HTTP ${response.status}` };
@@ -138,7 +167,34 @@ async function testHttpConnection(transport: TransportConfig): Promise<Connectio
   }
 }
 
-async function testSseConnection(transport: TransportConfig): Promise<ConnectionResult> {
+export async function discoverOAuth2(mcpUrl: string): Promise<ConnectionResult['authConfig']> {
+  try {
+    const baseUrl = new URL(mcpUrl);
+    const wellKnownUrl = `${baseUrl.origin}/.well-known/oauth-authorization-server`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const response = await fetch(wellKnownUrl, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (!response.ok) return undefined;
+
+    const data = await response.json();
+    if (data.authorization_endpoint && data.token_endpoint) {
+      return {
+        authorizationEndpoint: data.authorization_endpoint,
+        tokenEndpoint: data.token_endpoint,
+        registrationEndpoint: data.registration_endpoint,
+        scopesSupported: data.scopes_supported,
+      };
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+async function testSseConnection(transport: TransportConfigWithToken): Promise<ConnectionResult> {
   const url = replaceLocalhost(transport.url!);
   try {
     const controller = new AbortController();
@@ -147,9 +203,17 @@ async function testSseConnection(transport: TransportConfig): Promise<Connection
       parseInt(process.env.MCP_CONNECTION_TIMEOUT ?? '5000', 10),
     );
 
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json, text/event-stream',
+    };
+    if (transport.accessToken) {
+      headers['Authorization'] = `Bearer ${transport.accessToken}`;
+    }
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream' },
+      headers,
       body: JSON.stringify({
         jsonrpc: '2.0',
         id: 1,
@@ -182,7 +246,7 @@ async function testSseConnection(transport: TransportConfig): Promise<Connection
   }
 }
 
-export async function testConnection(transport: TransportConfig): Promise<ConnectionResult> {
+export async function testConnection(transport: TransportConfigWithToken): Promise<ConnectionResult> {
   switch (transport.type) {
     case 'stdio':
       return testStdioConnection(transport);
