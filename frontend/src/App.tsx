@@ -2,26 +2,39 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useMCPs } from './hooks/useMCPs';
 import { CardGrid } from './components/CardGrid';
 import { ErrorState } from './components/ErrorState';
+import { useToast } from './components/Toast';
 
 const queryClient = new QueryClient();
 
 function MCPDashboard() {
   const { data, isLoading, error, isRefreshing } = useMCPs();
+  const { ToastUI } = useToast();
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
         <p className="text-gray-500">Carregando...</p>
+        <ToastUI />
       </div>
     );
   }
 
   if (error) {
-    return <ErrorState message={error instanceof Error ? error.message : 'Erro desconhecido'} />;
+    return (
+      <>
+        <ErrorState message={error instanceof Error ? error.message : 'Erro desconhecido'} />
+        <ToastUI />
+      </>
+    );
   }
 
   if (data?.error) {
-    return <ErrorState message={data.error} />;
+    return (
+      <>
+        <ErrorState message={data.error} />
+        <ToastUI />
+      </>
+    );
   }
 
   return (
@@ -39,6 +52,7 @@ function MCPDashboard() {
         </div>
       </header>
       <CardGrid clients={data?.clients || []} />
+      <ToastUI />
     </div>
   );
 }
