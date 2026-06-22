@@ -5,9 +5,11 @@ import { AddMCPModal } from './AddMCPModal';
 
 interface CardGridProps {
   clients: MCPClient[];
+  onRemove?: (name: string) => void;
+  removePending?: boolean;
 }
 
-export function CardGrid({ clients }: CardGridProps) {
+export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
   const [modalOpen, setModalOpen] = useState(false);
 
   if (clients.length === 0) {
@@ -44,7 +46,12 @@ export function CardGrid({ clients }: CardGridProps) {
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {clients.map((client) => (
-          <MCPCard key={client.name} client={client} />
+          <MCPCard
+            key={client.name}
+            client={client}
+            onRemove={onRemove}
+            removing={removePending}
+          />
         ))}
       </div>
       <AddMCPModal

@@ -91,6 +91,19 @@ export async function getMCPTools(
   return res.json();
 }
 
+export async function removeMCP(
+  name: string,
+): Promise<{ success: boolean; error?: string }> {
+  const res = await fetch(`${API_BASE}/mcps/${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+  });
+  const body = await res.json();
+  if (!res.ok) {
+    return { success: false, error: body.error || `HTTP ${res.status}` };
+  }
+  return body;
+}
+
 export function connectWebSocket(onConfigChanged: () => void): () => void {
   let ws: WebSocket | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;

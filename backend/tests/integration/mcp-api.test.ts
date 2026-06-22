@@ -199,3 +199,26 @@ describe('GET /api/mcps/:name/tools', () => {
     expect(res.statusCode).toBe(404);
   });
 });
+
+describe('DELETE /api/mcps/:name', () => {
+  it('deletes existing MCP and returns 200', async () => {
+    const res = await app.inject({ method: 'DELETE', url: '/api/mcps/existing' });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.success).toBe(true);
+  });
+
+  it('removes the entry from the config file', async () => {
+    await app.inject({ method: 'DELETE', url: '/api/mcps/existing' });
+    const res = await app.inject({ method: 'GET', url: '/api/mcps' });
+    const body = JSON.parse(res.body);
+    expect(body.clients.find((c: { name: string }) => c.name === 'existing')).toBeUndefined();
+  });
+
+  it('returns 404 for nonexistent MCP', async () => {
+    const res = await app.inject({ method: 'DELETE', url: '/api/mcps/nonexistent' });
+    expect(res.statusCode).toBe(404);
+    const body = JSON.parse(res.body);
+    expect(body.success).toBe(false);
+  });
+});

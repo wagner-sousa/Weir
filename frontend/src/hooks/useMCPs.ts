@@ -6,6 +6,7 @@ import {
   connectSSE,
   addMCP,
   testConnection,
+  removeMCP,
 } from '../services/api';
 import type { TransportConfig, StatusEvent, MCPClient } from '../services/api';
 
@@ -91,6 +92,19 @@ export function useTestConnection() {
       signal?: AbortSignal;
     }) => {
       return testConnection(transport, signal);
+    },
+  });
+}
+
+export function useRemoveMCP() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (name: string) => {
+      return removeMCP(name);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mcps'] });
     },
   });
 }

@@ -2,6 +2,8 @@ import type { MCPClient } from '../services/api';
 
 interface MCPCardProps {
   client: MCPClient;
+  onRemove?: (name: string) => void;
+  removing?: boolean;
 }
 
 const badgeColors: Record<string, string> = {
@@ -18,7 +20,7 @@ const statusIcons: Record<string, { icon: string; color: string; label: string }
   disconnected: { icon: '\u25CB', color: 'text-gray-400', label: 'Desconectado' },
 };
 
-export function MCPCard({ client }: MCPCardProps) {
+export function MCPCard({ client, onRemove, removing }: MCPCardProps) {
   const badgeClass = badgeColors[client.transport] || badgeColors.unknown;
   const status = client.status || 'disconnected';
   const si = statusIcons[status] || statusIcons.disconnected;
@@ -70,6 +72,15 @@ export function MCPCard({ client }: MCPCardProps) {
           {client.error}
         </p>
       )}
+      <div className="mt-3 flex justify-end border-t border-gray-100 pt-2">
+        <button
+          onClick={() => onRemove?.(client.name)}
+          disabled={removing}
+          className="rounded px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:text-gray-400"
+        >
+          {removing ? 'Removendo...' : 'Remover'}
+        </button>
+      </div>
     </div>
   );
 }

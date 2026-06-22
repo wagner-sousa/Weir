@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { loadMCPConfig } from '../config/loader.js';
-import { writeMCPConfig, addMCPEntry } from '../config/writer.js';
+import { writeMCPConfig, addMCPEntry, removeMCPEntry } from '../config/writer.js';
 import { TestConnectionRequest } from '../config/schema.js';
 import { testConnection, queryTools } from '../services/mcp-client.js';
 import { resolve, dirname } from 'node:path';
@@ -129,5 +129,33 @@ export async function mcpRoutes(app: FastifyInstance) {
     });
 
     return { tools, count: tools.length };
+  });
+
+  app.delete('/api/mcps/:name', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    const configPath = getConfigPath();
+
+    const raw = existsSync(configPath)
+      ? JSON.parse(readFileSync(configPath, 'utf-8'))
+      : { mcpServers: {} };
+
+    try {
+      const updated = removeMCPEntry(raw, name);
+      try {
+        writeMCPConfig(configPath, updated);
+      } catch {
+        return reply.status(503).send({
+          success: false,
+          error: 'Erro ao remover: backend indisponível.',
+        });
+      }
+      broadcast('config:changed', { path: configPath });
+      return { success: true };
+    } catch {
+      return reply.status(404).send({
+        success: false,
+        error: `MCP '${name}' not found.`,
+      });
+    }
   });
 }
