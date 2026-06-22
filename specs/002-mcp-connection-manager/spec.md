@@ -99,6 +99,7 @@ Each MCP card footer shows a badge with the number of tools exposed by that serv
 - What happens when .mcp.json is read-only or has permission errors during add/remove? → Toast error "Arquivo não pôde ser lido/escrito". Add/remove operation is aborted. The grid remains unchanged.
 - How does the system handle a connection test timeout (default 5s, configurable via MCP_CONNECTION_TIMEOUT env var)? → Connecting state transitions to error. Toast "Tempo limite de conexão excedido" is shown. User can retry.
 - What happens when the user adds an MCP with the same name as an existing one? → Inline validation error below the name field as user types. Save is blocked. If save attempted anyway, toast error "MCP já existe" and modal stays open.
+- How does the modal behave when content exceeds viewport height? → The modal backdrop enables page scrolling (`overflow-y-auto`). The modal is top-aligned with vertical padding (`py-8`). The dark overlay scrolls with the content.
 - How does the modal behave when there are network errors during "Test Connection"? → Error shown inline in modal with the specific error message. The Test Connection button re-enables for retry.
 - What happens if the backend is unreachable during add/remove operations? → Toast error "Erro ao salvar/remover: backend indisponível". The operation is aborted. Grid state is unchanged.
 - How are stdio servers tested for connection (they may not have a network endpoint)? → Backend verifies the command exists in PATH (or is an absolute path) and is executable. If the process spawns but crashes immediately (non-zero exit), it is treated as a connection error with the exit message.
@@ -110,7 +111,7 @@ Each MCP card footer shows a badge with the number of tools exposed by that serv
 ### Functional Requirements
 
 - **FR-001**: System MUST display an "Add MCP" button positioned at the top right of the main view.
-- **FR-002**: Clicking "Add MCP" MUST open a modal dialog. The modal MUST be closeable via Esc key, click outside, Cancel button, and X close button. If there are unsaved changes, a confirmation dialog MUST be shown before closing.
+- **FR-002**: Clicking "Add MCP" MUST open a modal dialog. The modal MUST be closeable via Esc key, click outside, Cancel button, and X close button. If there are unsaved changes, a confirmation dialog MUST be shown before closing. If the modal content exceeds the viewport height, the page MUST scroll to reveal the full content.
 - **FR-003**: The modal MUST present a transport type selector (stdio, http, sse) that dynamically changes the visible form fields. Switching transport type mid-form MUST persist fields common to both types and reset type-specific fields.
 - **FR-004**: For stdio transport, the modal MUST show fields: "command" (required, text), "args" (optional, array of strings as input + "Add" button → removable chips), "env" (optional, table of key-value pairs). The env table MUST display existing variables with editable name and value columns, and a button to add new rows with two fields (variable name + value). Env variable names MUST match regex `[a-zA-Z_][a-zA-Z0-9_]*`.
 - **FR-005**: For http/sse transport, the modal MUST show a "url" field (required, valid URL starting with `http://` or `https://`, must include non-empty host and optional path).

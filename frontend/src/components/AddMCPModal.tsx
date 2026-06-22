@@ -115,8 +115,9 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
     (type === 'stdio' ? command.trim() : url.trim());
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
+    <div className="fixed inset-0 z-40 overflow-y-auto bg-black/50">
+      <div className="flex min-h-full items-start justify-center py-8">
+        <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-900">Adicionar MCP</h2>
           <button
@@ -287,6 +288,7 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
           </div>
         </form>
       </div>
+    </div>
     </div>
   );
 }
