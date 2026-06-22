@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { MCPClient } from '../services/api';
 import { MCPCard } from './MCPCard';
 import { AddMCPModal } from './AddMCPModal';
+import { useTestConnection } from '../hooks/useMCPs';
+import { showToast } from './Toast';
 
 interface CardGridProps {
   clients: MCPClient[];
@@ -11,6 +14,38 @@ interface CardGridProps {
 
 export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingMCP, setEditingMCP] = useState<MCPClient | null>(null);
+  const [reconnectingName, setReconnectingName] = useState<string | null>(null);
+  const editModalOpen = editingMCP !== null;
+  const testMutation = useTestConnection();
+  const queryClient = useQueryClient();
+
+  function handleEdit(client: MCPClient) {
+    setEditingMCP(client);
+  }
+
+  function closeEditModal() {
+    setEditingMCP(null);
+  }
+
+  async function handleReconnect(client: MCPClient) {
+    setReconnectingName(client.name);
+    const transport = {
+      type: client.transport as 'stdio' | 'http' | 'sse',
+      command: client.command,
+      args: client.args,
+      url: client.url,
+      env: client.env,
+    };
+    const result = await testMutation.mutateAsync({ transport });
+    if (result.success) {
+      showToast(`MCP "${client.name}" connected successfully.`, 'success');
+    } else {
+      showToast(`MCP "${client.name}" connection failed: ${result.error}`, 'error');
+    }
+    setReconnectingName(null);
+    queryClient.invalidateQueries({ queryKey: ['mcps'] });
+  }
 
   if (clients.length === 0) {
     return (
@@ -50,7 +85,10 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
             key={client.name}
             client={client}
             onRemove={onRemove}
+            onEdit={handleEdit}
+            onReconnect={handleReconnect}
             removing={removePending}
+            reconnecting={reconnectingName === client.name}
           />
         ))}
       </div>
@@ -58,6 +96,12 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
         open={modalOpen}
         existingNames={clients.map((c) => c.name)}
         onClose={() => setModalOpen(false)}
+      />
+      <AddMCPModal
+        open={editModalOpen}
+        existingNames={clients.map((c) => c.name)}
+        existingMCP={editingMCP ?? undefined}
+        onClose={closeEditModal}
       />
     </div>
   );

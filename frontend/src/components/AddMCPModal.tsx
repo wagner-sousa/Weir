@@ -1,7 +1,7 @@
-import { useState, useEffect, type FormEvent } from 'react';
-import { useTestConnection, useAddMCP } from '../hooks/useMCPs';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
+import { useTestConnection, useAddMCP, useUpdateMCP } from '../hooks/useMCPs';
 import { showToast } from './Toast';
-import type { TransportConfig } from '../services/api';
+import type { TransportConfig, MCPClient } from '../services/api';
 
 interface EnvVar {
   key: string;
@@ -11,10 +11,11 @@ interface EnvVar {
 interface AddMCPModalProps {
   open: boolean;
   existingNames: string[];
+  existingMCP?: MCPClient;
   onClose: () => void;
 }
 
-export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) {
+export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMCPModalProps) {
   const [type, setType] = useState<'stdio' | 'http' | 'sse'>('stdio');
   const [command, setCommand] = useState('');
   const [argsStr, setArgsStr] = useState('');
@@ -24,9 +25,15 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
   const [nameError, setNameError] = useState('');
   const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null);
   const [testing, setTesting] = useState(false);
+  const prevTypeRef = useRef(type);
 
   const testMutation = useTestConnection();
   const addMutation = useAddMCP();
+  const updateMutation = useUpdateMCP();
+
+  const isEditing = !!existingMCP;
+  const originalName = existingMCP?.name ?? '';
+  const savePending = addMutation.isPending || updateMutation.isPending;
 
   useEffect(() => {
     if (!open) {
@@ -39,8 +46,27 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
       setNameError('');
       setTestResult(null);
       setTesting(false);
+      prevTypeRef.current = 'stdio';
+    } else if (existingMCP) {
+      const transportType = existingMCP.transport === 'http' || existingMCP.transport === 'sse'
+        ? (existingMCP.transport as 'http' | 'sse')
+        : 'stdio';
+      setType(transportType);
+      setCommand(existingMCP.command ?? '');
+      setArgsStr(existingMCP.args?.join(' ') ?? '');
+      setUrl(existingMCP.url ?? '');
+      setEnvVars(
+        existingMCP.env
+          ? Object.entries(existingMCP.env).map(([key, value]) => ({ key, value }))
+          : [],
+      );
+      setName(existingMCP.name ?? '');
+      setNameError('');
+      setTestResult(null);
+      setTesting(false);
+      prevTypeRef.current = transportType;
     }
-  }, [open]);
+  }, [open, existingMCP]);
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -58,11 +84,34 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
       setNameError('');
       return;
     }
-    if (existingNames.includes(value.trim())) {
+    const trimmed = value.trim();
+    if (isEditing && trimmed === originalName) {
+      setNameError('');
+      return;
+    }
+    if (existingNames.includes(trimmed)) {
       setNameError('An MCP with this name already exists.');
     } else {
       setNameError('');
     }
+  }
+
+  function handleTypeChange(newType: 'stdio' | 'http' | 'sse') {
+    if (isEditing && prevTypeRef.current !== newType) {
+      const confirmed = window.confirm(
+        'Changing transport type will clear type-specific fields. Continue?',
+      );
+      if (!confirmed) return;
+      if (newType === 'stdio') {
+        setUrl('');
+      } else {
+        setCommand('');
+        setArgsStr('');
+        setEnvVars([]);
+      }
+    }
+    setType(newType);
+    prevTypeRef.current = newType;
   }
 
   function buildTransport(): TransportConfig {
@@ -98,12 +147,28 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
     e.preventDefault();
     if (nameError || !name.trim()) return;
     const transport = buildTransport();
-    const result = await addMutation.mutateAsync({ name: name.trim(), transport });
-    if (result.success) {
-      showToast(`MCP "${name.trim()}" added successfully.`, 'success');
-      onClose();
+    const trimmedName = name.trim();
+
+    if (isEditing) {
+      const result = await updateMutation.mutateAsync({
+        originalName,
+        name: trimmedName,
+        transport,
+      });
+      if (result.success) {
+        showToast(`MCP "${trimmedName}" updated successfully.`, 'success');
+        onClose();
+      } else {
+        showToast(result.error || 'Error updating MCP.', 'error');
+      }
     } else {
-      showToast(result.error || 'Error adding MCP.', 'error');
+      const result = await addMutation.mutateAsync({ name: trimmedName, transport });
+      if (result.success) {
+        showToast(`MCP "${trimmedName}" added successfully.`, 'success');
+        onClose();
+      } else {
+        showToast(result.error || 'Error adding MCP.', 'error');
+      }
     }
   }
 
@@ -119,7 +184,7 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
       <div className="flex min-h-full items-start justify-center py-8">
         <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900">Add MCP</h2>
+          <h2 className="text-lg font-bold text-gray-900">{isEditing ? 'Edit MCP' : 'Add MCP'}</h2>
           <button
             onClick={onClose}
             className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
@@ -148,7 +213,7 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
             <label className="mb-1 block text-sm font-medium text-gray-700">Type</label>
             <select
               value={type}
-              onChange={(e) => setType(e.target.value as 'stdio' | 'http' | 'sse')}
+              onChange={(e) => handleTypeChange(e.target.value as 'stdio' | 'http' | 'sse')}
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
             >
               <option value="stdio">stdio</option>
@@ -276,14 +341,14 @@ export function AddMCPModal({ open, existingNames, onClose }: AddMCPModalProps) 
             </button>
             <button
               type="submit"
-              disabled={!isValid || addMutation.isPending}
+              disabled={!isValid || savePending}
               className={`flex-1 rounded px-4 py-2 text-sm font-medium ${
-                !isValid || addMutation.isPending
+                !isValid || savePending
                   ? 'cursor-not-allowed bg-gray-200 text-gray-400'
                   : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
             >
-              {addMutation.isPending ? 'Saving...' : 'Save'}
+              {savePending ? 'Saving...' : 'Save'}
             </button>
           </div>
         </form>

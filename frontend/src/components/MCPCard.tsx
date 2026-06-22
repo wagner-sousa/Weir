@@ -1,11 +1,14 @@
 import type { MCPClient } from '../services/api';
-import { CircleCheck, CircleX, LoaderCircle, Circle, Trash2 } from 'lucide-react';
+import { CircleCheck, CircleX, LoaderCircle, Circle, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 interface MCPCardProps {
   client: MCPClient;
   onRemove?: (name: string) => void;
+  onEdit?: (client: MCPClient) => void;
+  onReconnect?: (client: MCPClient) => void;
   removing?: boolean;
+  reconnecting?: boolean;
 }
 
 const badgeColors: Record<string, string> = {
@@ -28,7 +31,7 @@ const statusIcons: Record<string, StatusIcon> = {
   disconnected: { icon: <Circle className="h-5 w-5" />, color: 'text-gray-400', label: 'Disconnected' },
 };
 
-export function MCPCard({ client, onRemove, removing }: MCPCardProps) {
+export function MCPCard({ client, onRemove, onEdit, onReconnect, removing, reconnecting }: MCPCardProps) {
   const badgeClass = badgeColors[client.transport] || badgeColors.unknown;
   const status = client.status || 'disconnected';
   const si = statusIcons[status] || statusIcons.disconnected;
@@ -80,7 +83,22 @@ export function MCPCard({ client, onRemove, removing }: MCPCardProps) {
           {client.error}
         </p>
       )}
-      <div className="mt-3 flex justify-end border-t border-gray-100 pt-2">
+      <div className="mt-3 flex justify-end gap-2 border-t border-gray-100 pt-2">
+        <button
+          onClick={() => onEdit?.(client)}
+          aria-label="Edit MCP"
+          className="rounded p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+        <button
+          onClick={() => onReconnect?.(client)}
+          disabled={reconnecting}
+          aria-label="Reconnect MCP"
+          className="rounded p-1.5 text-gray-400 hover:bg-green-50 hover:text-green-600 disabled:opacity-50"
+        >
+          {reconnecting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+        </button>
         <button
           onClick={() => onRemove?.(client.name)}
           disabled={removing}
