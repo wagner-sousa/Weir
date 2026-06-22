@@ -36,7 +36,8 @@ export async function authRoutes(app: FastifyInstance) {
       : { mcpServers: {} };
     const rawEntry = raw.mcpServers[name];
     const clientId = rawEntry?.auth?.clientId || '';
-    const redirectUri = `${request.protocol}://${request.hostname}/api/auth/${encodeURIComponent(name)}/callback`;
+    const host = request.headers.host || request.hostname;
+    const redirectUri = `${request.protocol}://${host}/api/auth/${encodeURIComponent(name)}/callback`;
 
     const params = new URLSearchParams({
       response_type: 'code',
@@ -45,7 +46,16 @@ export async function authRoutes(app: FastifyInstance) {
       scope: (authConfig.scopesSupported || []).join(' ') || 'read',
     });
 
-    return { url: `${authConfig.authorizationEndpoint}?${params.toString()}` };
+    const authUrl = `${authConfig.authorizationEndpoint}?${params.toString()}`;
+
+    if (!clientId && authConfig.registrationEndpoint) {
+      return {
+        url: authUrl,
+        warning: `No client_id configured. Register your app at ${authConfig.registrationEndpoint} and add "auth": { "clientId": "<your_client_id>" } to the MCP entry in .mcp.json.`,
+      };
+    }
+
+    return { url: authUrl };
   });
 
   app.get('/api/auth/:name/callback', async (request, reply) => {
@@ -88,7 +98,8 @@ export async function authRoutes(app: FastifyInstance) {
       : { mcpServers: {} };
     const rawEntry = raw.mcpServers[name];
     const clientId = rawEntry?.auth?.clientId || '';
-    const redirectUri = `${request.protocol}://${request.hostname}/api/auth/${encodeURIComponent(name)}/callback`;
+    const host = request.headers.host || request.hostname;
+    const redirectUri = `${request.protocol}://${host}/api/auth/${encodeURIComponent(name)}/callback`;
 
     // Exchange authorization code for token
     try {
