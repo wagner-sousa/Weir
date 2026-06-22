@@ -13,14 +13,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export async function buildApp() {
   const app = Fastify({
-    logger: process.env.NODE_ENV === 'test'
-      ? false
-      : {
-          transport: {
-            target: 'pino-pretty',
-            options: { translateTime: 'HH:MM:ss', ignore: 'pid,hostname' },
+    logger:
+      process.env.NODE_ENV === 'test'
+        ? false
+        : {
+            transport: {
+              target: 'pino-pretty',
+              options: { translateTime: 'HH:MM:ss', ignore: 'pid,hostname' },
+            },
           },
-        },
   });
 
   await app.register(cors, { origin: true });

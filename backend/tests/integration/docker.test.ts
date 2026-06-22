@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { execSync, spawn } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -21,7 +21,9 @@ async function waitForServer(url: string, retries = 20): Promise<void> {
     try {
       const res = await fetch(url);
       if (res.ok) return;
-    } catch { /* server not ready */ }
+    } catch {
+      /* server not ready */
+    }
     await sleep(500);
   }
   throw new Error(`Server at ${url} did not become ready`);
@@ -43,9 +45,9 @@ describe('Docker startup', () => {
 
     run(
       `docker run -d --name ${CONTAINER_NAME} ` +
-      `-v ${tmpDir}/.mcp.json:/app/.mcp.json ` +
-      `-p ${HOST_PORT}:3000 ` +
-      `weir`,
+        `-v ${tmpDir}/.mcp.json:/app/.mcp.json ` +
+        `-p ${HOST_PORT}:3000 ` +
+        `weir`,
     );
     containerRunning = true;
 
@@ -54,10 +56,18 @@ describe('Docker startup', () => {
 
   afterAll(() => {
     if (containerRunning) {
-      try { run(`docker rm -f ${CONTAINER_NAME}`); } catch { /* ignore */ }
+      try {
+        run(`docker rm -f ${CONTAINER_NAME}`);
+      } catch {
+        /* ignore */
+      }
     }
     if (tmpDir) {
-      try { rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ }
+      try {
+        rmSync(tmpDir, { recursive: true, force: true });
+      } catch {
+        /* ignore */
+      }
     }
   }, 15_000);
 
@@ -83,9 +93,9 @@ describe('Docker startup', () => {
     try {
       run(
         `docker run -d --name ${emptyName} ` +
-        `-v ${emptyDir}:/app/.mcp.json ` +
-        `-p ${HOST_PORT + 1}:3000 ` +
-        `weir`,
+          `-v ${emptyDir}:/app/.mcp.json ` +
+          `-p ${HOST_PORT + 1}:3000 ` +
+          `weir`,
       );
 
       await waitForServer(`http://localhost:${HOST_PORT + 1}/api/health`);
@@ -95,8 +105,16 @@ describe('Docker startup', () => {
       const body = await res.json();
       expect(body.mcps).toEqual([]);
     } finally {
-      try { run(`docker rm -f ${emptyName}`); } catch { /* ignore */ }
-      try { rmSync(emptyDir, { recursive: true, force: true }); } catch { /* ignore */ }
+      try {
+        run(`docker rm -f ${emptyName}`);
+      } catch {
+        /* ignore */
+      }
+      try {
+        rmSync(emptyDir, { recursive: true, force: true });
+      } catch {
+        /* ignore */
+      }
     }
   }, 30_000);
 });

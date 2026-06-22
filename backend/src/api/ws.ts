@@ -27,4 +27,3 @@ export function setupWebSocket(app: FastifyInstance) {
 export function broadcast(event: string, data: unknown) {
   if (_broadcast) _broadcast(event, data);
 }
-

@@ -94,6 +94,84 @@ describe('MCPConfig schema', () => {
       expect(Object.keys(result.data.mcpServers)).toHaveLength(3);
     }
   });
+
+  it('accepts flat format (no transport wrapper)', () => {
+    const input = {
+      mcpServers: {
+        filesystem: { type: 'stdio', command: 'npx', args: ['-y', 'server-fs'] },
+      },
+    };
+    const result = MCPConfig.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const entry = result.data.mcpServers.filesystem;
+      expect(entry.transport.type).toBe('stdio');
+      expect(entry.transport.command).toBe('npx');
+      expect(entry.transport.args).toEqual(['-y', 'server-fs']);
+    }
+  });
+
+  it('accepts flat http config', () => {
+    const input = {
+      mcpServers: {
+        myapi: { type: 'http', url: 'https://api.example.com/mcp' },
+      },
+    };
+    const result = MCPConfig.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.mcpServers.myapi.transport.type).toBe('http');
+      expect(result.data.mcpServers.myapi.transport.url).toBe('https://api.example.com/mcp');
+    }
+  });
+
+  it('accepts flat sse config', () => {
+    const input = {
+      mcpServers: {
+        streamer: { type: 'sse', url: 'https://events.example.com/stream' },
+      },
+    };
+    const result = MCPConfig.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.mcpServers.streamer.transport.type).toBe('sse');
+    }
+  });
+
+  it('rejects flat stdio without command', () => {
+    const input = {
+      mcpServers: {
+        bad: { type: 'stdio' },
+      },
+    };
+    const result = MCPConfig.safeParse(input);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects flat http without url', () => {
+    const input = {
+      mcpServers: {
+        bad: { type: 'http' },
+      },
+    };
+    const result = MCPConfig.safeParse(input);
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts mixed flat and nested formats in same file', () => {
+    const input = {
+      mcpServers: {
+        flat: { type: 'stdio', command: 'echo' },
+        nested: { transport: { type: 'http', url: 'https://example.com' } },
+      },
+    };
+    const result = MCPConfig.safeParse(input);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.mcpServers.flat.transport.type).toBe('stdio');
+      expect(result.data.mcpServers.nested.transport.type).toBe('http');
+    }
+  });
 });
 
 describe('TransportConfig schema', () => {

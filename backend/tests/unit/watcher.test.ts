@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { writeFileSync, existsSync, rmSync, mkdirSync } from 'node:fs';
+import { writeFileSync, rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createWatcher } from '../../src/config/watcher';
@@ -27,7 +27,12 @@ describe('createWatcher', () => {
 
     await new Promise<void>((resolve) => {
       watcher.on('ready', () => {
-        writeFileSync(filePath, JSON.stringify({ mcpServers: { test: { transport: { type: 'stdio', command: 'echo' } } } }));
+        writeFileSync(
+          filePath,
+          JSON.stringify({
+            mcpServers: { test: { transport: { type: 'stdio', command: 'echo' } } },
+          }),
+        );
         setTimeout(() => {
           watcher.close();
           resolve();
