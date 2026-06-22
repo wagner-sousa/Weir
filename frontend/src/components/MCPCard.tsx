@@ -1,4 +1,6 @@
 import type { MCPClient } from '../services/api';
+import { CircleCheck, CircleX, LoaderCircle, Circle, Trash2 } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 interface MCPCardProps {
   client: MCPClient;
@@ -13,11 +15,17 @@ const badgeColors: Record<string, string> = {
   unknown: 'bg-gray-100 text-gray-800',
 };
 
-const statusIcons: Record<string, { icon: string; color: string; label: string }> = {
-  connected: { icon: '\u2713', color: 'text-green-500', label: 'Connected' },
-  error: { icon: '\u2717', color: 'text-red-500', label: 'Error' },
-  connecting: { icon: '\u23F3', color: 'text-yellow-500', label: 'Connecting...' },
-  disconnected: { icon: '\u25CB', color: 'text-gray-400', label: 'Disconnected' },
+interface StatusIcon {
+  icon: ReactNode;
+  color: string;
+  label: string;
+}
+
+const statusIcons: Record<string, StatusIcon> = {
+  connected: { icon: <CircleCheck className="h-5 w-5" />, color: 'text-green-500', label: 'Connected' },
+  error: { icon: <CircleX className="h-5 w-5" />, color: 'text-red-500', label: 'Error' },
+  connecting: { icon: <LoaderCircle className="h-5 w-5 animate-spin" />, color: 'text-yellow-500', label: 'Connecting...' },
+  disconnected: { icon: <Circle className="h-5 w-5" />, color: 'text-gray-400', label: 'Disconnected' },
 };
 
 export function MCPCard({ client, onRemove, removing }: MCPCardProps) {
@@ -33,7 +41,7 @@ export function MCPCard({ client, onRemove, removing }: MCPCardProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span
-            className={`text-lg ${si.color}`}
+            className={si.color}
             aria-label={si.label}
             title={client.error ? `${si.label}: ${client.error}` : si.label}
           >
@@ -76,9 +84,10 @@ export function MCPCard({ client, onRemove, removing }: MCPCardProps) {
         <button
           onClick={() => onRemove?.(client.name)}
           disabled={removing}
-          className="rounded px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:text-gray-400"
+          aria-label="Remove MCP"
+          className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
         >
-          {removing ? 'Removing...' : 'Remove'}
+          {removing ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
         </button>
       </div>
     </div>

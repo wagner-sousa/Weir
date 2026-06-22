@@ -1,11 +1,10 @@
 <!--
   Sync Impact Report
   ==================
-  Version change: 1.2.0 → 1.3.0
-  Modified principles:
-    - III. Brazilian Portuguese for Agents and Users → III. English for User-Facing Messages
-  Modified sections: Principle III — rewrote from pt-BR mandate to English mandate
-  Added sections: None
+  Version change: 1.3.0 → 1.4.0
+  Modified principles: None (principles unchanged)
+  Added sections:
+    - Principle VI: Consistent Icon Library
   Removed sections: None
   Templates requiring updates:
     - .specify/templates/plan-template.md: ✅ No principle-specific content — no change needed
@@ -14,10 +13,11 @@
     - .specify/templates/checklist-template.md: ✅ No principle-specific content — no change needed
     - .specify/templates/constitution-template.md: ✅ Template is source — no change needed
   Documentation requiring updates (MANUAL):
-    - AGENTS.md: Remove the pt-BR constraint from the anchored summary
-    - specs/002-mcp-connection-manager/quickstart.md: Update expected outcomes (remove "All toasts appear in pt-BR")
+    - specs/002-mcp-connection-manager/quickstart.md: No icon-specific content — no change needed
   Follow-up TODOs:
-    - Translate existing pt-BR strings in the codebase (toasts, modal labels, tooltips) to English
+    - Install an icon library (lucide-react recommended) as a frontend dependency
+    - Migrate inline SVG trash icon in MCPCard.tsx to library component
+    - Migrate Unicode status icons (✓, ✗, ⏳, ○) in MCPCard.tsx to library components
 -->
 
 # Weir Constitution
@@ -65,6 +65,15 @@ underlying logic — no duplication. Configuration MUST
 require minimal effort. Coverage of happy paths AND edge
 cases is mandatory for production readiness.
 
+### VI. Consistent Icon Library
+
+All user-facing icons MUST be sourced from a single,
+consistent Node package (e.g., lucide-react). Inline SVG
+markup, raw Unicode characters, and image files are NOT
+permitted for icons. This ensures visual consistency,
+accessibility (aria-labels), and ease of maintenance.
+Exceptions require explicit approval.
+
 ## Stack Tecnologica
 
 Language and framework will be defined during project setup,
@@ -108,4 +117,4 @@ Every PR review MUST verify compliance with the principles
 defined herein. Omissions shall be resolved by the general
 principles of simplicity and developer experience.
 
-**Version**: 1.3.0 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-06-22
+**Version**: 1.4.0 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-06-22
