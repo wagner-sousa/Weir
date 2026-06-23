@@ -9,4 +9,6 @@ build/
 Thumbs.db
 *.tmp
 *.swp
+.vscode/
+.idea/
 coverage/

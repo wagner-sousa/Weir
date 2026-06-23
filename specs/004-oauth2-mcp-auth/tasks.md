@@ -37,10 +37,10 @@ No tasks in this phase.
 
 ### Tests (TDD — write first, verify they fail)
 
-- [ ] T001 [P] Add unit tests for `discoverOAuth2` in `backend/tests/unit/mcp-client.test.ts` (cover: successful discovery, unreachable well-known, invalid well-known response)
-- [ ] T002 [P] Add integration tests for `POST /api/auth/:name/start` in `backend/tests/integration/auth.test.ts` (cover: known MCP returns auth URL, nonexistent MCP returns 404, MCP without auth config returns 400)
-- [ ] T003 [P] Add integration tests for `GET /api/auth/:name/callback` in `backend/tests/integration/auth.test.ts` (cover: valid code exchange, missing code error, MCP not found)
-- [ ] T004 [P] Add unit tests for Bearer token header in `backend/tests/unit/mcp-client.test.ts` (cover: token passed in TransportConfig adds Authorization header, no token sends without header)
+- [X] T001 [P] Add unit tests for `discoverOAuth2` in `backend/tests/unit/mcp-client.test.ts` (cover: successful discovery, unreachable well-known, invalid well-known response)
+- [X] T002 [P] Add integration tests for `POST /api/auth/:name/start` in `backend/tests/integration/auth.test.ts` (cover: known MCP returns auth URL, nonexistent MCP returns 404, MCP without auth config returns 400)
+- [X] T003 [P] Add integration tests for `GET /api/auth/:name/callback` in `backend/tests/integration/auth.test.ts` (cover: valid code exchange, missing code error, MCP not found)
+- [X] T004 [P] Add unit tests for Bearer token header in `backend/tests/unit/mcp-client.test.ts` (cover: token passed in TransportConfig adds Authorization header, no token sends without header)
 
 ### Implementation
 
@@ -64,8 +64,8 @@ No tasks in this phase.
 
 ### Tests (TDD — write first, verify they fail)
 
-- [ ] T010 [P] [US1] Write unit tests for `MCPCard` shield button rendering in `frontend/tests/components/MCPCard.test.tsx` (verify shield shows when `needsAuth` is true, hides when false)
-- [ ] T011 [P] [US1] Write unit tests for auth popup handling in `frontend/tests/components/CardGrid.test.tsx` (verify `onAuth` triggers `window.open` with correct URL)
+- [X] T010 [P] [US1] Write unit tests for `MCPCard` shield button rendering in `frontend/tests/components/MCPCard.test.tsx` (verify shield shows when `needsAuth` is true, hides when false)
+- [X] T011 [P] [US1] Write unit tests for auth popup handling in `frontend/tests/components/CardGrid.test.tsx` (verify `onAuth` triggers `window.open` with correct URL)
 
 ### Implementation
 
@@ -90,17 +90,17 @@ No tasks in this phase.
 
 ### Tests (TDD — write first, verify they fail)
 
-- [ ] T016 [P] [US3] Write integration tests for token storage in `backend/tests/integration/auth.test.ts` (verify callback stores token in `.mcp.json`, verify token survives backend restart)
+- [X] T016 [P] [US3] Write integration tests for token storage in `backend/tests/integration/auth.test.ts` (verify callback stores token in `.mcp.json`, verify token survives backend restart)
 
 ### Implementation
 
-- [ ] T017 [P] [US3] In `GET /api/auth/:name/callback` handler (`backend/src/api/auth.routes.ts`):
+- [X] T017 [P] [US3] In `GET /api/auth/:name/callback` handler (`backend/src/api/auth.routes.ts`):
   - Extract `code` from query params
   - POST to MCP's `token_endpoint` with `grant_type=authorization_code`, `code`, `redirect_uri`, `client_id`
   - Receive `access_token` from response
   - Read current `.mcp.json`, add `accessToken` to the MCP entry, write back
   - Return HTML page with "Authorization successful" and `window.close()` script
-- [ ] T018 [US3] Populate `accessToken` in `TransportConfig` when loading MCP clients in `backend/src/api/mcp.routes.ts` `GET /api/mcps` handler — read from config file and pass to `testConnection`
+- [X] T018 [US3] Populate `accessToken` in `TransportConfig` when loading MCP clients in `backend/src/api/mcp.routes.ts` `GET /api/mcps` handler — read from config file and pass to `testConnection`
 
 **Checkpoint**: User Story 3 complete — tokens are stored and used.
 
