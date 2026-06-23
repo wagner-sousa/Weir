@@ -66,7 +66,7 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removin
               className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"
               title={client.toolCount === 0 ? 'No tools available' : `${client.toolCount} tools`}
             >
-              {client.toolCount === 0 && status !== 'connected' ? '?' : client.toolCount}
+              {client.toolCount === 0 && (status === 'unknown' || status === 'testing') ? '?' : client.toolCount}
             </span>
           )}
         </div>

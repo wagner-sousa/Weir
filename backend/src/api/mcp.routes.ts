@@ -120,6 +120,18 @@ export async function mcpRoutes(app: FastifyInstance) {
     }
 
     const result = await testConnection({ ...parsed.data.transport, accessToken });
+
+    // Cache result and broadcast if MCP name is known
+    if (parsed.data.name) {
+      setCachedStatus(parsed.data.name, {
+        status: result.success ? 'connected' : result.needsAuth ? 'needsAuth' : 'error',
+        error: result.error ?? null,
+        toolCount: 0,
+        needsAuth: result.needsAuth ?? false,
+        authUrl: result.authUrl ?? null,
+      });
+    }
+
     return result;
   });
 
