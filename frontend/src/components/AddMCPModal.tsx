@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useTestConnection, useAddMCP, useUpdateMCP } from '../hooks/useMCPs';
 import { showToast } from './Toast';
-import type { TransportConfig, MCPClient } from '../services/api';
+import type { TransportConfig, MCPClient, TestConnectionResult } from '../services/api';
 
 interface EnvVar {
   key: string;
@@ -23,7 +23,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
   const [envVars, setEnvVars] = useState<EnvVar[]>([]);
   const [name, setName] = useState('');
   const [nameError, setNameError] = useState('');
-  const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null);
+  const [testResult, setTestResult] = useState<TestConnectionResult | null>(null);
   const [testing, setTesting] = useState(false);
   const prevTypeRef = useRef(type);
 
@@ -139,7 +139,8 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
     setTesting(true);
     setTestResult(null);
     const transport = buildTransport();
-    const result = await testMutation.mutateAsync({ transport });
+    const testName = isEditing ? originalName : undefined;
+    const result = await testMutation.mutateAsync({ transport, name: testName });
     setTestResult(result);
     setTesting(false);
   }
@@ -318,12 +319,16 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
               className={`rounded px-3 py-2 text-sm ${
                 testResult.success
                   ? 'bg-green-50 text-green-700'
-                  : 'bg-red-50 text-red-700'
+                  : testResult.needsAuth
+                    ? 'bg-yellow-50 text-yellow-800'
+                    : 'bg-red-50 text-red-700'
               }`}
             >
               {testResult.success
                 ? 'Connection successful!'
-                : `Connection failed: ${testResult.error}`}
+                : testResult.needsAuth
+                  ? 'Authentication required. Save the MCP, then click the shield icon to authorize via OAuth2.'
+                  : `Connection failed: ${testResult.error}`}
             </div>
           )}
 

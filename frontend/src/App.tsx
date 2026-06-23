@@ -14,16 +14,16 @@ function MCPDashboard() {
   const handleRemove = async (name: string) => {
     const result = await removeMutation.mutateAsync(name);
     if (result.success) {
-      showToast(`MCP "${name}" removido.`, 'success');
+      showToast(`MCP "${name}" removed.`, 'success');
     } else {
-      showToast(result.error || 'Erro ao remover MCP.', 'error');
+      showToast(result.error || 'Error removing MCP.', 'error');
     }
   };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <p className="text-gray-500">Carregando...</p>
+        <p className="text-gray-500">Loading...</p>
         <ToastUI />
       </div>
     );
@@ -32,7 +32,7 @@ function MCPDashboard() {
   if (error) {
     return (
       <>
-        <ErrorState message={error instanceof Error ? error.message : 'Erro desconhecido'} />
+        <ErrorState message={error instanceof Error ? error.message : 'Unknown error'} />
         <ToastUI />
       </>
     );
@@ -54,11 +54,11 @@ function MCPDashboard() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Weir - MCP Gateway</h1>
             <p className="mt-1 text-sm text-gray-500">
-              Servidores MCP configurados em{' '}
+              MCP servers configured in{' '}
               <code className="rounded bg-gray-100 px-1">.mcp.json</code>
             </p>
           </div>
-          {isRefreshing && <span className="text-sm text-blue-600">Atualizando...</span>}
+          {isRefreshing && <span className="text-sm text-blue-600">Updating...</span>}
         </div>
       </header>
       <CardGrid

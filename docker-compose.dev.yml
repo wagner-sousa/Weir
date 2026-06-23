@@ -25,8 +25,10 @@ services:
       - /app/frontend/node_modules
     command: >
       sh -c "
-        cd backend && npm install && npx tsx watch src/index.ts &
-        cd /app/frontend && npm install && npx vite --host 0.0.0.0
+        npm install --prefix /app/backend &&
+        npm install --prefix /app/frontend &&
+        (cd /app/backend && npx tsx watch src/index.ts &) &&
+        cd /app/frontend && exec npx vite --host 0.0.0.0
       "
 
   test:

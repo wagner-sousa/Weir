@@ -26,6 +26,45 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
 
   function closeEditModal() {
     setEditingMCP(null);
+    queryClient.invalidateQueries({ queryKey: ['mcps'] });
+  }
+
+  async function handleAuth(client: MCPClient) {
+    try {
+      const res = await fetch(`/api/auth/${encodeURIComponent(client.name)}/start`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+
+      if (data.warning) {
+        showToast(data.warning, 'error');
+      }
+      if (data.error) {
+        showToast(data.error, 'error');
+      }
+
+      if (!data.url) {
+        return;
+      }
+
+      const popup = window.open('', '_blank', 'width=600,height=700');
+      if (!popup) {
+        showToast('Popup blocked. Please allow popups for this site.', 'error');
+        return;
+      }
+
+      popup.location.href = data.url;
+
+      // Monitor popup close
+      const timer = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(timer);
+          queryClient.invalidateQueries({ queryKey: ['mcps'] });
+        }
+      }, 500);
+    } catch (err) {
+      showToast('Failed to start OAuth2 authorization.', 'error');
+    }
   }
 
   async function handleReconnect(client: MCPClient) {
@@ -87,6 +126,7 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
             onRemove={onRemove}
             onEdit={handleEdit}
             onReconnect={handleReconnect}
+            onAuth={handleAuth}
             removing={removePending}
             reconnecting={reconnectingName === client.name}
           />
@@ -95,7 +135,10 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
       <AddMCPModal
         open={modalOpen}
         existingNames={clients.map((c) => c.name)}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['mcps'] });
+        }}
       />
       <AddMCPModal
         open={editModalOpen}

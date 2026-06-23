@@ -5,6 +5,7 @@ import websocket from '@fastify/websocket';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mcpRoutes } from './api/mcp.routes.js';
+import { authRoutes } from './api/auth.routes.js';
 import { healthRoutes } from './api/health.routes.js';
 import { setupWebSocket } from './api/ws.js';
 import { createWatcher } from './config/watcher.js';
@@ -42,6 +43,7 @@ export async function buildApp() {
   });
 
   await app.register(mcpRoutes);
+  await app.register(authRoutes);
   await app.register(healthRoutes);
 
   const webDir = join(__dirname, 'web');
