@@ -2,9 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import { loadMCPConfig } from '../config/loader.js';
 import { writeMCPConfig, addMCPEntry, removeMCPEntry } from '../config/writer.js';
 import { TestConnectionRequest } from '../config/schema.js';
-import { testConnection, queryTools, discoverOAuth2 } from '../services/mcp-client.js';
+import { testConnection, queryTools } from '../services/mcp-client.js';
 import { resolve, dirname } from 'node:path';
-import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { broadcast } from './ws.js';
 import type { MCPClient } from '../config/types.js';
 

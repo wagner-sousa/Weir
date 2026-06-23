@@ -62,7 +62,7 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
           queryClient.invalidateQueries({ queryKey: ['mcps'] });
         }
       }, 500);
-    } catch (err) {
+    } catch {
       showToast('Failed to start OAuth2 authorization.', 'error');
     }
   }
