@@ -11,7 +11,11 @@ services:
     image: node:22-alpine
     working_dir: /app
     environment:
-      MCP_CONFIG_PATH: /app/.mcp.json
+      MCP_CONFIG_PATH: ${MCP_CONFIG_PATH:-/app/.mcp.json}
+      MCP_CONNECTION_TIMEOUT: ${MCP_CONNECTION_TIMEOUT:-5000}
+      MCP_ADD_TIMEOUT: ${MCP_ADD_TIMEOUT:-30000}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "3000:3000"
       - "5173:5173"
@@ -30,6 +34,10 @@ services:
     working_dir: /app/backend
     environment:
       NODE_ENV: test
+      MCP_CONNECTION_TIMEOUT: ${MCP_CONNECTION_TIMEOUT:-5000}
+      MCP_ADD_TIMEOUT: ${MCP_ADD_TIMEOUT:-30000}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - .:/app
     command: sh -c "npm install && npx vitest run"
@@ -39,7 +47,11 @@ services:
     working_dir: /app/backend
     environment:
       NODE_ENV: test
+      MCP_CONNECTION_TIMEOUT: ${MCP_CONNECTION_TIMEOUT:-5000}
+      MCP_ADD_TIMEOUT: ${MCP_ADD_TIMEOUT:-30000}
       DOCKER_HOST: unix:///var/run/docker.sock
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - .:/app
       - /var/run/docker.sock:/var/run/docker.sock

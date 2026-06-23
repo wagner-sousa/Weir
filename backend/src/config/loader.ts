@@ -38,6 +38,7 @@ export function loadMCPConfig(filePath: string): LoadResult {
     if (entry.transport.command) client.command = entry.transport.command;
     if (entry.transport.args) client.args = entry.transport.args;
     if (entry.transport.url) client.url = entry.transport.url;
+    if (entry.transport.env) client.env = entry.transport.env;
 
     return client;
   });

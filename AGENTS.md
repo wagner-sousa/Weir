@@ -1,6 +1,6 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan at specs/001-mcp-gateway-web/plan.md
+shell commands, and other important information, read the current plan at specs/003-edit-mcp-config/plan.md
 <!-- SPECKIT END -->
 
 ## Conhecidos Pitfalls (Docker & ESM)
@@ -16,3 +16,6 @@ O tsconfig usa `"module": "NodeNext"` e `"moduleResolution": "nodenext"`. Isso e
 
 ### MCP_CONFIG_PATH
 O backend le `MCP_CONFIG_PATH` para localizar o `.mcp.json`. No `docker-compose.dev.yml` o valor e `/app/.mcp.json`. O `docker-compose.yml` de producao usa `MCP_CONFIG_SOURCE` para o caminho host.
+
+### Stale .mcp.json em testes
+O servico `test` no `docker-compose.dev.yml` nao define `MCP_CONFIG_PATH`, entao usa o padrao `/app/backend/.mcp.json`. Testes de integracao que escrevem `.mcp.json` via `POST /api/mcps` podem criar um artefato nesse caminho, que persiste no bind mount. Isso faz com que `GET /api/mcps` tente conectar em servidores MCP que ja nao existem mais, causando timeout. Solucao: `rm backend/.mcp.json`.

@@ -1,12 +1,10 @@
 <!--
   Sync Impact Report
   ==================
-  Version change: 1.1.0 → 1.2.0
+  Version change: 1.3.0 → 1.4.0
   Modified principles: None (principles unchanged)
-  Modified sections: "Fluxo de Desenvolvimento" → "Development Workflow"
-    - Translated items 1-6 from Portuguese to English
-    - Added items 7 (env vars), 8 (lint), 9 (docs)
-  Added sections: None
+  Added sections:
+    - Principle VI: Consistent Icon Library
   Removed sections: None
   Templates requiring updates:
     - .specify/templates/plan-template.md: ✅ No principle-specific content — no change needed
@@ -15,8 +13,11 @@
     - .specify/templates/checklist-template.md: ✅ No principle-specific content — no change needed
     - .specify/templates/constitution-template.md: ✅ Template is source — no change needed
   Documentation requiring updates (MANUAL):
-    - README.md, docs/: Already reflect the rules via prior commits
-  Follow-up TODOs: None
+    - specs/002-mcp-connection-manager/quickstart.md: No icon-specific content — no change needed
+  Follow-up TODOs:
+    - Install an icon library (lucide-react recommended) as a frontend dependency
+    - Migrate inline SVG trash icon in MCPCard.tsx to library component
+    - Migrate Unicode status icons (✓, ✗, ⏳, ○) in MCPCard.tsx to library components
 -->
 
 # Weir Constitution
@@ -39,14 +40,14 @@ approved by the user, (2) tests fail on execution,
 cycle MUST be rigorously followed. No production code shall
 be written before the test that validates it.
 
-### III. Brazilian Portuguese for Agents and Users
+### III. English for User-Facing Messages
 
-All messages displayed to end users and all prompts sent
-to agents MUST be in Brazilian Portuguese (pt-BR). Source
-code (variable names, functions, classes, comments) and
-technical documentation MUST be in English. This separation
-ensures the code remains universal while the user experience
-feels natural.
+All messages displayed to end users (toasts, tooltips,
+labels, buttons, validation errors, status indicators)
+MUST be in English. Prompts sent to agents MUST be in the
+user's chosen language. Source code (variable names,
+functions, classes, comments) and technical documentation
+MUST be in English.
 
 ### IV. .mcp.json as the Source of Truth
 
@@ -63,6 +64,15 @@ The web mode and the container mode MUST share the same
 underlying logic — no duplication. Configuration MUST
 require minimal effort. Coverage of happy paths AND edge
 cases is mandatory for production readiness.
+
+### VI. Consistent Icon Library
+
+All user-facing icons MUST be sourced from a single,
+consistent Node package (e.g., lucide-react). Inline SVG
+markup, raw Unicode characters, and image files are NOT
+permitted for icons. This ensures visual consistency,
+accessibility (aria-labels), and ease of maintenance.
+Exceptions require explicit approval.
 
 ## Stack Tecnologica
 
@@ -107,4 +117,4 @@ Every PR review MUST verify compliance with the principles
 defined herein. Omissions shall be resolved by the general
 principles of simplicity and developer experience.
 
-**Version**: 1.2.0 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-06-22
+**Version**: 1.4.0 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-06-22
