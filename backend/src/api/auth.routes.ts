@@ -1,10 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import { loadMCPConfig } from '../config/loader.js';
 import { writeMCPConfig } from '../config/writer.js';
-import { discoverOAuth2 } from '../services/mcp-client.js';
+import { discoverOAuth2, testConnection, queryTools } from '../services/mcp-client.js';
+import { setCachedStatus } from '../services/status-cache.js';
+import { broadcast } from './ws.js';
 import { randomBytes, createHash } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
+import type { CachedStatus, StatusUpdate } from '../config/types.js';
 
 function getConfigPath(): string {
   return process.env.MCP_CONFIG_PATH || resolve(process.cwd(), '.mcp.json');
@@ -71,6 +74,65 @@ function generateCodeChallenge(verifier: string): string {
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=/g, '');
+}
+
+async function testSingleMCPAndBroadcast(name: string): Promise<void> {
+  try {
+    const configPath = getConfigPath();
+    const result = loadMCPConfig(configPath);
+    const client = result.clients.find((c) => c.name === name);
+    if (!client || !client.url) return;
+
+    const raw = existsSync(configPath) ? JSON.parse(readFileSync(configPath, 'utf-8')) : { mcpServers: {} };
+    const rawEntry = raw.mcpServers[name];
+    const accessToken: string | undefined = rawEntry?.accessToken;
+
+    const connResult = await testConnection({
+      type: client.transport as 'stdio' | 'http' | 'sse',
+      command: client.command,
+      args: client.args,
+      url: client.url,
+      env: client.env,
+      accessToken,
+    });
+
+    let toolCount = 0;
+    if (connResult.success) {
+      try {
+        const tools = await queryTools(name, {
+          type: client.transport as 'stdio' | 'http' | 'sse',
+          command: client.command,
+          args: client.args,
+          url: client.url,
+          env: client.env,
+          accessToken,
+        });
+        toolCount = tools.length;
+      } catch {
+        // tools query failed
+      }
+    }
+
+    const cached: CachedStatus = {
+      status: connResult.success ? 'connected' : connResult.needsAuth ? 'needsAuth' : 'error',
+      error: connResult.error ?? null,
+      toolCount,
+      needsAuth: connResult.needsAuth ?? false,
+      authUrl: connResult.authUrl ?? null,
+      lastTestedAt: Date.now(),
+    };
+    setCachedStatus(name, cached);
+
+    const update: StatusUpdate = {
+      name,
+      status: cached.status === 'needsAuth' ? 'error' : cached.status,
+      error: cached.error,
+      toolCount: cached.toolCount,
+    };
+    broadcast('status', update);
+  } catch {
+    // background test failed silently
+  }
 }
 
 export async function authRoutes(app: FastifyInstance) {
@@ -242,6 +304,9 @@ export async function authRoutes(app: FastifyInstance) {
         rawEntry.accessToken = accessToken;
         saveRawConfig(configPath, raw);
       }
+
+      // Test the MCP now that it has a token, cache result, and broadcast
+      testSingleMCPAndBroadcast(name);
 
       return reply.type('text/html').send(
         `<html><body><script>window.close()</script><p>Authorization successful. You may close this window.</p></body></html>`,
