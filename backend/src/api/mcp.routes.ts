@@ -14,9 +14,10 @@ function getConfigPath(): string {
 }
 
 function broadcastStatusUpdate(name: string, status: CachedStatus): void {
+  const mappedStatus: StatusUpdate['status'] = status.status === 'needsAuth' ? 'error' : status.status as StatusUpdate['status'];
   const update: StatusUpdate = {
     name,
-    status: status.status === 'needsAuth' ? 'error' : status.status,
+    status: mappedStatus,
     error: status.error,
     toolCount: status.toolCount,
   };
@@ -337,9 +338,10 @@ export async function mcpRoutes(app: FastifyInstance) {
         reply.raw.write(`event: testing\ndata: ${JSON.stringify({ name: client.name })}\n\n`);
 
         const status = await testSingleMCP(client.name);
+        const sseStatus: StatusUpdate['status'] = status.status === 'needsAuth' ? 'error' : status.status as StatusUpdate['status'];
         const update: StatusUpdate = {
           name: client.name,
-          status: status.status === 'needsAuth' ? 'error' : status.status,
+          status: sseStatus,
           error: status.error,
           toolCount: status.toolCount,
         };

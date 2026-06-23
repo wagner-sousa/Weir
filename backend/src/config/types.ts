@@ -35,7 +35,7 @@ export interface CachedStatus {
 
 export interface StatusUpdate {
   name: string;
-  status: 'connected' | 'error' | 'needsAuth' | 'testing';
+  status: 'connected' | 'error' | 'needsAuth' | 'testing' | 'unknown';
   error: string | null;
   toolCount: number | null;
 }
