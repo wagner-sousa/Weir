@@ -3,13 +3,76 @@ import { loadMCPConfig } from '../config/loader.js';
 import { writeMCPConfig, addMCPEntry, removeMCPEntry } from '../config/writer.js';
 import { TestConnectionRequest } from '../config/schema.js';
 import { testConnection, queryTools } from '../services/mcp-client.js';
+import { getCachedStatus, setCachedStatus, deleteCachedStatus } from '../services/status-cache.js';
 import { resolve, dirname } from 'node:path';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { broadcast } from './ws.js';
-import type { MCPClient } from '../config/types.js';
+import type { MCPClient, CachedStatus, StatusUpdate } from '../config/types.js';
 
 function getConfigPath(): string {
   return process.env.MCP_CONFIG_PATH || resolve(process.cwd(), '.mcp.json');
+}
+
+function broadcastStatusUpdate(name: string, status: CachedStatus): void {
+  const update: StatusUpdate = {
+    name,
+    status: status.status === 'needsAuth' ? 'error' : status.status,
+    error: status.error,
+    toolCount: status.toolCount,
+  };
+  broadcast('status', update);
+}
+
+async function testSingleMCP(name: string): Promise<CachedStatus> {
+  const configPath = getConfigPath();
+  const result = loadMCPConfig(configPath);
+  const client = result.clients.find((c) => c.name === name);
+  if (!client) {
+    const status: CachedStatus = { status: 'error', error: 'MCP not found', toolCount: 0, needsAuth: false, authUrl: null, lastTestedAt: Date.now() };
+    return status;
+  }
+
+  const raw = existsSync(configPath) ? JSON.parse(readFileSync(configPath, 'utf-8')) : { mcpServers: {} };
+  const rawEntry = raw.mcpServers[name];
+  const accessToken: string | undefined = rawEntry?.accessToken;
+
+  const connResult = await testConnection({
+    type: client.transport as 'stdio' | 'http' | 'sse',
+    command: client.command,
+    args: client.args,
+    url: client.url,
+    env: client.env,
+    accessToken,
+  });
+
+  let toolCount = 0;
+  if (connResult.success) {
+    try {
+      const tools = await queryTools(name, {
+        type: client.transport as 'stdio' | 'http' | 'sse',
+        command: client.command,
+        args: client.args,
+        url: client.url,
+        env: client.env,
+        accessToken,
+      });
+      toolCount = tools.length;
+    } catch {
+      // tools query failed, leave count as 0
+    }
+  }
+
+  const cached: CachedStatus = {
+    status: connResult.success ? 'connected' : connResult.needsAuth ? 'needsAuth' : ('error' as 'connected' | 'error' | 'needsAuth'),
+    error: connResult.error ?? null,
+    toolCount,
+    needsAuth: connResult.needsAuth ?? false,
+    authUrl: connResult.authUrl ?? null,
+    lastTestedAt: Date.now(),
+  };
+
+  setCachedStatus(name, cached);
+  return cached;
 }
 
 export async function mcpRoutes(app: FastifyInstance) {
@@ -17,52 +80,17 @@ export async function mcpRoutes(app: FastifyInstance) {
     const configPath = getConfigPath();
     const result = loadMCPConfig(configPath);
 
-    // Read raw config for accessToken
-    const raw = existsSync(configPath)
-      ? JSON.parse(readFileSync(configPath, 'utf-8'))
-      : { mcpServers: {} };
-
-    const clientsWithStatus = await Promise.all(
-      result.clients.map(async (client: MCPClient) => {
-        const rawEntry = raw.mcpServers[client.name];
-        const accessToken: string | undefined = rawEntry?.accessToken;
-
-        const connResult = await testConnection({
-          type: client.transport as 'stdio' | 'http' | 'sse',
-          command: client.command,
-          args: client.args,
-          url: client.url,
-          env: client.env,
-          accessToken,
-        });
-
-        let toolCount = 0;
-        if (connResult.success) {
-          try {
-            const tools = await queryTools(client.name, {
-              type: client.transport as 'stdio' | 'http' | 'sse',
-              command: client.command,
-              args: client.args,
-              url: client.url,
-              env: client.env,
-              accessToken,
-            });
-            toolCount = tools.length;
-          } catch {
-            // tools query failed, leave count as 0
-          }
-        }
-
-        return {
-          ...client,
-          status: connResult.success ? 'connected' : ('error' as string),
-          error: connResult.error ?? null,
-          toolCount,
-          needsAuth: connResult.needsAuth ?? false,
-          authUrl: connResult.authUrl ?? null,
-        };
-      }),
-    );
+    const clientsWithStatus = result.clients.map((client: MCPClient) => {
+      const cached = getCachedStatus(client.name);
+      return {
+        ...client,
+        status: cached?.status ?? 'unknown',
+        error: cached?.error ?? null,
+        toolCount: cached?.toolCount ?? 0,
+        needsAuth: cached?.needsAuth ?? false,
+        authUrl: cached?.authUrl ?? null,
+      };
+    });
 
     return {
       clients: clientsWithStatus,
@@ -145,6 +173,9 @@ export async function mcpRoutes(app: FastifyInstance) {
     }
 
     broadcast('config:changed', { path: configPath });
+
+    // Test only the newly created MCP asynchronously
+    testSingleMCP(name as string).then((status) => broadcastStatusUpdate(name as string, status));
 
     return reply.status(201).send({ success: true, name });
   });
@@ -251,6 +282,10 @@ export async function mcpRoutes(app: FastifyInstance) {
     }
 
     broadcast('config:changed', { path: configPath });
+
+    // Test only the updated MCP asynchronously
+    testSingleMCP(name as string).then((status) => broadcastStatusUpdate(name as string, status));
+
     return { success: true, name: name as string };
   });
 
@@ -272,6 +307,7 @@ export async function mcpRoutes(app: FastifyInstance) {
           error: 'Error removing: backend unavailable.',
         });
       }
+      deleteCachedStatus(name);
       broadcast('config:changed', { path: configPath });
       return { success: true };
     } catch {
@@ -295,38 +331,27 @@ export async function mcpRoutes(app: FastifyInstance) {
       const result = loadMCPConfig(configPath);
       if (result.error || !result.clients) return;
 
-      const raw = existsSync(configPath)
-        ? JSON.parse(readFileSync(configPath, 'utf-8'))
-        : { mcpServers: {} };
+      // Test all MCPs concurrently
+      const tests = result.clients.map(async (client: MCPClient) => {
+        // Emit testing event
+        reply.raw.write(`event: testing\ndata: ${JSON.stringify({ name: client.name })}\n\n`);
 
-      for (const client of result.clients) {
-        try {
-          const accessToken: string | undefined = raw.mcpServers[client.name]?.accessToken;
-          const connResult = await testConnection({
-            type: client.transport as 'stdio' | 'http' | 'sse',
-            command: client.command,
-            args: client.args,
-            url: client.url,
-            env: client.env,
-            accessToken,
-          });
-          const data = JSON.stringify({
-            name: client.name,
-            status: connResult.success ? 'connected' : 'error',
-            toolCount: null,
-            error: connResult.error ?? null,
-          });
-          reply.raw.write(`event: status\ndata: ${data}\n\n`);
-        } catch {
-          // skip individual failures
-        }
-      }
-      reply.raw.write(`event: done\ndata: null\n\n`);
+        const status = await testSingleMCP(client.name);
+        const update: StatusUpdate = {
+          name: client.name,
+          status: status.status === 'needsAuth' ? 'error' : status.status,
+          error: status.error,
+          toolCount: status.toolCount,
+        };
+        reply.raw.write(`event: status\ndata: ${JSON.stringify(update)}\n\n`);
+      });
+
+      await Promise.allSettled(tests);
     };
 
     await sendStatuses();
 
-    const pollInterval = setInterval(sendStatuses, 30_000);
+    const pollInterval = setInterval(sendStatuses, parseInt(process.env.MCP_CACHE_TTL ?? '60000', 10));
     const keepalive = setInterval(() => {
       reply.raw.write(': keepalive\n\n');
     }, 15_000);
