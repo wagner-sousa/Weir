@@ -30,6 +30,8 @@ const statusIcons: Record<string, StatusIcon> = {
   error: { icon: <CircleX className="h-5 w-5" />, color: 'text-red-500', label: 'Error' },
   connecting: { icon: <LoaderCircle className="h-5 w-5 animate-spin" />, color: 'text-yellow-500', label: 'Connecting...' },
   disconnected: { icon: <Circle className="h-5 w-5" />, color: 'text-gray-400', label: 'Disconnected' },
+  testing: { icon: <LoaderCircle className="h-5 w-5 animate-spin" />, color: 'text-yellow-500', label: 'Testing...' },
+  unknown: { icon: <Circle className="h-5 w-5" />, color: 'text-gray-400', label: 'Unknown' },
 };
 
 export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removing, reconnecting }: MCPCardProps) {

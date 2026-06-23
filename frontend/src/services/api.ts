@@ -9,7 +9,7 @@ export interface MCPClient {
   args?: string[];
   url?: string;
   env?: Record<string, string>;
-  status?: 'connecting' | 'connected' | 'error' | 'disconnected';
+  status?: 'connecting' | 'connected' | 'error' | 'disconnected' | 'testing' | 'unknown';
   error?: string | null;
   toolCount?: number;
   needsAuth?: boolean;
@@ -32,7 +32,7 @@ export interface TransportConfig {
 
 export interface StatusEvent {
   name: string;
-  status: 'connecting' | 'connected' | 'error' | 'disconnected';
+  status: 'connecting' | 'connected' | 'error' | 'disconnected' | 'testing' | 'unknown';
   toolCount: number | null;
   error: string | null;
 }
@@ -180,6 +180,15 @@ export function connectSSE(onStatusEvent: (event: StatusEvent) => void): () => v
     try {
       const data: StatusEvent = JSON.parse(e.data);
       onStatusEvent(data);
+    } catch {
+      // ignore malformed events
+    }
+  });
+
+  source.addEventListener('testing', (e: MessageEvent) => {
+    try {
+      const data = JSON.parse(e.data);
+      onStatusEvent({ name: data.name, status: 'testing', toolCount: null, error: null });
     } catch {
       // ignore malformed events
     }
