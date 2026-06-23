@@ -1,23 +1,21 @@
 <!--
   Sync Impact Report
   ==================
-  Version change: 1.3.0 → 1.4.0
+  Version change: 1.4.0 → 1.5.0
   Modified principles: None (principles unchanged)
-  Added sections:
-    - Principle VI: Consistent Icon Library
+  Added sections: None
   Removed sections: None
+  Modified sections:
+    - Stack Tecnologica (rewritten from generic to real stack)
+    - Development Workflow (expanded SDD cycle, gen:schema, SPEC:/IMPL:)
   Templates requiring updates:
     - .specify/templates/plan-template.md: ✅ No principle-specific content — no change needed
     - .specify/templates/spec-template.md: ✅ No principle-specific content — no change needed
     - .specify/templates/tasks-template.md: ✅ No principle-specific content — no change needed
     - .specify/templates/checklist-template.md: ✅ No principle-specific content — no change needed
     - .specify/templates/constitution-template.md: ✅ Template is source — no change needed
-  Documentation requiring updates (MANUAL):
-    - specs/002-mcp-connection-manager/quickstart.md: No icon-specific content — no change needed
-  Follow-up TODOs:
-    - Install an icon library (lucide-react recommended) as a frontend dependency
-    - Migrate inline SVG trash icon in MCPCard.tsx to library component
-    - Migrate Unicode status icons (✓, ✗, ⏳, ○) in MCPCard.tsx to library components
+  Documentation requiring updates: None
+  Follow-up TODOs: None
 -->
 
 # Weir Constitution
@@ -76,17 +74,32 @@ Exceptions require explicit approval.
 
 ## Stack Tecnologica
 
-Language and framework will be defined during project setup,
-prioritizing ecosystems that support static typing and
-testability. Docker is mandatory for containerization. The
-web interface MUST be delivered as part of the same process
-(or via embedded UI). The testing tool will be defined during
-setup and MUST support unit, integration, and contract tests.
+**Backend**: Node.js >=22 (ESM), TypeScript 5.7+, Fastify 5
+(@fastify/cors, @fastify/static, @fastify/websocket),
+Zod 3.24 (fonte da verdade executável), chokidar 4 (file
+watcher / hot-reload), pino 9 + pino-pretty 13, tsx 4 (dev
+runner), Vitest 3 (tests/unit/ + tests/integration/),
+ESLint 9 + typescript-eslint + Prettier 3.
+
+**Frontend**: React 19, Vite 6, @tanstack/react-query 5,
+Tailwind CSS 4, lucide-react.
+
+**Transportes**: stdio, HTTP, SSE, OAuth.
+
+**Infra**: Docker + Docker Compose (dev e producao).
 Every external dependency MUST be justified.
 
 ## Development Workflow
 
-1. SDD — define schema first (config, API, data).
+1. SDD — contrato primeiro:
+   1a. Schema Zod em src/config/schema.ts.
+   1b. Tipos inferidos em src/config/types.ts via z.infer.
+   1c. JSON Schema gerado via npm run gen:schema (nunca editado
+       manualmente).
+   1d. Arquivos marcados com SPEC: (contratos) e IMPL:
+       (implementacoes).
+   1e. Teste falhando.
+   1f. Implementacao.
 2. TDD — write test → see it fail → implement → see it pass.
 3. Constitutional compliance review is mandatory on every PR.
 4. Every complexity MUST be justified by current need, not
@@ -117,4 +130,4 @@ Every PR review MUST verify compliance with the principles
 defined herein. Omissions shall be resolved by the general
 principles of simplicity and developer experience.
 
-**Version**: 1.4.0 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-06-22
+**Version**: 1.5.0 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-06-23
