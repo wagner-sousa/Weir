@@ -36,11 +36,28 @@ export async function mcpRoutes(app: FastifyInstance) {
           accessToken,
         });
 
+        let toolCount = 0;
+        if (connResult.success) {
+          try {
+            const tools = await queryTools(client.name, {
+              type: client.transport as 'stdio' | 'http' | 'sse',
+              command: client.command,
+              args: client.args,
+              url: client.url,
+              env: client.env,
+              accessToken,
+            });
+            toolCount = tools.length;
+          } catch {
+            // tools query failed, leave count as 0
+          }
+        }
+
         return {
           ...client,
           status: connResult.success ? 'connected' : ('error' as string),
           error: connResult.error ?? null,
-          toolCount: 0,
+          toolCount,
           needsAuth: connResult.needsAuth ?? false,
           authUrl: connResult.authUrl ?? null,
         };
@@ -63,7 +80,17 @@ export async function mcpRoutes(app: FastifyInstance) {
       });
     }
 
-    const result = await testConnection(parsed.data.transport);
+    // Look up stored accessToken if name is provided
+    const configPath = getConfigPath();
+    let accessToken: string | undefined;
+    if (parsed.data.name) {
+      const raw = existsSync(configPath)
+        ? JSON.parse(readFileSync(configPath, 'utf-8'))
+        : { mcpServers: {} };
+      accessToken = raw.mcpServers[parsed.data.name]?.accessToken;
+    }
+
+    const result = await testConnection({ ...parsed.data.transport, accessToken });
     return result;
   });
 
@@ -132,12 +159,18 @@ export async function mcpRoutes(app: FastifyInstance) {
       return reply.status(404).send({ success: false, error: `MCP '${name}' not found.` });
     }
 
+    const raw = existsSync(configPath)
+      ? JSON.parse(readFileSync(configPath, 'utf-8'))
+      : { mcpServers: {} };
+    const accessToken: string | undefined = raw.mcpServers[name]?.accessToken;
+
     const tools = await queryTools(name, {
       type: client.transport as 'stdio' | 'http' | 'sse',
       command: client.command,
       args: client.args,
       url: client.url,
       env: client.env,
+      accessToken,
     });
 
     return { tools, count: tools.length };
@@ -256,19 +289,26 @@ export async function mcpRoutes(app: FastifyInstance) {
       'Connection': 'keep-alive',
     });
 
+    const configPath = getConfigPath();
+
     const sendStatuses = async () => {
-      const configPath = getConfigPath();
       const result = loadMCPConfig(configPath);
       if (result.error || !result.clients) return;
 
+      const raw = existsSync(configPath)
+        ? JSON.parse(readFileSync(configPath, 'utf-8'))
+        : { mcpServers: {} };
+
       for (const client of result.clients) {
         try {
+          const accessToken: string | undefined = raw.mcpServers[client.name]?.accessToken;
           const connResult = await testConnection({
             type: client.transport as 'stdio' | 'http' | 'sse',
             command: client.command,
             args: client.args,
             url: client.url,
             env: client.env,
+            accessToken,
           });
           const data = JSON.stringify({
             name: client.name,

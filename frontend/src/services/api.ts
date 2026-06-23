@@ -50,14 +50,22 @@ export async function fetchMCPs(): Promise<MCPResponse> {
   return res.json();
 }
 
+export interface TestConnectionResult {
+  success: boolean;
+  error?: string;
+  needsAuth?: boolean;
+  authUrl?: string;
+}
+
 export async function testConnection(
   transport: TransportConfig,
   signal?: AbortSignal,
-): Promise<{ success: boolean; error?: string }> {
+  name?: string,
+): Promise<TestConnectionResult> {
   const res = await fetch(`${API_BASE}/mcps/test-connection`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ transport }),
+    body: JSON.stringify({ transport, name }),
     signal,
   });
   if (!res.ok) {

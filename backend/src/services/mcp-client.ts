@@ -261,7 +261,7 @@ export async function testConnection(transport: TransportConfigWithToken): Promi
 
 export async function queryTools(
   name: string,
-  transport: TransportConfig,
+  transport: TransportConfigWithToken,
 ): Promise<ToolResult[]> {
   if (transport.type === 'stdio') {
     return queryStdioTools(transport);
@@ -275,9 +275,16 @@ export async function queryTools(
       parseInt(process.env.MCP_CONNECTION_TIMEOUT ?? '5000', 10),
     );
 
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (transport.accessToken) {
+      headers['Authorization'] = `Bearer ${transport.accessToken}`;
+    }
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         jsonrpc: '2.0',
         id: 1,

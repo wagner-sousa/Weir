@@ -2,11 +2,75 @@ import type { FastifyInstance } from 'fastify';
 import { loadMCPConfig } from '../config/loader.js';
 import { writeMCPConfig } from '../config/writer.js';
 import { discoverOAuth2 } from '../services/mcp-client.js';
+import { randomBytes, createHash } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 
 function getConfigPath(): string {
   return process.env.MCP_CONFIG_PATH || resolve(process.cwd(), '.mcp.json');
+}
+
+async function registerClient(
+  registrationEndpoint: string,
+  redirectUri: string,
+  name: string,
+): Promise<string> {
+  const body = {
+    client_name: `Weir-${name}`,
+    redirect_uris: [redirectUri],
+    grant_types: ['authorization_code'],
+    response_types: ['code'],
+    token_endpoint_auth_method: 'none',
+  };
+
+  const res = await fetch(registrationEndpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Client registration failed: HTTP ${res.status} — ${errText}`);
+  }
+
+  const data = await res.json();
+  if (!data.client_id) {
+    throw new Error('Registration response missing client_id');
+  }
+
+  return data.client_id;
+}
+
+function readRawConfig(configPath: string): { mcpServers: Record<string, Record<string, unknown>> } {
+  return existsSync(configPath)
+    ? JSON.parse(readFileSync(configPath, 'utf-8'))
+    : { mcpServers: {} };
+}
+
+function saveRawConfig(configPath: string, raw: Record<string, unknown>): void {
+  const dir = dirname(configPath);
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
+  writeMCPConfig(configPath, raw as never);
+}
+
+function generateCodeVerifier(): string {
+  return randomBytes(32)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
+function generateCodeChallenge(verifier: string): string {
+  return createHash('sha256')
+    .update(verifier)
+    .digest('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
 }
 
 export async function authRoutes(app: FastifyInstance) {
@@ -20,7 +84,6 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.status(404).send({ success: false, error: `MCP '${name}' not found.` });
     }
 
-    // Try to discover OAuth2 config
     if (!client.url) {
       return reply.status(400).send({ success: false, error: 'No URL configured for this MCP.' });
     }
@@ -30,32 +93,61 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.status(400).send({ success: false, error: 'No OAuth2 configuration available for this MCP.' });
     }
 
-    // Read raw config for clientId
-    const raw = existsSync(configPath)
-      ? JSON.parse(readFileSync(configPath, 'utf-8'))
-      : { mcpServers: {} };
-    const rawEntry = raw.mcpServers[name];
-    const clientId = rawEntry?.auth?.clientId || '';
+    const raw = readRawConfig(configPath);
+    const rawEntry: Record<string, unknown> = raw.mcpServers[name] ?? {};
+    const authEntry = rawEntry.auth as Record<string, string> | undefined;
+    let clientId: string | undefined = authEntry?.clientId;
     const host = request.headers.host || request.hostname;
     const redirectUri = `${request.protocol}://${host}/api/auth/${encodeURIComponent(name)}/callback`;
 
-    const params = new URLSearchParams({
-      response_type: 'code',
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      scope: (authConfig.scopesSupported || []).join(' ') || 'read',
-    });
-
-    const authUrl = `${authConfig.authorizationEndpoint}?${params.toString()}`;
-
+    // Auto-register if clientId is missing and registration endpoint is available
     if (!clientId && authConfig.registrationEndpoint) {
+      try {
+        clientId = await registerClient(authConfig.registrationEndpoint, redirectUri, name);
+        const entry: Record<string, unknown> = raw.mcpServers[name] ??= {};
+        if (!entry.auth) entry.auth = {};
+        (entry.auth as Record<string, string>).clientId = clientId;
+        saveRawConfig(configPath, raw);
+      } catch (err) {
+        return {
+          success: false,
+          url: null,
+          error: err instanceof Error ? err.message : 'Client registration failed',
+        };
+      }
+    }
+
+    if (!clientId) {
       return {
-        url: authUrl,
-        warning: `No client_id configured. Register your app at ${authConfig.registrationEndpoint} and add "auth": { "clientId": "<your_client_id>" } to the MCP entry in .mcp.json.`,
+        success: false,
+        url: null,
+        error: `No client_id configured for MCP '${name}' and no registration endpoint available. Configure auth.clientId in .mcp.json manually.`,
       };
     }
 
-    return { url: authUrl };
+    // Generate PKCE code verifier and challenge
+    const codeVerifier = generateCodeVerifier();
+    const codeChallenge = generateCodeChallenge(codeVerifier);
+
+    // Store code_verifier in the entry for use in the callback
+    const entry: Record<string, unknown> = raw.mcpServers[name] ??= {};
+    entry.pendingCodeVerifier = codeVerifier;
+    saveRawConfig(configPath, raw);
+
+    const params = new URLSearchParams({
+      response_type: 'code',
+      redirect_uri: redirectUri,
+    });
+    params.set('client_id', clientId);
+    params.set('code_challenge', codeChallenge);
+    params.set('code_challenge_method', 'S256');
+    if (authConfig.scopesSupported && authConfig.scopesSupported.length > 0) {
+      params.set('scope', authConfig.scopesSupported.join(' '));
+    }
+
+    const authUrl = `${authConfig.authorizationEndpoint}?${params.toString()}`;
+
+    return { success: true, url: authUrl };
   });
 
   app.get('/api/auth/:name/callback', async (request, reply) => {
@@ -92,27 +184,42 @@ export async function authRoutes(app: FastifyInstance) {
       );
     }
 
-    // Read raw config for client credentials
-    const raw = existsSync(configPath)
-      ? JSON.parse(readFileSync(configPath, 'utf-8'))
-      : { mcpServers: {} };
-    const rawEntry = raw.mcpServers[name];
-    const clientId = rawEntry?.auth?.clientId || '';
+    // Read raw config for client credentials and PKCE verifier
+    const raw = readRawConfig(configPath);
+    const rawEntry = raw.mcpServers[name] as Record<string, unknown> | undefined;
+    const authEntry = rawEntry?.auth as Record<string, string> | undefined;
+    const clientId = authEntry?.clientId || '';
+    const clientSecret = authEntry?.clientSecret || '';
+    const codeVerifier = rawEntry?.pendingCodeVerifier as string | undefined;
     const host = request.headers.host || request.hostname;
     const redirectUri = `${request.protocol}://${host}/api/auth/${encodeURIComponent(name)}/callback`;
 
     // Exchange authorization code for token
     try {
+      const tokenParams: Record<string, string> = {
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: redirectUri,
+        client_id: clientId,
+      };
+      if (clientSecret) {
+        tokenParams.client_secret = clientSecret;
+      }
+      if (codeVerifier) {
+        tokenParams.code_verifier = codeVerifier;
+      }
+
       const tokenResponse = await fetch(authConfig.tokenEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          grant_type: 'authorization_code',
-          code,
-          redirect_uri: redirectUri,
-          client_id: clientId,
-        }).toString(),
+        body: new URLSearchParams(tokenParams).toString(),
       });
+
+      // Clean up stored code_verifier regardless of outcome
+      if (rawEntry) {
+        delete rawEntry.pendingCodeVerifier;
+        saveRawConfig(configPath, raw);
+      }
 
       if (!tokenResponse.ok) {
         const errText = await tokenResponse.text();
@@ -131,13 +238,9 @@ export async function authRoutes(app: FastifyInstance) {
       }
 
       // Store token in .mcp.json
-      if (raw.mcpServers[name]) {
-        raw.mcpServers[name].accessToken = accessToken;
-        const dir = dirname(configPath);
-        if (!existsSync(dir)) {
-          mkdirSync(dir, { recursive: true });
-        }
-        writeMCPConfig(configPath, raw);
+      if (rawEntry) {
+        rawEntry.accessToken = accessToken;
+        saveRawConfig(configPath, raw);
       }
 
       return reply.type('text/html').send(

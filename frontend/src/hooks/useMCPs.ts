@@ -77,7 +77,7 @@ export function useAddMCP() {
     }) => {
       return addMCP(name, transport);
     },
-    onSuccess: () => {
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['mcps'] });
     },
   });
@@ -88,11 +88,13 @@ export function useTestConnection() {
     mutationFn: async ({
       transport,
       signal,
+      name,
     }: {
       transport: TransportConfig;
       signal?: AbortSignal;
+      name?: string;
     }) => {
-      return testConnection(transport, signal);
+      return testConnection(transport, signal, name);
     },
   });
 }
@@ -104,7 +106,7 @@ export function useRemoveMCP() {
     mutationFn: async (name: string) => {
       return removeMCP(name);
     },
-    onSuccess: () => {
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['mcps'] });
     },
   });
@@ -125,7 +127,7 @@ export function useUpdateMCP() {
     }) => {
       return updateMCP(originalName, name, transport);
     },
-    onSuccess: () => {
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['mcps'] });
     },
   });

@@ -16,6 +16,12 @@ The MCP entry gains two new optional runtime/persisted fields:
 
 The `auth` sub-object can be added to the MCP entry in `.mcp.json` for manual configuration:
 
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `clientId` | `string` | Yes | OAuth2 client ID registered with the provider |
+| `clientSecret` | `string` | No | OAuth2 client secret (only if provider requires it — Stripe uses `none` auth method) |
+| `redirectUri` | `string` | No | Custom redirect URI (if omitted, backend auto-derives it from request host) |
+
 ```json
 {
   "mcpServers": {

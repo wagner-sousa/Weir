@@ -26,24 +26,30 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
 
   function closeEditModal() {
     setEditingMCP(null);
+    queryClient.invalidateQueries({ queryKey: ['mcps'] });
   }
 
   async function handleAuth(client: MCPClient) {
-    const popup = window.open('', '_blank', 'width=600,height=700');
-    if (!popup) {
-      showToast('Popup blocked. Please allow popups for this site.', 'error');
-      return;
-    }
-
     try {
       const res = await fetch(`/api/auth/${encodeURIComponent(client.name)}/start`, {
         method: 'POST',
       });
       const data = await res.json();
 
+      if (data.warning) {
+        showToast(data.warning, 'error');
+      }
+      if (data.error) {
+        showToast(data.error, 'error');
+      }
+
       if (!data.url) {
-        showToast(data.error || 'Failed to start OAuth2 authorization.', 'error');
-        popup.close();
+        return;
+      }
+
+      const popup = window.open('', '_blank', 'width=600,height=700');
+      if (!popup) {
+        showToast('Popup blocked. Please allow popups for this site.', 'error');
         return;
       }
 
@@ -57,7 +63,6 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
         }
       }, 500);
     } catch (err) {
-      popup.close();
       showToast('Failed to start OAuth2 authorization.', 'error');
     }
   }
@@ -130,7 +135,10 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
       <AddMCPModal
         open={modalOpen}
         existingNames={clients.map((c) => c.name)}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false);
+          queryClient.invalidateQueries({ queryKey: ['mcps'] });
+        }}
       />
       <AddMCPModal
         open={editModalOpen}
