@@ -78,6 +78,12 @@ O arquivo `.mcp.json` e montado como volume. Use `MCP_CONFIG_SOURCE` para aponta
 
 ```bash
 MCP_CONFIG_SOURCE=~/outro-projeto/.mcp.json docker compose up
+
+Variaveis de timeout (valores em ms):
+
+```bash
+MCP_CONNECTION_TIMEOUT=5000 MCP_ADD_TIMEOUT=30000 docker compose up
+```
 ```
 
 ## Comandos via Docker Compose
