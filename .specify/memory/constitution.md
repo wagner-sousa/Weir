@@ -1,13 +1,12 @@
 <!--
   Sync Impact Report
   ==================
-  Version change: 1.4.0 → 1.5.0
+  Version change: 1.5.0 → 1.6.0
   Modified principles: None (principles unchanged)
-  Added sections: None
+  Added sections:
+    - Principle VII: Dependency First (prefer Node libraries over custom code)
   Removed sections: None
-  Modified sections:
-    - Stack Tecnologica (rewritten from generic to real stack)
-    - Development Workflow (expanded SDD cycle, gen:schema, SPEC:/IMPL:)
+  Modified sections: None
   Templates requiring updates:
     - .specify/templates/plan-template.md: ✅ No principle-specific content — no change needed
     - .specify/templates/spec-template.md: ✅ No principle-specific content — no change needed
@@ -72,6 +71,18 @@ permitted for icons. This ensures visual consistency,
 accessibility (aria-labels), and ease of maintenance.
 Exceptions require explicit approval.
 
+### VII. Dependency First
+
+Every non-trivial capability MUST be implemented via an existing,
+well-maintained Node.js package unless a strong justification for
+building from scratch is documented. The npm registry is the
+default source for packages. Custom implementations are permitted
+only when no suitable package exists, the package is unmaintained,
+or the required functionality is trivially small (< 50 lines).
+Rationale: proven libraries have fewer bugs, better performance,
+community support, and security audits than custom code. Every
+new npm dependency MUST be justified in the pull request.
+
 ## Stack Tecnologica
 
 **Backend**: Node.js >=22 (ESM), TypeScript 5.7+, Fastify 5
@@ -130,4 +141,4 @@ Every PR review MUST verify compliance with the principles
 defined herein. Omissions shall be resolved by the general
 principles of simplicity and developer experience.
 
-**Version**: 1.5.0 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-06-23
+**Version**: 1.6.0 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-06-23
