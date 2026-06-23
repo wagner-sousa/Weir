@@ -72,6 +72,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
     const handler = (e: BeforeUnloadEvent) => {
       if (testing || testMutation.isPending) {
         e.preventDefault();
+        e.returnValue = '';
       }
     };
     window.addEventListener('beforeunload', handler);
