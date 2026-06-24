@@ -69,6 +69,14 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
 
   async function handleReconnect(client: MCPClient) {
     setReconnectingName(client.name);
+
+    // For HTTP MCPs with needsAuth, open OAuth popup instead of testing
+    if (client.needsAuth && client.transport === 'http') {
+      await handleAuth(client);
+      setReconnectingName(null);
+      return;
+    }
+
     const transport = {
       type: client.transport as 'stdio' | 'http' | 'sse',
       command: client.command,
