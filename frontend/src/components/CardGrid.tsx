@@ -84,7 +84,15 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
       url: client.url,
       env: client.env,
     };
-    const result = await testMutation.mutateAsync({ transport });
+    const result = await testMutation.mutateAsync({ transport, name: client.name });
+
+    // If test returns needsAuth for HTTP MCP, redirect to OAuth popup
+    if (result.needsAuth && client.transport === 'http') {
+      await handleAuth(client);
+      setReconnectingName(null);
+      return;
+    }
+
     if (result.success) {
       showToast(`MCP "${client.name}" connected successfully.`, 'success');
     } else {
