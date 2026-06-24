@@ -1,18 +1,21 @@
 import type { MCPClient } from '../services/api';
+import { Badge } from './Badge';
+import { ConnectionIndicator } from './ConnectionIndicator';
 
 interface MCPCardProps {
   client: MCPClient;
+  online?: boolean;
+  error?: string | null;
 }
 
-const badgeColors: Record<string, string> = {
-  stdio: 'bg-blue-100 text-blue-800',
-  http: 'bg-green-100 text-green-800',
-  sse: 'bg-purple-100 text-purple-800',
-  unknown: 'bg-gray-100 text-gray-800',
+const transportVariant: Record<string, string> = {
+  stdio: 'secondary',
+  http: 'success',
+  sse: 'default',
 };
 
-export function MCPCard({ client }: MCPCardProps) {
-  const badgeClass = badgeColors[client.transport] || badgeColors.unknown;
+export function MCPCard({ client, online = true, error }: MCPCardProps) {
+  const variant = transportVariant[client.transport] || 'outline';
 
   return (
     <div
@@ -20,10 +23,14 @@ export function MCPCard({ client }: MCPCardProps) {
       className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
     >
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">{client.name}</h3>
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium uppercase ${badgeClass}`}>
-          {client.transport}
-        </span>
+        <div className="flex items-center gap-2">
+          <ConnectionIndicator online={online} />
+          <h3 className="text-lg font-semibold text-gray-900">{client.name}</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          {error && <span className="text-xs text-red-500">{error}</span>}
+          <Badge variant={variant} label={client.transport} />
+        </div>
       </div>
       {client.command && (
         <p className="mt-2 text-sm text-gray-500">

@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useMCPs } from './hooks/useMCPs';
 import { CardGrid } from './components/CardGrid';
 import { ErrorState } from './components/ErrorState';
+import { LoadingSpinner } from './components/LoadingSpinner';
 
 const queryClient = new QueryClient();
 
@@ -9,11 +10,7 @@ function MCPDashboard() {
   const { data, isLoading, error, isRefreshing } = useMCPs();
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <p className="text-gray-500">Carregando...</p>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (error) {

@@ -1,3 +1,5 @@
+import { notifyError } from './notifications';
+
 const API_BASE = '/api';
 const WS_URL = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`;
 
@@ -18,7 +20,9 @@ export interface MCPResponse {
 export async function fetchMCPs(): Promise<MCPResponse> {
   const res = await fetch(`${API_BASE}/mcps`);
   if (!res.ok) {
-    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    const message = `HTTP ${res.status}: ${res.statusText}`;
+    notifyError(message);
+    throw new Error(message);
   }
   return res.json();
 }
