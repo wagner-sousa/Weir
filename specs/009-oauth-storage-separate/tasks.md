@@ -25,7 +25,7 @@
 
 **Purpose**: Install new dependency.
 
-- [ ] T001 Install `conf` package in `backend/` via `npm install conf`
+- [X] T001 Install `conf` package in `backend/` via `npm install conf`
 
 ---
 
@@ -37,12 +37,12 @@
 
 ### Tests (TDD — write first, verify they fail)
 
-- [ ] T002 [P] Add unit tests for `auth-storage` in `backend/tests/unit/auth-storage.test.ts` (cover: get/set/delete auth config, file permission 0600, missing file returns undefined, migration from .mcp.json)
+- [X] T002 [P] Add unit tests for `auth-storage` in `backend/tests/unit/auth-storage.test.ts` (cover: get/set/delete auth config, file permission 0600, missing file returns undefined, migration from .mcp.json)
 
 ### Implementation
 
-- [ ] T003 [P] Create `AuthStorage` service in `backend/src/services/auth-storage.ts` using `conf` package. Functions: `getAuthConfig(name)`, `setAuthConfig(name, data)`, `deleteAuthConfig(name)`, `migrateFromMcpJson(mcpJsonPath)`. Config path via `MCP_AUTH_CONFIG_PATH` env var (default: derived from `MCP_CONFIG_PATH`).
-- [ ] T004 [P] Add `stripOAuthFields` helper to `backend/src/config/writer.ts` — remove `accessToken`, `auth`, `pendingCodeVerifier` from each MCP entry before serialization.
+- [X] T003 [P] Create `AuthStorage` service in `backend/src/services/auth-storage.ts` using `conf` package. Functions: `getAuthConfig(name)`, `setAuthConfig(name, data)`, `deleteAuthConfig(name)`, `migrateFromMcpJson(mcpJsonPath)`. Config path via `MCP_AUTH_CONFIG_PATH` env var (default: derived from `MCP_CONFIG_PATH`).
+- [X] T004 [P] Add `stripOAuthFields` helper to `backend/src/config/writer.ts` — remove `accessToken`, `auth`, `pendingCodeVerifier` from each MCP entry before serialization.
 
 **Checkpoint**: AuthStorage ready — migration and storage layer complete.
 
@@ -56,13 +56,13 @@
 
 ### Tests (TDD — write first, verify they fail)
 
-- [ ] T005 [US1] Add integration tests for auth routes using new storage in `backend/tests/integration/auth-storage.test.ts` (cover: OAuth callback stores token in `.mcp-auth.json`, token is NOT in `.mcp.json`)
+- [X] T005 [US1] Add integration tests for auth routes using new storage in `backend/tests/integration/auth-storage.test.ts` (cover: OAuth callback stores token in `.mcp-auth.json`, token is NOT in `.mcp.json`)
 
 ### Implementation
 
-- [ ] T006 [US1] Modify `auth.routes.ts` (`saveRawConfig` and callback handler) to use `AuthStorage.setAuthConfig` instead of direct `.mcp.json` writes for `accessToken`, `auth`, and `pendingCodeVerifier`.
-- [ ] T007 [US1] Modify `mcp.routes.ts` (all handlers that read `accessToken`) to use `AuthStorage.getAuthConfig` instead of reading directly from `.mcp.json`.
-- [ ] T008 [US1] Modify `mcp.routes.ts` (`DELETE` handler) to call `AuthStorage.deleteAuthConfig` alongside the existing config deletion.
+- [X] T006 [US1] Modify `auth.routes.ts` (`saveRawConfig` and callback handler) to use `AuthStorage.setAuthConfig` instead of direct `.mcp.json` writes for `accessToken`, `auth`, and `pendingCodeVerifier`.
+- [X] T007 [US1] Modify `mcp.routes.ts` (all handlers that read `accessToken`) to use `AuthStorage.getAuthConfig` instead of reading directly from `.mcp.json`.
+- [X] T008 [US1] Modify `mcp.routes.ts` (`DELETE` handler) to call `AuthStorage.deleteAuthConfig` alongside the existing config deletion.
 
 **Checkpoint**: User Story 1 complete — all OAuth reads/writes use `.mcp-auth.json`.
 
@@ -76,12 +76,12 @@
 
 ### Tests (TDD — write first, verify they fail)
 
-- [ ] T009 [US2] Add migration integration tests in `backend/tests/integration/auth-storage.test.ts` (cover: migration copies token from .mcp.json to .mcp-auth.json, migration strips token from .mcp.json, migration does NOT overwrite existing .mcp-auth.json)
+- [X] T009 [US2] Add migration integration tests in `backend/tests/integration/auth-storage.test.ts` (cover: migration copies token from .mcp.json to .mcp-auth.json, migration strips token from .mcp.json, migration does NOT overwrite existing .mcp-auth.json)
 
 ### Implementation
 
-- [ ] T010 [US2] Call `migrateFromMcpJson` on startup in `backend/src/index.ts` after config path is resolved.
-- [ ] T011 [US2] Update `writer.ts` to always call `stripOAuthFields` before writing `.mcp.json` (ensures no OAuth fields persist after migration).
+- [X] T010 [US2] Call `migrateFromMcpJson` on startup in `backend/src/index.ts` after config path is resolved.
+- [X] T011 [US2] Update `writer.ts` to always call `stripOAuthFields` before writing `.mcp.json` (ensures no OAuth fields persist after migration).
 
 **Checkpoint**: User Story 2 complete — migration runs automatically.
 
@@ -91,9 +91,9 @@
 
 **Purpose**: Validation and cleanup.
 
-- [ ] T012 Run `quickstart.md` validation scenarios
-- [ ] T013 Run lint and typecheck across backend
-- [ ] T014 Add `MCP_AUTH_CONFIG_PATH` to `.env.example` and `docker-compose.dev.yml`
+- [X] T012 Run `quickstart.md` validation scenarios
+- [X] T013 Run lint and typecheck across backend
+- [X] T014 Add `MCP_AUTH_CONFIG_PATH` to `.env.example` and `docker-compose.dev.yml`
 
 ---
 

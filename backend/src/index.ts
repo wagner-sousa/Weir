@@ -9,6 +9,7 @@ import { authRoutes } from './api/auth.routes.js';
 import { healthRoutes } from './api/health.routes.js';
 import { setupWebSocket } from './api/ws.js';
 import { createWatcher } from './config/watcher.js';
+import { migrateFromMcpJson } from './services/auth-storage.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -31,6 +32,9 @@ export async function buildApp() {
   const ws = setupWebSocket(app);
 
   const mcpConfigPath = process.env.MCP_CONFIG_PATH || resolve(process.cwd(), '.mcp.json');
+
+  // Migrate OAuth data from .mcp.json to .mcp-auth.json on startup
+  migrateFromMcpJson(mcpConfigPath);
 
   const watcher = createWatcher(mcpConfigPath, () => {
     ws.broadcast('config:changed', { path: mcpConfigPath });

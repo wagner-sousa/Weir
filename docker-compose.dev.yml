@@ -12,6 +12,7 @@ services:
     working_dir: /app
     environment:
       MCP_CONFIG_PATH: ${MCP_CONFIG_PATH:-/app/.mcp.json}
+      MCP_AUTH_CONFIG_PATH: ${MCP_AUTH_CONFIG_PATH:-/app/.mcp-auth.json}
       MCP_CONNECTION_TIMEOUT: ${MCP_CONNECTION_TIMEOUT:-5000}
       MCP_ADD_TIMEOUT: ${MCP_ADD_TIMEOUT:-30000}
     extra_hosts:
