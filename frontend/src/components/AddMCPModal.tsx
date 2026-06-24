@@ -184,12 +184,12 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
   return (
     <div className="fixed inset-0 z-40 overflow-y-auto bg-black/50">
       <div className="flex min-h-full items-start justify-center py-8">
-        <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
+        <div className="w-full max-w-lg rounded-lg bg-theme-panel p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900">{isEditing ? 'Edit MCP' : 'Add MCP'}</h2>
+          <h2 className="text-lg font-bold text-theme-text">{isEditing ? 'Edit MCP' : 'Add MCP'}</h2>
           <button
             onClick={onClose}
-            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="rounded p-1 text-theme-muted hover:bg-theme-border hover:text-theme-text"
             aria-label="Close"
           >
             &times;
@@ -198,13 +198,13 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
 
         <form onSubmit={handleSave} className="flex flex-col gap-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
+            <label className="mb-1 block text-sm font-medium text-theme-muted">Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => validateName(e.target.value)}
-              className={`w-full rounded border px-3 py-2 text-sm ${
-                nameError ? 'border-red-400' : 'border-gray-300'
+              className={`w-full rounded border bg-theme-bg px-3 py-2 text-sm text-theme-text ${
+                nameError ? 'border-red-400' : 'border-theme-border'
               }`}
               placeholder="e.g.: my-server"
             />
@@ -212,11 +212,11 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Type</label>
+            <label className="mb-1 block text-sm font-medium text-theme-muted">Type</label>
             <select
               value={type}
               onChange={(e) => handleTypeChange(e.target.value as 'stdio' | 'http' | 'sse')}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded border border-theme-border bg-theme-bg px-3 py-2 text-sm text-theme-text"
             >
               <option value="stdio">stdio</option>
               <option value="http">HTTP</option>
@@ -227,38 +227,38 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
           {type === 'stdio' && (
             <>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Command</label>
+                <label className="mb-1 block text-sm font-medium text-theme-muted">Command</label>
                 <input
                   type="text"
                   value={command}
                   onChange={(e) => setCommand(e.target.value)}
-                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded border border-theme-border bg-theme-bg px-3 py-2 text-sm text-theme-text"
                   placeholder="e.g.: npx"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
+                <label className="mb-1 block text-sm font-medium text-theme-muted">
                   Arguments (space-separated)
                 </label>
                 <input
                   type="text"
                   value={argsStr}
                   onChange={(e) => setArgsStr(e.target.value)}
-                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded border border-theme-border bg-theme-bg px-3 py-2 text-sm text-theme-text"
                   placeholder="e.g.: -y @modelcontextprotocol/server-filesystem /tmp"
                 />
               </div>
 
               <div>
                 <div className="mb-1 flex items-center justify-between">
-                  <label className="text-sm font-medium text-gray-700">
+                  <label className="text-sm font-medium text-theme-muted">
                     Environment variables
                   </label>
                   <button
                     type="button"
                     onClick={() => setEnvVars((prev) => [...prev, { key: '', value: '' }])}
-                    className="text-xs text-blue-600 hover:text-blue-800"
+                    className="text-xs text-theme-accent hover:text-theme-accent-dark"
                   >
                     + Add variable
                   </button>
@@ -273,7 +273,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
                         next[i] = { ...next[i], key: e.target.value };
                         setEnvVars(next);
                       }}
-                      className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm"
+                      className="flex-1 rounded border border-theme-border bg-theme-bg px-2 py-1 text-sm text-theme-text"
                       placeholder="KEY"
                     />
                     <input
@@ -284,7 +284,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
                         next[i] = { ...next[i], value: e.target.value };
                         setEnvVars(next);
                       }}
-                      className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm"
+                      className="flex-1 rounded border border-theme-border bg-theme-bg px-2 py-1 text-sm text-theme-text"
                       placeholder="value"
                     />
                     <button
@@ -303,12 +303,12 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
 
           {(type === 'http' || type === 'sse') && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">URL</label>
+              <label className="mb-1 block text-sm font-medium text-theme-muted">URL</label>
               <input
                 type="text"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded border border-theme-border bg-theme-bg px-3 py-2 text-sm text-theme-text"
                 placeholder="https://example.com/mcp"
               />
             </div>
@@ -339,8 +339,8 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
               disabled={!isValid || testing}
               className={`flex-1 rounded px-4 py-2 text-sm font-medium ${
                 !isValid || testing
-                  ? 'cursor-not-allowed bg-gray-200 text-gray-400'
-                  : 'bg-gray-800 text-white hover:bg-gray-700'
+                  ? 'cursor-not-allowed bg-gray-700 text-gray-500'
+                  : 'border border-theme-border text-theme-text hover:bg-theme-border'
               }`}
             >
               {testing ? 'Testing...' : 'Test Connection'}
