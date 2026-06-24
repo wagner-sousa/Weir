@@ -26,13 +26,13 @@ function MCPDashboard() {
       <header className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Weir - MCP Gateway</h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <h1 className="text-2xl font-bold text-theme-text">Weir - MCP Gateway</h1>
+            <p className="mt-1 text-sm text-theme-muted">
               Servidores MCP configurados em{' '}
-              <code className="rounded bg-gray-100 px-1">.mcp.json</code>
+              <code className="rounded bg-theme-panel px-1 text-theme-accent">.mcp.json</code>
             </p>
           </div>
-          {isRefreshing && <span className="text-sm text-blue-600">Atualizando...</span>}
+          {isRefreshing && <span className="text-sm text-theme-accent">Atualizando...</span>}
         </div>
       </header>
       <CardGrid clients={data?.clients || []} />

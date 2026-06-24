@@ -9,8 +9,8 @@ export function CardGrid({ clients }: CardGridProps) {
   if (clients.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <p className="text-lg text-gray-500">Nenhum MCP configurado.</p>
-        <p className="mt-1 text-sm text-gray-400">
+        <p className="text-lg text-theme-muted">Nenhum MCP configurado.</p>
+        <p className="mt-1 text-sm text-theme-muted">
           Crie um arquivo .mcp.json com servidores MCP para comecar.
         </p>
       </div>

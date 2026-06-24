@@ -1,10 +1,10 @@
 const variantClasses: Record<string, string> = {
-  default: 'bg-gray-100 text-gray-800',
-  secondary: 'bg-gray-200 text-gray-700',
-  destructive: 'bg-red-100 text-red-800',
-  success: 'bg-green-100 text-green-800',
-  warning: 'bg-yellow-100 text-yellow-800',
-  outline: 'border border-gray-300 text-gray-700',
+  default: 'bg-gray-600 text-gray-200',
+  secondary: 'bg-gray-700 text-gray-300',
+  destructive: 'bg-red-900 text-red-200',
+  success: 'bg-green-900 text-green-200',
+  warning: 'bg-yellow-900 text-yellow-200',
+  outline: 'border border-theme-border text-theme-muted',
 };
 
 interface BadgeProps {

@@ -20,12 +20,12 @@ export function MCPCard({ client, online = true, error }: MCPCardProps) {
   return (
     <div
       data-testid="mcp-card"
-      className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+      className="rounded-lg border border-theme-border bg-theme-panel p-4 shadow-sm transition-shadow hover:shadow-md"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ConnectionIndicator online={online} />
-          <h3 className="text-lg font-semibold text-gray-900">{client.name}</h3>
+          <h3 className="text-lg font-semibold text-theme-text">{client.name}</h3>
         </div>
         <div className="flex items-center gap-2">
           {error && <span className="text-xs text-red-500">{error}</span>}
@@ -33,13 +33,13 @@ export function MCPCard({ client, online = true, error }: MCPCardProps) {
         </div>
       </div>
       {client.command && (
-        <p className="mt-2 text-sm text-gray-500">
-          <span className="font-medium">Comando:</span> {client.command}
+        <p className="mt-2 text-sm text-theme-muted">
+          <span className="font-medium text-theme-text">Comando:</span> {client.command}
         </p>
       )}
       {client.url && (
-        <p className="mt-2 text-sm text-gray-500">
-          <span className="font-medium">URL:</span> {client.url}
+        <p className="mt-2 text-sm text-theme-muted">
+          <span className="font-medium text-theme-text">URL:</span> {client.url}
         </p>
       )}
     </div>
