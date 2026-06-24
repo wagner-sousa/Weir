@@ -3,6 +3,7 @@ import { loadMCPConfig } from '../config/loader.js';
 import { writeMCPConfig } from '../config/writer.js';
 import { discoverOAuth2, testConnection, queryTools } from '../services/mcp-client.js';
 import { setCachedStatus } from '../services/status-cache.js';
+import { getAuthConfig, setAuthConfig } from '../services/auth-storage.js';
 import { broadcast } from './ws.js';
 import { randomBytes, createHash } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
@@ -85,7 +86,8 @@ async function testSingleMCPAndBroadcast(name: string): Promise<void> {
 
     const raw = existsSync(configPath) ? JSON.parse(readFileSync(configPath, 'utf-8')) : { mcpServers: {} };
     const rawEntry = raw.mcpServers[name];
-    const accessToken: string | undefined = rawEntry?.accessToken;
+    const authConfig = getAuthConfig(name);
+    const accessToken: string | undefined = authConfig?.accessToken || rawEntry?.accessToken;
 
     const connResult = await testConnection({
       type: client.transport as 'stdio' | 'http' | 'sse',
@@ -171,6 +173,7 @@ export async function authRoutes(app: FastifyInstance) {
         if (!entry.auth) entry.auth = {};
         (entry.auth as Record<string, string>).clientId = clientId;
         saveRawConfig(configPath, raw);
+        setAuthConfig(name, { auth: { clientId } });
       } catch (err) {
         return {
           success: false,
@@ -196,6 +199,7 @@ export async function authRoutes(app: FastifyInstance) {
     const entry: Record<string, unknown> = raw.mcpServers[name] ??= {};
     entry.pendingCodeVerifier = codeVerifier;
     saveRawConfig(configPath, raw);
+    setAuthConfig(name, { pendingCodeVerifier: codeVerifier });
 
     const params = new URLSearchParams({
       response_type: 'code',
@@ -247,13 +251,14 @@ export async function authRoutes(app: FastifyInstance) {
       );
     }
 
-    // Read raw config for client credentials and PKCE verifier
+    // Read raw config for client credentials and PKCE verifier (from auth-storage or .mcp.json fallback)
     const raw = readRawConfig(configPath);
     const rawEntry = raw.mcpServers[name] as Record<string, unknown> | undefined;
-    const authEntry = rawEntry?.auth as Record<string, string> | undefined;
-    const clientId = authEntry?.clientId || '';
-    const clientSecret = authEntry?.clientSecret || '';
-    const codeVerifier = rawEntry?.pendingCodeVerifier as string | undefined;
+    const authCfg = getAuthConfig(name);
+    const authEntry = authCfg?.auth || (rawEntry?.auth as Record<string, string> | undefined);
+    const clientId = authCfg?.auth?.clientId || (rawEntry?.auth as Record<string, string> | undefined)?.clientId || '';
+    const clientSecret = authCfg?.auth?.clientSecret || (rawEntry?.auth as Record<string, string> | undefined)?.clientSecret || '';
+    const codeVerifier = authCfg?.pendingCodeVerifier || (rawEntry?.pendingCodeVerifier as string | undefined);
     const host = request.headers.host || request.hostname;
     const redirectUri = `${request.protocol}://${host}/api/auth/${encodeURIComponent(name)}/callback`;
 
@@ -283,6 +288,12 @@ export async function authRoutes(app: FastifyInstance) {
         delete rawEntry.pendingCodeVerifier;
         saveRawConfig(configPath, raw);
       }
+      // Also clean from auth-storage
+      const currentAuth = getAuthConfig(name);
+      if (currentAuth) {
+        const { pendingCodeVerifier: _, ...rest } = currentAuth;
+        setAuthConfig(name, rest);
+      }
 
       if (!tokenResponse.ok) {
         const errText = await tokenResponse.text();
@@ -304,6 +315,7 @@ export async function authRoutes(app: FastifyInstance) {
       if (rawEntry) {
         rawEntry.accessToken = accessToken;
         saveRawConfig(configPath, raw);
+        setAuthConfig(name, { accessToken });
       }
 
       // Test the MCP now that it has a token, cache result, and broadcast

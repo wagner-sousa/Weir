@@ -48,7 +48,8 @@ Existing users who have OAuth2 data in their `.mcp.json` must have their data au
 
 - What happens if `.mcp-auth.json` is corrupted or unreadable? → The system logs a warning and treats the MCP as unauthenticated (no token). The `.mcp.json` inline fields are treated as fallback.
 - What happens when `.mcp-auth.json` has data for an MCP that no longer exists in `.mcp.json`? → Orphaned entries are ignored.
-- What happens if the migration writes both files and the write to `.mcp-auth.json` fails? → The operation is rolled back (token stays in `.mcp.json`).
+- What happens if the migration writes both files and the write to `.mcp-auth.json` fails? → The operation is rolled back (token stays in `.mcp.json`). Migration is one-way — once `.mcp.json` is stripped, subsequent runs are idempotent.
+- What happens if `.mcp.json` has partial OAuth data (e.g., accessToken present but no auth)? → The migration copies only the fields that exist. Partial data is still migrated. Missing optional fields (like clientSecret) are omitted.
 - What happens if `.mcp-auth.json` is world-readable? → The file should have restricted permissions (0600) since it contains secrets.
 - What happens to the `pendingCodeVerifier` field? → Also moved to `.mcp-auth.json` as it is OAuth2-internal state.
 
@@ -66,6 +67,7 @@ Existing users who have OAuth2 data in their `.mcp.json` must have their data au
 - **FR-008**: The `GET /api/mcps` response MUST NOT expose `accessToken` or `auth` fields.
 - **FR-009**: The `.mcp.json` writer MUST strip `accessToken`, `auth`, and `pendingCodeVerifier` fields before writing to `.mcp.json`.
 - **FR-010**: The `.mcp-auth.json` writer MUST NOT include transport configuration (type, command, args, url, env).
+- **FR-011**: Migration operations MUST log warnings and errors to the application log for auditability.
 
 ### Key Entities *(include if feature involves data)*
 

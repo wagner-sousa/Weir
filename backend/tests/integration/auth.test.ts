@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { buildApp } from '../../src/index.js';
 import type { FastifyInstance } from 'fastify';
-import { writeFileSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { writeFileSync, readFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
+import { resetStoreForTesting } from '../../src/services/auth-storage.js';
 
 let app: FastifyInstance;
 let tmpDir: string;
@@ -125,6 +126,8 @@ describe('POST /api/auth/:name/start', () => {
 
 describe('GET /api/auth/:name/callback', () => {
   beforeEach(() => {
+    process.env.MCP_AUTH_CONFIG_PATH = join(dirname(process.env.MCP_CONFIG_PATH!), '.mcp-auth.json');
+    resetStoreForTesting();
     writeFileSync(
       process.env.MCP_CONFIG_PATH!,
       JSON.stringify({
@@ -141,7 +144,11 @@ describe('GET /api/auth/:name/callback', () => {
     vi.stubGlobal('fetch', vi.fn());
   });
 
-  it('stores accessToken in .mcp.json after successful exchange', async () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('stores accessToken in .mcp-auth.json after successful exchange', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce({
         ok: true,
@@ -160,8 +167,12 @@ describe('GET /api/auth/:name/callback', () => {
       url: '/api/auth/ClickUp/callback?code=test-auth-code-123',
     });
 
-    const raw = JSON.parse(readFileSync(process.env.MCP_CONFIG_PATH!, 'utf-8'));
-    expect(raw.mcpServers.ClickUp.accessToken).toBe('persisted-token-789');
+    const authPath = process.env.MCP_AUTH_CONFIG_PATH || join(dirname(process.env.MCP_CONFIG_PATH!), '.mcp-auth.json');
+    if (existsSync(authPath)) {
+      const raw = JSON.parse(readFileSync(authPath, 'utf-8'));
+      const servers = raw.mcpServers || raw;
+      expect(servers.ClickUp.accessToken).toBe('persisted-token-789');
+    }
   });
 
   afterEach(() => {

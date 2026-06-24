@@ -4,6 +4,7 @@ import { writeMCPConfig, addMCPEntry, removeMCPEntry } from '../config/writer.js
 import { TestConnectionRequest } from '../config/schema.js';
 import { testConnection, queryTools } from '../services/mcp-client.js';
 import { getCachedStatus, setCachedStatus, deleteCachedStatus } from '../services/status-cache.js';
+import { getAuthConfig } from '../services/auth-storage.js';
 import { resolve, dirname } from 'node:path';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { broadcast } from './ws.js';
@@ -35,7 +36,8 @@ async function testSingleMCP(name: string): Promise<CachedStatus> {
 
   const raw = existsSync(configPath) ? JSON.parse(readFileSync(configPath, 'utf-8')) : { mcpServers: {} };
   const rawEntry = raw.mcpServers[name];
-  const accessToken: string | undefined = rawEntry?.accessToken;
+  const authConfig = getAuthConfig(name);
+  const accessToken: string | undefined = authConfig?.accessToken || rawEntry?.accessToken;
 
   const connResult = await testConnection({
     type: client.transport as 'stdio' | 'http' | 'sse',
@@ -113,10 +115,14 @@ export async function mcpRoutes(app: FastifyInstance) {
     const configPath = getConfigPath();
     let accessToken: string | undefined;
     if (parsed.data.name) {
-      const raw = existsSync(configPath)
-        ? JSON.parse(readFileSync(configPath, 'utf-8'))
-        : { mcpServers: {} };
-      accessToken = raw.mcpServers[parsed.data.name]?.accessToken;
+      const auth = getAuthConfig(parsed.data.name);
+      accessToken = auth?.accessToken;
+      if (!accessToken) {
+        const raw = existsSync(configPath)
+          ? JSON.parse(readFileSync(configPath, 'utf-8'))
+          : { mcpServers: {} };
+        accessToken = raw.mcpServers[parsed.data.name]?.accessToken;
+      }
     }
 
     const result = await testConnection({ ...parsed.data.transport, accessToken });
@@ -206,7 +212,8 @@ export async function mcpRoutes(app: FastifyInstance) {
     const raw = existsSync(configPath)
       ? JSON.parse(readFileSync(configPath, 'utf-8'))
       : { mcpServers: {} };
-    const accessToken: string | undefined = raw.mcpServers[name]?.accessToken;
+    const authCfg = getAuthConfig(name);
+    const accessToken: string | undefined = authCfg?.accessToken || raw.mcpServers[name]?.accessToken;
 
     const tools = await queryTools(name, {
       type: client.transport as 'stdio' | 'http' | 'sse',
