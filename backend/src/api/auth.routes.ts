@@ -130,6 +130,7 @@ async function testSingleMCPAndBroadcast(name: string): Promise<void> {
       toolCount: cached.toolCount,
     };
     broadcast('status', update);
+    broadcast('config:changed', { path: getConfigPath() });
   } catch {
     // background test failed silently
   }
