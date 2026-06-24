@@ -351,7 +351,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
               className={`flex-1 rounded px-4 py-2 text-sm font-medium ${
                 !isValid || savePending
                   ? 'cursor-not-allowed bg-gray-200 text-gray-400'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-theme-accent text-gray-900 hover:bg-theme-accent-dark'
               }`}
             >
               {savePending ? 'Saving...' : 'Save'}

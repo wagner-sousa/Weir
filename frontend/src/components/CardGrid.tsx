@@ -94,7 +94,7 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
         </p>
         <button
           onClick={() => setModalOpen(true)}
-          className="mt-4 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="mt-4 rounded bg-theme-accent px-4 py-2 text-sm font-medium text-gray-900 hover:bg-theme-accent-dark"
         >
           Add MCP
         </button>
@@ -112,7 +112,7 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
       <div className="mb-4 flex justify-end">
         <button
           onClick={() => setModalOpen(true)}
-          className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded bg-theme-accent px-4 py-2 text-sm font-medium text-gray-900 hover:bg-theme-accent-dark"
         >
           Add MCP
         </button>
