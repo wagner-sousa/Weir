@@ -12,3 +12,6 @@ Thumbs.db
 .vscode/
 .idea/
 coverage/
+analysis-fixes.md
+analysis-report.md
+plan-args.md
