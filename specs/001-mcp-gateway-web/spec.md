@@ -1,10 +1,12 @@
 # Especificacao: Hub/Gateway MCP com Visualizacao Web
 
-**Branch**: `001-mcp-gateway-web`
+**Branch**: `main`
 
 **Criado em**: 2026-06-19
 
-**Status**: Draft
+**Ultima atualizacao**: 2026-06-24
+
+**Status**: Implemented
 
 **Entrada**: "Vamos criar um hub/gateway de mcps com visualizacao web. A princípio vamos usar os mesmo padrao de arquivo mcp (.mcp.json) para o caso do modo de utilizacao com docker, o usuario deve colocar apenas o arquivo de configuracao do mcp como volume. A apresentacao sera em cards, um por mcp, 3 por linha. O titulo do card sera o titulo do mcp no arquivo. Deve informar o tipo (http/stdio, tem outros tipos?), A listagem sera atualizada conforme a atualizacao do arquivo. A tela ira apenas listar os mcps." + "Migrar frontend para Tailwind CSS v4 com sistema de design temático, substituir toast customizado por sonner, substituir fetch nativo por ofetch, implementar variantes de badge e indicadores de conexao."
 
@@ -136,7 +138,6 @@ Como usuario do Weir, quero que a interface carregue os dados dos servidores MCP
 ## Fora de Escopo (v1)
 
 As seguintes funcionalidades NAO serao implementadas nesta versao:
-- Edicao, adicao ou remocao de MCPs pela interface web
 - Iniciar, parar ou reiniciar servidores MCP
 - Gerenciamento de configuracoes (alterar parametros, tipos de transporte)
 - Autenticacao ou multiusuario
