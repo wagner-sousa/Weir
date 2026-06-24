@@ -15,7 +15,7 @@ describe('MCPCard', () => {
     expect(screen.getByText('filesystem')).toBeInTheDocument();
   });
 
-  it('renders the transport type badge', () => {
+  it('renders the transport type badge via Badge component', () => {
     render(<MCPCard client={mockClient} />);
     expect(screen.getByText('stdio')).toBeInTheDocument();
   });

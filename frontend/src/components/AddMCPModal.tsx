@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useTestConnection, useAddMCP, useUpdateMCP } from '../hooks/useMCPs';
-import { showToast } from './Toast';
+import { toast } from 'sonner';
 import type { TransportConfig, MCPClient, TestConnectionResult } from '../services/api';
 
 interface EnvVar {
@@ -158,18 +158,18 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
         transport,
       });
       if (result.success) {
-        showToast(`MCP "${trimmedName}" updated successfully.`, 'success');
+        toast.success(`MCP "${trimmedName}" updated successfully.`);
         onClose();
       } else {
-        showToast(result.error || 'Error updating MCP.', 'error');
+        toast.error(result.error || 'Error updating MCP.');
       }
     } else {
       const result = await addMutation.mutateAsync({ name: trimmedName, transport });
       if (result.success) {
-        showToast(`MCP "${trimmedName}" added successfully.`, 'success');
+        toast.success(`MCP "${trimmedName}" added successfully.`);
         onClose();
       } else {
-        showToast(result.error || 'Error adding MCP.', 'error');
+        toast.error(result.error || 'Error adding MCP.');
       }
     }
   }

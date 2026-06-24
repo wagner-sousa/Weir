@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import type { MCPClient } from '../services/api';
 import { MCPCard } from './MCPCard';
 import { AddMCPModal } from './AddMCPModal';
 import { useTestConnection } from '../hooks/useMCPs';
-import { showToast } from './Toast';
 
 interface CardGridProps {
   clients: MCPClient[];
@@ -37,10 +37,10 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
       const data = await res.json();
 
       if (data.warning) {
-        showToast(data.warning, 'error');
+        toast.warning(data.warning);
       }
       if (data.error) {
-        showToast(data.error, 'error');
+        toast.error(data.error);
       }
 
       if (!data.url) {
@@ -49,13 +49,12 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
 
       const popup = window.open('', '_blank', 'width=600,height=700');
       if (!popup) {
-        showToast('Popup blocked. Please allow popups for this site.', 'error');
+        toast.error('Popup blocked. Please allow popups for this site.');
         return;
       }
 
       popup.location.href = data.url;
 
-      // Monitor popup close
       const timer = setInterval(() => {
         if (popup.closed) {
           clearInterval(timer);
@@ -63,7 +62,7 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
         }
       }, 500);
     } catch {
-      showToast('Failed to start OAuth2 authorization.', 'error');
+      toast.error('Failed to start OAuth2 authorization.');
     }
   }
 
@@ -78,9 +77,9 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
     };
     const result = await testMutation.mutateAsync({ transport });
     if (result.success) {
-      showToast(`MCP "${client.name}" connected successfully.`, 'success');
+      toast.success(`MCP "${client.name}" connected successfully.`);
     } else {
-      showToast(`MCP "${client.name}" connection failed: ${result.error}`, 'error');
+      toast.error(`MCP "${client.name}" connection failed: ${result.error}`);
     }
     setReconnectingName(null);
     queryClient.invalidateQueries({ queryKey: ['mcps'] });
@@ -89,8 +88,8 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
   if (clients.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <p className="text-lg text-gray-500">No MCPs configured.</p>
-        <p className="mt-1 text-sm text-gray-400">
+        <p className="text-lg text-theme-muted">No MCPs configured.</p>
+        <p className="mt-1 text-sm text-theme-muted">
           Create a .mcp.json file with MCP servers to get started.
         </p>
         <button
