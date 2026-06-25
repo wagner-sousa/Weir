@@ -46,7 +46,7 @@ The modal's "Test Connection" is a pre-save validation, not a persistent session
 
 **Considerations**:
 - stdio: spawn process, pipe JSON-RPC messages, parse response
-- http/sse: send JSON-RPC over HTTP/SSE stream
+- http/sse: send JSON-RPC over HTTP
 - Timeout for tool query: 10s (matching SC-006)
 
 ## 4. Default Connection Timeout

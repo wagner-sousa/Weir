@@ -20,16 +20,16 @@ docker compose up
 ### 1. Add MCP via Modal
 
 1. Open the Weir dashboard (http://localhost:5173 in dev, http://localhost:3000 in prod)
-2. Click the "Adicionar MCP" button at top right
+2. Click the "Add MCP" button at top right
 3. Select transport type "stdio"
-4. Fill "Comando" with `npx`, "Argumentos" with `-y @modelcontextprotocol/server-filesystem /tmp`
-5. Click "Testar Conexão" — verify success indicator
-6. Click "Salvar" — verify success toast and card appears in grid
+4. Fill "Command" with `npx`, "Arguments" with `-y @modelcontextprotocol/server-filesystem /tmp`
+5. Click "Test Connection" — verify success indicator
+6. Click "Save" — verify success toast and card appears in grid
 7. Verify `.mcp.json` now contains the new entry (flat format)
 
 ### 2. Remove MCP
 
-1. On the MCP card just created, click "Remover" in the card footer
+1. On the MCP card just created, click "Remove" in the card footer
 2. Verify success toast "removido" appears
 3. Verify card is removed from grid
 4. Verify `.mcp.json` no longer contains the entry
@@ -44,35 +44,35 @@ docker compose up
 ### 4. Tool Count Badge
 
 1. After adding a valid MCP (e.g., filesystem server), wait for connection
-2. Verify card footer shows a badge with tool count (e.g., "5 ferramentas")
+2. Verify card footer shows a badge with tool count (e.g., "5 tools")
 
 ### 5. Modal Validation
 
-1. Open "Adicionar MCP" modal
+1. Open "Add MCP" modal
 2. Select "http" transport type
-3. Verify "Comando" field is hidden and "URL" field is shown
-4. Click "Salvar" with empty URL — verify validation error
+3. Verify "Command" field is hidden and "URL" field is shown
+4. Click "Save" with empty URL — verify validation error
 5. Fill invalid URL (e.g., "not-a-url") — verify validation error
 
 ### 6. Modal Close & Confirmation
 
-1. Open "Adicionar MCP" modal and start a connection test
-2. Attempt to close the browser tab — verify `beforeunload` warning "Alterações não salvas serão perdidas. Continuar?"
+1. Open "Add MCP" modal and start a connection test
+2. Attempt to close the browser tab — verify `beforeunload` warning "Unsaved changes will be lost. Continue?"
 3. Dismiss warning — verify modal stays open
 4. Close the modal via the X button — no confirmation dialog (only beforeunload protects during test)
 
 ### 7. Args Field
 
-1. Open "Adicionar MCP" modal, select "stdio"
-2. In the "Argumentos" field, type `-y @modelcontextprotocol/server-filesystem /tmp`
+1. Open "Add MCP" modal, select "stdio"
+2. In the "Arguments" field, type `-y @modelcontextprotocol/server-filesystem /tmp`
 3. Verify args are space-separated (no chip/tag UI)
 4. Save — verify `.mcp.json` contains `"args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]`
 
 ### 8. Environment Variables (stdio)
 
-1. Open "Adicionar MCP" modal, select "stdio"
+1. Open "Add MCP" modal, select "stdio"
 2. Verify env section is visible below args
-3. Click "+ Adicionar variável" — verify two fields appear (variable name + value)
+3. Click "+ Add variable" — verify two fields appear (variable name + value)
 4. Fill name "MY_TOKEN" and value "secret123"
 5. Add another variable "DEBUG" with value "true"
 6. Verify both rows are shown with inline editing
@@ -96,12 +96,12 @@ docker compose up
 ### 11. Card Footer Layout
 
 1. Add any MCP that connects successfully
-2. Verify footer order: tool count badge (left), Remover (right)
+2. Verify footer order: tool count badge (left), Remove (right)
 
 ### 12. File Permission Errors
 
 1. Make `.mcp.json` read-only: `chmod 444 .mcp.json`
-2. Try to add a new MCP — verify toast "Erro ao adicionar MCP"
+2. Try to add a new MCP — verify toast "Error adding MCP"
 3. Restore permissions: `chmod 644 .mcp.json`
 
 ### 13. Malformed .mcp.json on Load
@@ -123,6 +123,19 @@ docker compose up
 1. Open two browser tabs to the dashboard
 2. Add/remove MCPs in one tab
 3. Verify the other tab receives status updates via SSE within 30s
+
+### 16. Demo Servers
+
+The `backend/src/examples/` directory contains 5 standalone MCP servers for testing:
+
+| File | Transport | Port | Run |
+|------|-----------|------|-----|
+| `stdio-server.ts` | stdio | N/A | `npx tsx backend/src/examples/stdio-server.ts` |
+| `http-server.ts` | http | 3101 | `npx tsx backend/src/examples/http-server.ts` |
+| `sse-server.ts` | sse | 3102 | `npx tsx backend/src/examples/sse-server.ts` |
+| `oauth-server.ts` | oauth | 3103 | `npx tsx backend/src/examples/oauth-server.ts` |
+
+Each server implements a basic MCP `initialize` handler and exposes at least one tool via `tools/list`.
 
 ## Expected Outcomes
 

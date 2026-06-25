@@ -218,7 +218,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
               onChange={(e) => handleTypeChange(e.target.value as 'stdio' | 'http' | 'sse')}
               className="w-full rounded border border-theme-border bg-theme-bg px-3 py-2 text-sm text-theme-text"
             >
-              <option value="stdio">stdio</option>
+              <option value="stdio">STDIO</option>
               <option value="http">HTTP</option>
               <option value="sse">SSE</option>
             </select>
