@@ -20,10 +20,10 @@ interface StatusIcon {
 }
 
 const statusIcons: Record<string, StatusIcon> = {
-  connected: { icon: <CircleCheck className="h-5 w-5" />, color: 'bg-green-400 text-white', label: 'Connected' },
-  error: { icon: <CircleX className="h-5 w-5" />, color: 'bg-red-500 text-white', label: 'Error' },
-  connecting: { icon: <LoaderCircle className="h-5 w-5 animate-spin" />, color: 'bg-yellow-500 text-white', label: 'Connecting...' },
-  disconnected: { icon: <Circle className="h-5 w-5" />, color: 'bg-gray-400 text-white', label: 'Disconnected' },
+  connected: { icon: <CircleCheck className="h-5 w-5" />, color: 'text-green-500', label: 'Connected' },
+  error: { icon: <CircleX className="h-5 w-5" />, color: 'text-red-500', label: 'Error' },
+  connecting: { icon: <LoaderCircle className="h-5 w-5 animate-spin" />, color: 'text-yellow-500', label: 'Connecting...' },
+  disconnected: { icon: <Circle className="h-5 w-5" />, color: 'text-gray-400', label: 'Disconnected' },
 };
 
 const transportVariant: Record<string, string> = {
@@ -45,7 +45,7 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removin
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span
-            className={`inline-flex items-center justify-center rounded-full p-1 ${si.color}`}
+            className={si.color}
             aria-label={si.label}
             title={client.error ? `${si.label}: ${client.error}` : si.label}
           >
