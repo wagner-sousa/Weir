@@ -5,6 +5,7 @@ import type { MCPClient } from '../services/api';
 import { MCPCard } from './MCPCard';
 import { AddMCPModal } from './AddMCPModal';
 import { useTestConnection } from '../hooks/useMCPs';
+import { Plus } from 'lucide-react';
 
 interface CardGridProps {
   clients: MCPClient[];
@@ -94,9 +95,11 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
         </p>
         <button
           onClick={() => setModalOpen(true)}
-          className="mt-4 rounded bg-theme-accent px-4 py-2 text-sm font-medium text-gray-900 hover:bg-theme-accent-dark"
+          className="mt-4 rounded bg-theme-accent p-2 text-gray-900 hover:bg-theme-accent-dark"
+          title="Add MCP"
+          aria-label="Add MCP"
         >
-          Add MCP
+          <Plus className="h-5 w-5" />
         </button>
         <AddMCPModal
           open={modalOpen}
@@ -112,9 +115,11 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
       <div className="mb-4 flex justify-end">
         <button
           onClick={() => setModalOpen(true)}
-          className="rounded bg-theme-accent px-4 py-2 text-sm font-medium text-gray-900 hover:bg-theme-accent-dark"
+          className="rounded bg-theme-accent p-2 text-gray-900 hover:bg-theme-accent-dark"
+          title="Add MCP"
+          aria-label="Add MCP"
         >
-          Add MCP
+          <Plus className="h-5 w-5" />
         </button>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
