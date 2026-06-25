@@ -189,7 +189,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
           <h2 className="text-lg font-bold text-theme-text">{isEditing ? 'Edit MCP' : 'Add MCP'}</h2>
           <button
             onClick={onClose}
-            className="rounded p-1 text-theme-muted hover:bg-theme-border hover:text-theme-text"
+            className="rounded p-3 text-theme-muted hover:bg-theme-border hover:text-theme-text"
             aria-label="Close"
           >
             &times;
