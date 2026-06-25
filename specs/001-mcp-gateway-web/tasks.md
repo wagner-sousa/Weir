@@ -10,6 +10,8 @@ description: "Task list for MCP Gateway Web (Weir)"
 
 **Prerequisites**: plan.md (required), spec.md (required), research.md, data-model.md, contracts/api.md
 
+**Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
+
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
 ## Format: `[ID] [P?] [Story] Description`
@@ -37,6 +39,7 @@ description: "Task list for MCP Gateway Web (Weir)"
 - [x] T006 [P] Install all dependencies via docker compose -f docker-compose.dev.yml run --rm setup
 - [x] T007 Create .gitignore with node_modules/, dist/, .env, coverage/
 - [x] T008 Create .dockerignore with node_modules/, .git, coverage/, frontend/node_modules/
+- [x] T046 Create .env.example and .env with all configuration parameters (MCP_CONFIG_PATH, PORT) in project root
 
 ---
 
@@ -46,10 +49,10 @@ description: "Task list for MCP Gateway Web (Weir)"
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
+- [x] T047 Write unit tests for schema and loader in backend/tests/unit/schema.test.ts and backend/tests/unit/loader.test.ts
 - [x] T009 Create Zod schema for .mcp.json in backend/src/config/schema.ts
 - [x] T010 [P] Create TypeScript types inferred from schema in backend/src/config/types.ts
 - [x] T011 Create .mcp.json loader + validator in backend/src/config/loader.ts
-- [x] T012 [P] Write unit tests for schema and loader in backend/tests/unit/schema.test.ts and backend/tests/unit/loader.test.ts
 - [x] T013 Create Fastify server entry point in backend/src/index.ts (basic server, graceful shutdown)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
@@ -84,6 +87,19 @@ description: "Task list for MCP Gateway Web (Weir)"
 - [x] T028 [US1] Create main.tsx entry point in frontend/src/main.tsx
 - [x] T029 [US1] Configure Tailwind CSS with theme colors in frontend/src/styles.css
 - [x] T030 [US1] Configure frontend build output to backend/src/web/ in frontend/vite.config.ts
+
+### Badge System, Connection Indicator & Loading (US4/US6)
+
+- [x] T048 [P] [US4] Implement Badge component with 6 semantic variants in frontend/src/components/Badge.tsx (default, secondary, destructive, success, warning, outline)
+- [x] T049 [P] [US4] Implement ConnectionIndicator component in frontend/src/components/ConnectionIndicator.tsx (green dot for online, red dot for offline)
+- [x] T050 [P] [US4] Integrate Badge and ConnectionIndicator into MCPCard component
+- [x] T051 [P] [US6] Create LoadingSpinner component in frontend/src/components/LoadingSpinner.tsx
+
+### Toast Notification System (US5 - P2)
+
+- [x] T052 [P] [US5] Integrate sonner Toaster in frontend/src/main.tsx (positioned bottom-right, auto-dismiss 3s)
+- [x] T053 [P] [US5] Create notification service wrapper in frontend/src/services/notifications.ts (success/green, error/red, info/blue)
+- [x] T054 [US5] Wire error notifications into API client service (show toast on HTTP failures)
 
 **Checkpoint**: User Story 1 should be fully functional -- acessar http://localhost:3000 mostra cartoes
 
@@ -141,6 +157,9 @@ description: "Task list for MCP Gateway Web (Weir)"
 - [x] T043 [P] Add error handling for JSON parse failures in .mcp.json loader (implementado em loader.ts)
 - [x] T044 [P] Add logging (pino) for file changes, API requests, and errors (implementado em index.ts via Fastify logger + watcher log)
 - [x] T045 Run quickstart.md validation scenarios (cenarios 1-6) — requer ambiente Docker funcional
+- [x] T055 [P] [US3] Handle .mcp.json deletion during runtime in watcher - broadcast deletion event and show "arquivo nao encontrado" in UI
+- [x] T056 [P] Add descriptive startup error messages in backend/src/index.ts (port occupied, permission denied, file not found)
+- [x] T057 [P] Add responsive design test for minimum viewport width (320px)
 
 ---
 
@@ -153,28 +172,69 @@ description: "Task list for MCP Gateway Web (Weir)"
 - **US1 (Phase 3)**: Depends on Foundational
 - **US2 (Phase 4)**: Depends on US1 (Docker precisa do app funcionando)
 - **US3 (Phase 5)**: Depends on US1 (watcher + WS integram com o backend)
-- **Polish (Phase 6)**: Depends on all user stories
+- **Polish & Remediation (Phase 6)**: Depends on all user stories
 
 ### Parallel Opportunities
 
-- T002, T003, T004, T005, T006, T007, T008 can run in parallel (Phase 1)
-- T010, T012 can run in parallel (Phase 2)
+- T002, T003, T004, T005, T006, T007, T008, T046 can run in parallel (Phase 1)
+- T047 must run before T009, T010, T011 (Test-First)
 - T014, T015, T016, T017 can run in parallel (Phase 3 tests)
-- T019, T021, T022, T023, T024, T025, T026 can run in parallel (Phase 3 impl)
+- T019, T021, T022, T023, T024, T025, T026, T048, T049, T050, T051 can run in parallel (Phase 3 impl)
+- T052, T053, T054 can run in parallel (Phase 3 toasts)
 - T031 can run alone (Phase 4)
 - T035, T036 can run in parallel (Phase 5 tests)
+- T055, T056, T057 can run in parallel (Phase 6)
 
-### Implementation Strategy
+---
 
-**MVP (US1 only)**:
+## Parallel Example: User Story 1
+
+```bash
+# Launch all tests for User Story 1 together:
+Task: "Write contract test for GET /api/mcps in backend/tests/unit/mcp.routes.test.ts"
+Task: "Write integration test for API + loader in backend/tests/integration/api.test.ts"
+Task: "Write component test for MCPCard in frontend/tests/components/MCPCard.test.tsx"
+Task: "Write component test for CardGrid in frontend/tests/components/CardGrid.test.tsx"
+
+# Launch all UI components together:
+Task: "Create MCPCard component in frontend/src/components/MCPCard.tsx"
+Task: "Create CardGrid component in frontend/src/components/CardGrid.tsx"
+Task: "Create EmptyState component in frontend/src/components/EmptyState.tsx"
+Task: "Create ErrorState component in frontend/src/components/ErrorState.tsx"
+Task: "Implement Badge component with 6 semantic variants in frontend/src/components/Badge.tsx"
+Task: "Implement ConnectionIndicator component in frontend/src/components/ConnectionIndicator.tsx"
+Task: "Create LoadingSpinner component in frontend/src/components/LoadingSpinner.tsx"
+```
+
+---
+
+## Implementation Strategy
+
+### MVP First (User Story 1 Only)
+
 1. Phase 1: Setup
-2. Phase 2: Foundational
-3. Phase 3: US1 (Web mode - core functionality)
+2. Phase 2: Foundational (Test-First: T047 before T009)
+3. Phase 3: US1 (Web mode - core functionality + badges + toasts + loading)
 4. **STOP and VALIDATE**: Test US1 independently
 
-**Incremental Delivery**:
+### Incremental Delivery
+
 1. Setup + Foundational → Foundation ready
-2. Add US1 (Web mode) → Test independently → MVP!
+2. Add US1 (Web mode + badges + toasts + loading) → Test independently → MVP!
 3. Add US2 (Docker) → Test independently
-4. Add US3 (Auto-refresh) → Test independently
-5. Polish
+4. Add US3 (Auto-refresh + deletion handling) → Test independently
+5. Polish (terminal errors, responsive test)
+
+---
+
+## Notes
+
+- [P] tasks = different files, no dependencies
+- [Story] label maps task to specific user story for traceability
+- Each user story should be independently completable and testable
+- Verify tests fail before implementing (Test-First)
+- Commit after each task or logical group
+- Stop at any checkpoint to validate story independently
+- Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
+- T046 creates .env.example per Constitution Workflow #7
+- T047 before T009 enforces Test-First (Constitution Principle II)

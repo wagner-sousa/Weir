@@ -1,4 +1,5 @@
 import type { MCPClient } from '../services/api';
+import { Badge } from './Badge';
 import { ShieldAlert, CircleCheck, CircleX, LoaderCircle, Circle, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 
@@ -11,13 +12,6 @@ interface MCPCardProps {
   removing?: boolean;
   reconnecting?: boolean;
 }
-
-const badgeColors: Record<string, string> = {
-  stdio: 'bg-blue-100 text-blue-800',
-  http: 'bg-green-100 text-green-800',
-  sse: 'bg-purple-100 text-purple-800',
-  unknown: 'bg-gray-100 text-gray-800',
-};
 
 interface StatusIcon {
   icon: ReactNode;
@@ -34,15 +28,21 @@ const statusIcons: Record<string, StatusIcon> = {
   unknown: { icon: <Circle className="h-5 w-5" />, color: 'text-gray-400', label: 'Unknown' },
 };
 
+const transportVariant: Record<string, string> = {
+  stdio: 'secondary',
+  http: 'success',
+  sse: 'default',
+};
+
 export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removing, reconnecting }: MCPCardProps) {
-  const badgeClass = badgeColors[client.transport] || badgeColors.unknown;
   const status = client.status || 'disconnected';
   const si = statusIcons[status] || statusIcons.disconnected;
+  const variant = transportVariant[client.transport] || 'outline';
 
   return (
     <div
       data-testid="mcp-card"
-      className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+      className="rounded-lg border border-theme-border bg-theme-panel p-4 shadow-sm transition-shadow hover:shadow-md"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -53,17 +53,13 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removin
           >
             {si.icon}
           </span>
-          <h3 className="text-lg font-semibold text-gray-900">{client.name}</h3>
+          <h3 className="text-lg font-semibold text-theme-text">{client.name}</h3>
         </div>
         <div className="flex items-center gap-2">
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs font-medium uppercase ${badgeClass}`}
-          >
-            {client.transport}
-          </span>
+          <Badge variant={variant} label={client.transport} />
           {client.toolCount !== undefined && (
             <span
-              className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"
+              className="rounded-full bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-300"
               title={client.toolCount === 0 ? 'No tools available' : `${client.toolCount} tools`}
             >
               {client.toolCount === 0 && (status === 'unknown' || status === 'testing') ? '?' : client.toolCount}
@@ -72,13 +68,13 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removin
         </div>
       </div>
       {client.command && (
-        <p className="mt-2 text-sm text-gray-500">
-          <span className="font-medium">Command:</span> {client.command}
+        <p className="mt-2 text-sm text-theme-muted">
+          <span className="font-medium text-theme-text">Command:</span> {client.command}
         </p>
       )}
       {client.url && (
-        <p className="mt-2 text-sm text-gray-500">
-          <span className="font-medium">URL:</span> {client.url}
+        <p className="mt-2 text-sm text-theme-muted">
+          <span className="font-medium text-theme-text">URL:</span> {client.url}
         </p>
       )}
       {client.error && (
@@ -86,13 +82,13 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removin
           {client.error}
         </p>
       )}
-      <div className="mt-3 flex justify-end gap-2 border-t border-gray-100 pt-2">
+      <div className="mt-3 flex justify-end gap-2 border-t border-theme-border pt-2">
         {client.needsAuth && client.authUrl && (
           <button
             onClick={() => onAuth?.(client)}
             aria-label="Authorize MCP"
             title="OAuth2 authorization required"
-            className="rounded p-1.5 text-amber-500 hover:bg-amber-50 hover:text-amber-700"
+            className="rounded p-1.5 text-amber-500 hover:bg-amber-600/20 hover:text-amber-400"
           >
             <ShieldAlert className="h-4 w-4" />
           </button>
@@ -100,7 +96,7 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removin
         <button
           onClick={() => onEdit?.(client)}
           aria-label="Edit MCP"
-          className="rounded p-1.5 text-gray-400 hover:bg-blue-50 hover:text-blue-600"
+          className="rounded p-1.5 text-gray-400 hover:bg-blue-600/20 hover:text-blue-400"
         >
           <Pencil className="h-4 w-4" />
         </button>
@@ -108,7 +104,7 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removin
           onClick={() => onReconnect?.(client)}
           disabled={reconnecting}
           aria-label="Reconnect MCP"
-          className="rounded p-1.5 text-gray-400 hover:bg-green-50 hover:text-green-600 disabled:opacity-50"
+          className="rounded p-1.5 text-gray-400 hover:bg-green-600/20 hover:text-green-400 disabled:opacity-50"
         >
           {reconnecting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
         </button>
@@ -116,7 +112,7 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removin
           onClick={() => onRemove?.(client.name)}
           disabled={removing}
           aria-label="Remove MCP"
-          className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+          className="rounded p-1.5 text-gray-400 hover:bg-red-600/20 hover:text-red-400 disabled:opacity-50"
         >
           {removing ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
         </button>
