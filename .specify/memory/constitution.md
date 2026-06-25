@@ -5,16 +5,18 @@
   Modified principles: None (principles unchanged)
   Added sections:
     - Principle VII: Dependency First (prefer Node libraries over custom code)
+    - Principle VIII: Icon-First Buttons (Non-Form)
   Removed sections: None
   Modified sections: None
   Templates requiring updates:
-    - .specify/templates/plan-template.md: ✅ No principle-specific content — no change needed
-    - .specify/templates/spec-template.md: ✅ No principle-specific content — no change needed
-    - .specify/templates/tasks-template.md: ✅ No principle-specific content — no change needed
-    - .specify/templates/checklist-template.md: ✅ No principle-specific content — no change needed
+    - .specify/templates/plan-template.md: ⚠ pending — add VII row to Constitution Check table
+    - .specify/templates/spec-template.md: ✅ no change needed
+    - .specify/templates/tasks-template.md: ✅ no change needed
+    - .specify/templates/checklist-template.md: ✅ no change needed
     - .specify/templates/constitution-template.md: ✅ Template is source — no change needed
   Documentation requiring updates: None
-  Follow-up TODOs: None
+  Follow-up TODOs:
+    - Update plan-template.md Constitution Check table with VII
 -->
 
 # Weir Constitution
@@ -83,6 +85,16 @@ Rationale: proven libraries have fewer bugs, better performance,
 community support, and security audits than custom code. Every
 new npm dependency MUST be justified in the pull request.
 
+### VIII. Icon-First Buttons (Non-Form)
+
+Actionable controls outside form contexts MUST prioritise
+icons over text labels. Every icon-only button MUST include
+a tooltip describing its function or action. Text labels
+remain acceptable inside forms (e.g., "Test Connection",
+"Save") where clarity is paramount. Exceptions for non-form
+buttons that are inherently ambiguous without text require
+explicit approval.
+
 ## Stack Tecnologica
 
 **Backend**: Node.js >=22 (ESM), TypeScript 5.7+, Fastify 5
@@ -141,4 +153,4 @@ Every PR review MUST verify compliance with the principles
 defined herein. Omissions shall be resolved by the general
 principles of simplicity and developer experience.
 
-**Version**: 1.6.0 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-06-23
+**Version**: 1.7.0 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-06-25

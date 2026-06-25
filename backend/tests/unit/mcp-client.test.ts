@@ -246,4 +246,5 @@ describe('queryTools', () => {
     expect(Array.isArray(result)).toBe(true);
     expect(result).toHaveLength(0);
   });
+
 });

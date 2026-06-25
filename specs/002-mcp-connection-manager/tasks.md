@@ -46,7 +46,6 @@ description: "Task list for MCP Connection Manager feature"
 
 - [x] T003 [P] Unit test for writer.ts — `writeMCPConfig`, `addMCPEntry`, `removeMCPEntry` in `backend/tests/unit/writer.test.ts`
 - [x] T004 [P] Unit test for mcp-client.ts — `testConnection` (stdio + http/sse), `queryTools` in `backend/tests/unit/mcp-client.test.ts`
-
 ### Implementation for Foundational Phase
 
 - [x] T005 [P] Create `backend/src/config/writer.ts` with `addMCPEntry(config, name, entry)`, `removeMCPEntry(config, name)`, `writeMCPConfig(filePath, config)` — handle file read/write, pretty-print, error handling for permission errors
@@ -54,7 +53,7 @@ description: "Task list for MCP Connection Manager feature"
 - [x] T007 Extend `backend/src/services/mcp-client.ts` with `queryTools(transport, timeout)` — MCP `initialize` + `tools/list` JSON-RPC handshake, return `{ tools: ToolInfo[], count: number }`
 - [x] T008 [P] Add Zod schema for test-connection request/response in `backend/src/config/schema.ts` (reuse existing transport schema)
 
-**Checkpoint**: Foundation ready - writer and MCP client services operational
+**Checkpoint**: Foundation ready — writer and MCP client services operational
 
 ---
 
@@ -78,7 +77,6 @@ description: "Task list for MCP Connection Manager feature"
 - [x] T015 [US1] Extend `frontend/src/hooks/useMCPs.ts` with `useAddMCP` mutation (invalidates query on success, shows toast via callback)
 - [x] T016 [US1] Add "Add MCP" button to `frontend/src/components/CardGrid.tsx` at top right, wire to open AddMCPModal
 - [x] T017 [US1] Add toast notification system for add success (auto-dismiss 3s, stackable, clickable to dismiss) in `frontend/src/components/Toast.tsx`
-
 **Checkpoint**: User can add MCPs via modal with connection test — MVP functional
 
 ---
@@ -100,6 +98,7 @@ description: "Task list for MCP Connection Manager feature"
 - [x] T021 [US2] Update `frontend/src/components/MCPCard.tsx` — add connection status icon at top right (green checkmark / red X, amber/yellow spinner for "connecting", muted/gray for "disconnected"), tooltip on hover for failure reason, "Reconnect" button in footer that re-triggers connection and updates status, tool count badge shows "?" when disconnected, all icons have `aria-label` for screen readers
 - [x] T022 [US2] Extend `frontend/src/services/api.ts` with `getMCPTools(name)` function
 - [x] T023 [US2] Extend `frontend/src/hooks/useMCPs.ts` with SSE subscription (`EventSource`) for real-time status updates from `GET /api/mcps/events`
+- [x] T044 [US2] Update connection status icon colors in `frontend/src/components/MCPCard.tsx` to `bg-green-400 text-white` (connected) and `bg-red-500 text-white` (error), add `rounded-full p-1` wrapper span
 
 **Checkpoint**: User can see connection status per MCP and reconnect on failure
 
@@ -133,12 +132,17 @@ description: "Task list for MCP Connection Manager feature"
 
 - [x] T030 [P] Add toast on duplicate name error (FR-020) — frontend handles 409 from POST /api/mcps
 - [x] T031 [P] Lint and typecheck all new/modified files — `docker compose exec backend npx eslint src tests && docker compose exec backend npx tsc --noEmit` in backend/, `docker compose exec frontend npx eslint src && docker compose exec frontend npx tsc --noEmit` in frontend/
-- [x] T032 [P] Verify toasts display in pt-BR per Constitution III
+- [x] T032 [P] Verify toasts display in English per Constitution III
 - [x] T033 [P] Update `specs/002-mcp-connection-manager/quickstart.md` with validation scenarios
 - [x] T034 [P] Update `docs/architecture.md` and `docs/development.md` with new components and endpoints
 - [x] T035 Run quickstart.md validation — all scenarios pass
 - [x] T036 [P] Add `GET /api/mcps/events` SSE endpoint in `backend/src/api/mcp.routes.ts` — pushes `status` events with `{ name, status, toolCount, error }` payload
 - [x] T037 [P] Add `beforeunload` warning in `frontend/src/components/AddMCPModal.tsx` — warns user if connection test is in progress during page close/refresh
+- [x] T046 [P] Create `backend/src/examples/stdio-server.ts` — child_process with JSON-RPC over stdin/stdout, initialize + tools/list handlers
+- [x] T047 [P] Create `backend/src/examples/http-server.ts` — Fastify server on port 3101, POST /mcp for JSON-RPC, initialize + tools/list
+- [x] T048 [P] Create `backend/src/examples/sse-server.ts` — Fastify server on port 3102, SSE endpoint + POST /messages, initialize + tools/list
+- [x] T049 [P] Create `backend/src/examples/oauth-server.ts` — Fastify on port 3103, mock OAuth2 authorize/token endpoints + /mcp with Bearer auth
+- [x] T050 Quickstart.md validation — scenarios defined, structure verified
 
 ---
 
@@ -169,12 +173,15 @@ description: "Task list for MCP Connection Manager feature"
 
 ### Parallel Opportunities
 
-- T003, T004 (test files) can run in parallel
-- T005, T006 (writer + client services) can run in parallel
+- T003, T004, T038 (test files) can run in parallel
+- T005, T006, T039, T040, T041, T042 (writer + client + schema) can run in parallel
 - T009, T010, T011, T012 (US1 backend routes + tests) can run together
-- US1 frontend (T013-T017) can run after backend routes are settled
+- US1 frontend (T013-T017, T043) can run after backend routes are settled
 - US2 backend (T018-T020) can run in parallel with US1 frontend
+- US2 MCPCard updates (T044, T045) can run in parallel
 - US3 backend (T024, T025) can run independently
+- Demo servers (T046-T050) can all run in parallel
+- T051 and T052 (documentation/validation) run after all implementation
 
 ---
 
@@ -189,6 +196,7 @@ Task: "Add POST /api/mcps route"
 Task: "Create AddMCPModal component"
 Task: "Extend api.ts with testConnection/addMCP"
 Task: "Extend useMCPs.ts with useAddMCP mutation"
+
 ```
 
 ---
@@ -198,8 +206,8 @@ Task: "Extend useMCPs.ts with useAddMCP mutation"
 ### MVP First (User Story 1 Only)
 
 1. Complete Phase 1: Setup (T001-T002)
-2. Complete Phase 2: Foundational (T003-T008)
-3. Complete Phase 3: User Story 1 (T009-T017)
+2. Complete Phase 2: Foundational (T003-T008, T038-T042)
+3. Complete Phase 3: User Story 1 (T009-T017, T043)
 4. **STOP and VALIDATE**: Add an MCP via modal — test connection, save, verify card
 5. Deploy/demo if ready
 
@@ -218,8 +226,9 @@ With multiple developers:
 1. Team completes Setup + Foundational together
 2. Once Foundational is done:
    - Developer A: User Story 1 (modal + add endpoint)
-   - Developer B: User Story 2 (status + reconnect)
+   - Developer B: User Story 2 (status + reconnect + icon colors)
    - Developer C: User Story 3 (remove + tools)
+   - Developer D: Demo servers (T046-T050)
 3. Stories complete and integrate independently
 
 ---
@@ -232,5 +241,6 @@ With multiple developers:
 - Verify tests fail before implementing (Constitution II)
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
-- All toast messages and modal labels must be in pt-BR (Constitution III)
+- All toast messages and modal labels must be in English (Constitution III)
 - .env.example must be updated with new env var (Dev Workflow 7)
+- Demo servers are standalone .ts files runnable via `tsx` — no build step needed
