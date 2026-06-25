@@ -6,6 +6,49 @@ import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { resetStoreForTesting } from '../../src/services/auth-storage.js';
 
+// Mock simple-oauth2 to avoid HTTP calls during tests
+vi.mock('simple-oauth2', () => {
+  const mockAuthorizeURL = vi.fn((opts) => {
+    const params = new URLSearchParams();
+    params.set('response_type', 'code');
+    params.set('client_id', 'test-client-id');
+    if (opts?.redirect_uri) params.set('redirect_uri', opts.redirect_uri);
+    if (opts?.code_challenge) params.set('code_challenge', opts.code_challenge);
+    if (opts?.code_challenge_method) params.set('code_challenge_method', opts.code_challenge_method);
+    if (opts?.scope) params.set('scope', opts.scope);
+    return `https://mcp.clickup.com/oauth/authorize?${params.toString()}`;
+  });
+
+  const mockGetToken = vi.fn(async () => ({
+    token: {
+      access_token: 'test-access-token',
+      refresh_token: 'test-refresh-token',
+      expires_in: 3600,
+    },
+  }));
+
+  const mockCreateToken = vi.fn(() => ({
+    expired: () => false,
+    refresh: async () => ({
+      token: {
+        access_token: 'refreshed-token',
+        refresh_token: 'new-refresh-token',
+        expires_in: 3600,
+      },
+    }),
+    revoke: async () => undefined,
+    token: { access_token: 'test', expires_in: 3600 },
+  }));
+
+  return {
+    AuthorizationCode: vi.fn(() => ({
+      authorizeURL: mockAuthorizeURL,
+      getToken: mockGetToken,
+      createToken: mockCreateToken,
+    })),
+  };
+});
+
 let app: FastifyInstance;
 let tmpDir: string;
 

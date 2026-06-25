@@ -1,0 +1,19 @@
+{
+	"mcpServers.MercadoPago": {
+		"auth": {
+			"clientId": "3264212734835154"
+		},
+		"pendingCodeVerifier": "xeLM0W7_Oka6ihdWHydHx6WGJ7jB5wuQyR6yM4j-6qo",
+		"accessToken": "APP_USR-3264212734835154-062511-85c9b50047651731e73df7ea8cd47747-175916157",
+		"refreshToken": "TG-6a3d4b985a213000012d318f-175916157",
+		"expiresAt": 1782423545195
+	},
+	"mcpServers.ClickUp": {
+		"auth": {
+			"clientId": "mcp-client-Br67AeuTZq2m0x5j"
+		},
+		"pendingCodeVerifier": "umk1pZEP4gmTRkRQ9g__im4vSZbtpV-F1YlpArt5u6I",
+		"accessToken": "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIiwia2lkIjoiMSJ9..h_Oa6A2ew1UtA6XT.PbZfai7wXOZ05Ua-PZLsfP1CmVvkuYMmL_3-dRqMOYJel2voUHaYdqN3kXjgumdPDiJf2BKX0vxGx6N8VwxV--Ae9k6t5pxFw1bNf-vTx3hMRdlTnt3nEd4TBLtzUr9oQ5KiijS4Jay_izwWH4qX8sbSQmrGc7g_52lkTA2x8lTOOb-zZZYLlGwf01F4GYRHY9LE2lLH-i0yw5h4WH-AYPg_YQp8Uvf_tyjEkqPVOpjYPBRBhKlPvgp2vmd-pk7BvYdRthDNQZDnUrNs_elMRuB38OKvJ7uD1L2K2LCdZu1VMWmSND-nczUBo0ZT5Mipa3tqbuCoZIMaApfd71KYd7kQBn7ELRZeLw.LuAE6KS1jQ2Zl22fc1Lk2Q",
+		"expiresAt": 2097761973968
+	}
+}

@@ -4,6 +4,8 @@ import { resolve, dirname } from 'node:path';
 
 interface AuthData {
   accessToken?: string;
+  refreshToken?: string;
+  expiresAt?: number;
   auth?: {
     clientId?: string;
     clientSecret?: string;
@@ -43,7 +45,8 @@ export function getAuthConfig(name: string): AuthData | undefined {
 
 export function setAuthConfig(name: string, data: AuthData): void {
   const store = getStore();
-  store.set(`mcpServers.${name}`, data);
+  const existing = store.get(`mcpServers.${name}`) as AuthData | undefined;
+  store.set(`mcpServers.${name}`, { ...existing, ...data });
 }
 
 export function deleteAuthConfig(name: string): void {

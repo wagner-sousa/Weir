@@ -9,6 +9,8 @@ import { randomBytes, createHash } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import type { CachedStatus, StatusUpdate } from '../config/types.js';
+import { AuthorizationCode } from 'simple-oauth2';
+import type { AuthorizationTokenConfig, Token } from 'simple-oauth2';
 
 function getConfigPath(): string {
   return process.env.MCP_CONFIG_PATH || resolve(process.cwd(), '.mcp.json');
@@ -60,21 +62,71 @@ function saveRawConfig(configPath: string, raw: Record<string, unknown>): void {
   writeMCPConfig(configPath, raw as never);
 }
 
-function generateCodeVerifier(): string {
-  return randomBytes(32)
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
+function createOAuth2Client(
+  clientId: string,
+  clientSecret: string | undefined,
+  authorizationEndpoint: string,
+  tokenEndpoint: string,
+): AuthorizationCode {
+  const authUrl = new URL(authorizationEndpoint);
+  const tokenUrl = new URL(tokenEndpoint);
+
+  return new AuthorizationCode({
+    client: { id: clientId, secret: clientSecret },
+    auth: {
+      authorizeHost: authUrl.origin,
+      authorizePath: authUrl.pathname,
+      tokenHost: tokenUrl.origin,
+      tokenPath: tokenUrl.pathname,
+    },
+    options: {
+      bodyFormat: 'form',
+      authorizationMethod: 'body',
+    },
+  });
 }
 
-function generateCodeChallenge(verifier: string): string {
-  return createHash('sha256')
-    .update(verifier)
-    .digest('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
+async function refreshTokenIfExpired(name: string, clientUrl: string): Promise<void> {
+  const authData = getAuthConfig(name);
+  if (!authData?.refreshToken || !authData.expiresAt) return;
+
+  // Check if token is expired (with 5 min buffer)
+  if (Date.now() < authData.expiresAt - 300_000) return;
+
+  const authConfig = await discoverOAuth2(clientUrl);
+  if (!authConfig) return;
+
+  const clientId = authData.auth?.clientId;
+  if (!clientId) return;
+
+  const oauth2 = createOAuth2Client(
+    clientId,
+    authData.auth?.clientSecret,
+    authConfig.authorizationEndpoint,
+    authConfig.tokenEndpoint,
+  );
+
+  try {
+    const token = oauth2.createToken({
+      access_token: authData.accessToken || '',
+      refresh_token: authData.refreshToken,
+      expires_in: Math.floor((authData.expiresAt - Date.now()) / 1000),
+    });
+
+    if (token.expired()) {
+      const refreshed = await token.refresh();
+      const refreshedData = refreshed.token;
+      setAuthConfig(name, {
+        accessToken: refreshedData.access_token as string,
+        refreshToken: refreshedData.refresh_token as string | undefined,
+        expiresAt: refreshedData.expires_in
+          ? Date.now() + (refreshedData.expires_in as number) * 1000
+          : undefined,
+      });
+    }
+  } catch {
+    // Refresh failed — will try again next time
+  }
 }
 
 async function testSingleMCPAndBroadcast(name: string): Promise<void> {
@@ -83,6 +135,9 @@ async function testSingleMCPAndBroadcast(name: string): Promise<void> {
     const result = loadMCPConfig(configPath);
     const client = result.clients.find((c) => c.name === name);
     if (!client || !client.url) return;
+
+    // Refresh token if expired before testing
+    await refreshTokenIfExpired(name, client.url);
 
     const raw = existsSync(configPath) ? JSON.parse(readFileSync(configPath, 'utf-8')) : { mcpServers: {} };
     const rawEntry = raw.mcpServers[name];
@@ -192,29 +247,37 @@ export async function authRoutes(app: FastifyInstance) {
     }
 
     // Generate PKCE code verifier and challenge
-    const codeVerifier = generateCodeVerifier();
-    const codeChallenge = generateCodeChallenge(codeVerifier);
+    const codeVerifier = randomBytes(32)
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
 
-    // Store code_verifier in the entry for use in the callback
-    const entry: Record<string, unknown> = raw.mcpServers[name] ??= {};
-    entry.pendingCodeVerifier = codeVerifier;
-    saveRawConfig(configPath, raw);
+    const codeChallenge = createHash('sha256')
+      .update(codeVerifier)
+      .digest('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+
+    // Store code_verifier in auth-storage for use in callback
     setAuthConfig(name, { pendingCodeVerifier: codeVerifier });
 
-    const params = new URLSearchParams({
-      response_type: 'code',
+    const oauth2 = createOAuth2Client(
+      clientId,
+      authEntry?.clientSecret,
+      authConfig.authorizationEndpoint,
+      authConfig.tokenEndpoint,
+    );
+
+    const authorizationUri = oauth2.authorizeURL({
       redirect_uri: redirectUri,
+      scope: authConfig.scopesSupported?.join(' ') || undefined,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256',
     });
-    params.set('client_id', clientId);
-    params.set('code_challenge', codeChallenge);
-    params.set('code_challenge_method', 'S256');
-    if (authConfig.scopesSupported && authConfig.scopesSupported.length > 0) {
-      params.set('scope', authConfig.scopesSupported.join(' '));
-    }
 
-    const authUrl = `${authConfig.authorizationEndpoint}?${params.toString()}`;
-
-    return { success: true, url: authUrl };
+    return { success: true, url: authorizationUri };
   });
 
   app.get('/api/auth/:name/callback', async (request, reply) => {
@@ -251,59 +314,43 @@ export async function authRoutes(app: FastifyInstance) {
       );
     }
 
-    // Read raw config for client credentials and PKCE verifier (from auth-storage or .mcp.json fallback)
-    const raw = readRawConfig(configPath);
-    const rawEntry = raw.mcpServers[name] as Record<string, unknown> | undefined;
-    const authCfg = getAuthConfig(name);
-    const authEntry = authCfg?.auth || (rawEntry?.auth as Record<string, string> | undefined);
-    const clientId = authCfg?.auth?.clientId || (rawEntry?.auth as Record<string, string> | undefined)?.clientId || '';
-    const clientSecret = authCfg?.auth?.clientSecret || (rawEntry?.auth as Record<string, string> | undefined)?.clientSecret || '';
-    const codeVerifier = authCfg?.pendingCodeVerifier || (rawEntry?.pendingCodeVerifier as string | undefined);
+    // Read client credentials and PKCE verifier from auth-storage
+    const stored = getAuthConfig(name);
+    const clientId = stored?.auth?.clientId || '';
+    const clientSecret = stored?.auth?.clientSecret || '';
+    const codeVerifier = stored?.pendingCodeVerifier;
     const host = request.headers.host || request.hostname;
     const redirectUri = `${request.protocol}://${host}/api/auth/${encodeURIComponent(name)}/callback`;
 
-    // Exchange authorization code for token
+    // Clean up stored code_verifier
+    if (stored) {
+      const { pendingCodeVerifier: _, ...rest } = stored;
+      setAuthConfig(name, rest);
+    }
+
+    // Exchange authorization code for token using simple-oauth2
     try {
-      const tokenParams: Record<string, string> = {
-        grant_type: 'authorization_code',
+      const oauth2 = createOAuth2Client(
+        clientId,
+        clientSecret || undefined,
+        authConfig.authorizationEndpoint,
+        authConfig.tokenEndpoint,
+      );
+
+      const tokenParams: AuthorizationTokenConfig = {
         code,
         redirect_uri: redirectUri,
-        client_id: clientId,
       };
-      if (clientSecret) {
-        tokenParams.client_secret = clientSecret;
-      }
       if (codeVerifier) {
-        tokenParams.code_verifier = codeVerifier;
+        // simple-oauth2 uses code_verifier in getToken options
+        (tokenParams as Record<string, string>).code_verifier = codeVerifier;
       }
 
-      const tokenResponse = await fetch(authConfig.tokenEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(tokenParams).toString(),
-      });
-
-      // Clean up stored code_verifier regardless of outcome
-      if (rawEntry) {
-        delete rawEntry.pendingCodeVerifier;
-        saveRawConfig(configPath, raw);
-      }
-      // Also clean from auth-storage
-      const currentAuth = getAuthConfig(name);
-      if (currentAuth) {
-        const { pendingCodeVerifier: _, ...rest } = currentAuth;
-        setAuthConfig(name, rest);
-      }
-
-      if (!tokenResponse.ok) {
-        const errText = await tokenResponse.text();
-        return reply.type('text/html').send(
-          `<html><body><p>Token exchange failed: HTTP ${tokenResponse.status} — ${errText}</p></body></html>`,
-        );
-      }
-
-      const tokenData = await tokenResponse.json();
-      const accessToken = tokenData.access_token;
+      const tokenResult = await oauth2.getToken(tokenParams);
+      const tokenData = tokenResult.token;
+      const accessToken = tokenData.access_token as string;
+      const refreshToken = tokenData.refresh_token as string | undefined;
+      const expiresIn = tokenData.expires_in as number | undefined;
 
       if (!accessToken) {
         return reply.type('text/html').send(
@@ -311,14 +358,43 @@ export async function authRoutes(app: FastifyInstance) {
         );
       }
 
-      // Store token in .mcp.json
-      if (rawEntry) {
-        rawEntry.accessToken = accessToken;
-        saveRawConfig(configPath, raw);
-        setAuthConfig(name, { accessToken });
+      // Store tokens in auth-storage
+      const authData: Record<string, unknown> = { accessToken };
+      if (refreshToken) authData.refreshToken = refreshToken;
+      if (expiresIn) authData.expiresAt = Date.now() + expiresIn * 1000;
+      setAuthConfig(name, authData);
+
+      // Optimistic update: set status to connected immediately
+      setCachedStatus(name, {
+        status: 'connected',
+        error: null,
+        toolCount: 0,
+        needsAuth: false,
+        authUrl: null,
+        lastTestedAt: Date.now(),
+      });
+      broadcast('status', { name, status: 'connected', error: null, toolCount: 0 });
+      broadcast('config:changed', { path: getConfigPath() });
+
+      // Try to create a token object for potential refresh
+      try {
+        const token = oauth2.createToken(tokenResult);
+        if (token.expired() && token.token.refresh_token) {
+          const refreshed = await token.refresh();
+          const refreshedData = refreshed.token;
+          setAuthConfig(name, {
+            accessToken: refreshedData.access_token as string,
+            refreshToken: refreshedData.refresh_token as string | undefined,
+            expiresAt: refreshedData.expires_in
+              ? Date.now() + (refreshedData.expires_in as number) * 1000
+              : undefined,
+          });
+        }
+      } catch {
+        // Refresh not available or not needed — stored data is sufficient
       }
 
-      // Test the MCP now that it has a token, cache result, and broadcast
+      // Test the MCP now that it has a token, cache result, and broadcast (background)
       testSingleMCPAndBroadcast(name);
 
       return reply.type('text/html').send(
