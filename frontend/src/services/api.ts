@@ -135,7 +135,10 @@ export async function updateMCP(
   return body;
 }
 
-export function connectWebSocket(onConfigChanged: () => void): () => void {
+export function connectWebSocket(
+  onConfigChanged: () => void,
+  onStatusEvent?: (event: StatusEvent) => void,
+): () => void {
   let ws: WebSocket | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -154,6 +157,9 @@ export function connectWebSocket(onConfigChanged: () => void): () => void {
         const msg = JSON.parse(event.data);
         if (msg.event === 'config:changed') {
           onConfigChanged();
+        }
+        if (msg.event === 'status' && onStatusEvent) {
+          onStatusEvent(msg.data);
         }
       } catch {
         // ignore malformed messages

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { mcpRoutes } from './api/mcp.routes.js';
 import { authRoutes } from './api/auth.routes.js';
 import { healthRoutes } from './api/health.routes.js';
+import { proxyRoutes } from './api/proxy.routes.js';
 import { setupWebSocket } from './api/ws.js';
 import { createWatcher } from './config/watcher.js';
 import { migrateFromMcpJson } from './services/auth-storage.js';
@@ -61,6 +62,7 @@ export async function buildApp() {
   await app.register(mcpRoutes);
   await app.register(authRoutes);
   await app.register(healthRoutes);
+  await app.register(proxyRoutes);
 
   const webDir = join(__dirname, 'web');
   await app.register(fastifyStatic, {
@@ -95,5 +97,12 @@ export async function start() {
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (isMain) {
-  start();
+  const proxyIndex = process.argv.indexOf('--proxy');
+  if (proxyIndex !== -1 && process.argv[proxyIndex + 1]) {
+    const name = process.argv[proxyIndex + 1];
+    const { runProxy } = await import('./proxy/index.js');
+    await runProxy(name, process.argv);
+  } else {
+    start();
+  }
 }

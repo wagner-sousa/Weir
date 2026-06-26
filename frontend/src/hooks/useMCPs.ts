@@ -23,15 +23,6 @@ export function useMCPs() {
   });
 
   useEffect(() => {
-    const disconnect = connectWebSocket(() => {
-      setIsRefreshing(true);
-      queryClient.invalidateQueries({ queryKey: ['mcps'] });
-    });
-
-    return disconnect;
-  }, [queryClient]);
-
-  useEffect(() => {
     if (!query.isFetching) {
       setIsRefreshing(false);
     }
@@ -40,6 +31,18 @@ export function useMCPs() {
   const handleStatusEvent = useCallback((event: StatusEvent) => {
     setStatusMap((prev) => ({ ...prev, [event.name]: event }));
   }, []);
+
+  useEffect(() => {
+    const disconnect = connectWebSocket(
+      () => {
+        setIsRefreshing(true);
+        queryClient.invalidateQueries({ queryKey: ['mcps'] });
+      },
+      handleStatusEvent,
+    );
+
+    return disconnect;
+  }, [queryClient, handleStatusEvent]);
 
   useEffect(() => {
     const disconnect = connectSSE(handleStatusEvent);

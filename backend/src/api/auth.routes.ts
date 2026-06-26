@@ -371,14 +371,13 @@ export async function authRoutes(app: FastifyInstance) {
         toolCount: 0,
         needsAuth: false,
         authUrl: null,
-        lastTestedAt: Date.now(),
       });
       broadcast('status', { name, status: 'connected', error: null, toolCount: 0 });
       broadcast('config:changed', { path: getConfigPath() });
 
       // Try to create a token object for potential refresh
       try {
-        const token = oauth2.createToken(tokenResult);
+        const token = oauth2.createToken(tokenData);
         if (token.expired() && token.token.refresh_token) {
           const refreshed = await token.refresh();
           const refreshedData = refreshed.token;
