@@ -270,12 +270,18 @@ export async function authRoutes(app: FastifyInstance) {
       authConfig.tokenEndpoint,
     );
 
-    const authorizationUri = oauth2.authorizeURL({
+    // Only include scope if scopesSupported has valid entries;
+    // omitting it entirely avoids sending scope=undefined as a string.
+    const authorizeParams: Record<string, string> = {
       redirect_uri: redirectUri,
-      scope: authConfig.scopesSupported?.join(' ') || undefined,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
-    });
+    };
+    const scope = authConfig.scopesSupported?.filter(Boolean).join(' ');
+    if (scope) {
+      authorizeParams.scope = scope;
+    }
+    const authorizationUri = oauth2.authorizeURL(authorizeParams as never);
 
     return { success: true, url: authorizationUri };
   });

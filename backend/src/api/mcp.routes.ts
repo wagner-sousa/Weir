@@ -193,10 +193,20 @@ export async function mcpRoutes(app: FastifyInstance) {
 
     broadcast('config:changed', { path: configPath });
 
-    // Test only the newly created MCP asynchronously
-    testSingleMCP(name as string).then((status) => broadcastStatusUpdate(name as string, status));
+    // Test the newly created MCP and return result
+    const testStatus = await testSingleMCP(name as string);
+    broadcastStatusUpdate(name as string, testStatus);
 
-    return reply.status(201).send({ success: true, name });
+    return reply.status(201).send({
+      success: true,
+      name,
+      testResult: {
+        success: testStatus.status === 'connected',
+        needsAuth: testStatus.needsAuth,
+        authUrl: testStatus.authUrl,
+        error: testStatus.error,
+      },
+    });
   });
 
   app.get('/api/mcps/:name/tools', async (request, reply) => {
@@ -303,10 +313,20 @@ export async function mcpRoutes(app: FastifyInstance) {
 
     broadcast('config:changed', { path: configPath });
 
-    // Test only the updated MCP asynchronously
-    testSingleMCP(name as string).then((status) => broadcastStatusUpdate(name as string, status));
+    // Test the updated MCP and return result
+    const testStatus = await testSingleMCP(name as string);
+    broadcastStatusUpdate(name as string, testStatus);
 
-    return { success: true, name: name as string };
+    return {
+      success: true,
+      name: name as string,
+      testResult: {
+        success: testStatus.status === 'connected',
+        needsAuth: testStatus.needsAuth,
+        authUrl: testStatus.authUrl,
+        error: testStatus.error,
+      },
+    };
   });
 
   app.delete('/api/mcps/:name', async (request, reply) => {

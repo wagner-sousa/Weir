@@ -79,10 +79,17 @@ export async function testConnection(
   return res.json();
 }
 
+export interface SaveMCPResult {
+  success: boolean;
+  name?: string;
+  error?: string;
+  testResult?: TestConnectionResult;
+}
+
 export async function addMCP(
   name: string,
   transport: TransportConfig,
-): Promise<{ success: boolean; name?: string; error?: string }> {
+): Promise<SaveMCPResult> {
   const res = await fetch(`${API_BASE}/mcps`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -122,7 +129,7 @@ export async function updateMCP(
   originalName: string,
   name: string,
   transport: TransportConfig,
-): Promise<{ success: boolean; name?: string; error?: string }> {
+): Promise<SaveMCPResult> {
   const res = await fetch(`${API_BASE}/mcps/${encodeURIComponent(originalName)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -135,7 +142,10 @@ export async function updateMCP(
   return body;
 }
 
-export function connectWebSocket(onConfigChanged: () => void): () => void {
+export function connectWebSocket(
+  onConfigChanged: () => void,
+  onStatusEvent?: (event: StatusEvent) => void,
+): () => void {
   let ws: WebSocket | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -154,6 +164,8 @@ export function connectWebSocket(onConfigChanged: () => void): () => void {
         const msg = JSON.parse(event.data);
         if (msg.event === 'config:changed') {
           onConfigChanged();
+        } else if (msg.event === 'status' && onStatusEvent) {
+          onStatusEvent(msg.data as StatusEvent);
         }
       } catch {
         // ignore malformed messages

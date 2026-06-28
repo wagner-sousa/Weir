@@ -83,7 +83,7 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removin
         </p>
       )}
       <div className="mt-3 flex justify-end gap-2 border-t border-theme-border pt-2">
-        {client.needsAuth && client.authUrl && (
+        {client.needsAuth && client.authUrl ? (
           <button
             onClick={() => onAuth?.(client)}
             aria-label="Authorize MCP"
@@ -92,6 +92,15 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removin
           >
             <ShieldAlert className="h-4 w-4" />
           </button>
+        ) : (
+          <button
+            onClick={() => onReconnect?.(client)}
+            disabled={reconnecting}
+            aria-label="Reconnect MCP"
+            className="rounded p-1.5 text-gray-400 hover:bg-green-600/20 hover:text-green-400 disabled:opacity-50"
+          >
+            {reconnecting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+          </button>
         )}
         <button
           onClick={() => onEdit?.(client)}
@@ -99,14 +108,6 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removin
           className="rounded p-1.5 text-gray-400 hover:bg-blue-600/20 hover:text-blue-400"
         >
           <Pencil className="h-4 w-4" />
-        </button>
-        <button
-          onClick={() => onReconnect?.(client)}
-          disabled={reconnecting}
-          aria-label="Reconnect MCP"
-          className="rounded p-1.5 text-gray-400 hover:bg-green-600/20 hover:text-green-400 disabled:opacity-50"
-        >
-          {reconnecting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
         </button>
         <button
           onClick={() => onRemove?.(client.name)}
