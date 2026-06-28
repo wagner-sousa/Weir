@@ -5,6 +5,7 @@ import { TestConnectionRequest } from '../config/schema.js';
 import { testConnection, queryTools } from '../services/mcp-client.js';
 import { getCachedStatus, setCachedStatus, deleteCachedStatus } from '../services/status-cache.js';
 import { getAuthConfig } from '../services/auth-storage.js';
+import { refreshTokenIfExpired } from '../services/token-refresh.js';
 import { resolve, dirname } from 'node:path';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { broadcast } from './ws.js';
@@ -32,6 +33,11 @@ async function testSingleMCP(name: string): Promise<CachedStatus> {
   if (!client) {
     const status: CachedStatus = { status: 'error', error: 'MCP not found', toolCount: 0, needsAuth: false, authUrl: null, lastTestedAt: Date.now() };
     return status;
+  }
+
+  // Refresh token if expired before testing
+  if (client.url) {
+    await refreshTokenIfExpired(name, client.url);
   }
 
   const raw = existsSync(configPath) ? JSON.parse(readFileSync(configPath, 'utf-8')) : { mcpServers: {} };

@@ -13,7 +13,7 @@ server.get('/auth/authorize', async (req, reply) => {
   const { redirect_uri, state } = req.query as { redirect_uri?: string; state?: string };
   const code = 'auth-code-' + Date.now();
   if (redirect_uri) {
-    return reply.redirect(302, `${redirect_uri}?code=${code}&state=${state || ''}`);
+    return reply.redirect(`${redirect_uri}?code=${code}&state=${state || ''}`);
   }
   return reply.send({ code, state });
 });
