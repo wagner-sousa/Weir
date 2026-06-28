@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useTestConnection, useAddMCP, useUpdateMCP } from '../hooks/useMCPs';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
@@ -32,6 +33,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
   const testMutation = useTestConnection();
   const addMutation = useAddMCP();
   const updateMutation = useUpdateMCP();
+  const queryClient = useQueryClient();
 
   const isEditing = !!existingMCP;
   const originalName = existingMCP?.name ?? '';
@@ -153,25 +155,57 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
     const transport = buildTransport();
     const trimmedName = name.trim();
 
+    let result: { success: boolean; name?: string; error?: string; testResult?: TestConnectionResult };
+
     if (isEditing) {
-      const result = await updateMutation.mutateAsync({
+      result = await updateMutation.mutateAsync({
         originalName,
         name: trimmedName,
         transport,
       });
-      if (result.success) {
-        toast.success(`MCP "${trimmedName}" updated successfully.`);
-        onClose();
-      } else {
-        toast.error(result.error || 'Error updating MCP.');
-      }
     } else {
-      const result = await addMutation.mutateAsync({ name: trimmedName, transport });
-      if (result.success) {
-        toast.success(`MCP "${trimmedName}" added successfully.`);
-        onClose();
-      } else {
-        toast.error(result.error || 'Error adding MCP.');
+      result = await addMutation.mutateAsync({ name: trimmedName, transport });
+    }
+
+    if (!result.success) {
+      toast.error(result.error || 'Error saving MCP.');
+      return;
+    }
+
+    toast.success(`MCP "${trimmedName}" ${isEditing ? 'updated' : 'added'} successfully.`);
+    onClose();
+
+    // Auto-open OAuth popup if test indicates auth is needed
+    if (result.testResult?.needsAuth && result.testResult?.authUrl) {
+      try {
+        const authRes = await fetch(`/api/auth/${encodeURIComponent(trimmedName)}/start`, {
+          method: 'POST',
+        });
+        const authData = await authRes.json();
+
+        if (authData.error) {
+          toast.error(authData.error);
+          return;
+        }
+
+        if (!authData.url) return;
+
+        const popup = window.open('', '_blank', 'width=600,height=700');
+        if (!popup) {
+          toast.error('Popup blocked. Please allow popups for this site.');
+          return;
+        }
+
+        popup.location.href = authData.url;
+
+        const timer = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(timer);
+            queryClient.invalidateQueries({ queryKey: ['mcps'] });
+          }
+        }, 500);
+      } catch {
+        toast.error('Failed to start OAuth2 authorization.');
       }
     }
   }
