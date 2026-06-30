@@ -81,6 +81,9 @@ After successful OAuth2 authorization, the access token is stored in the MCP con
 - **FR-007**: If the popup is blocked by the browser, the system MUST show a toast: "Popup blocked. Please allow popups for this site."
 - **FR-008**: All OAuth2-related UI elements (shield icon, popup, toasts) MUST use English for user-facing text (Constitution III).
 - **FR-009**: All icons MUST use lucide-react (ShieldAlert) per Constitution VI.
+- **FR-010**: When generating the OAuth2 authorization URL, the `scope` parameter MUST only be included if `scopesSupported` is a non-empty array of non-empty strings.
+- **FR-011**: If `scopesSupported` is undefined, null, or an empty array, the `scope` parameter MUST be omitted entirely from the authorization URL.
+- **FR-012**: Empty or whitespace-only strings within `scopesSupported` MUST be filtered out before constructing the scope parameter.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -98,8 +101,50 @@ After successful OAuth2 authorization, the access token is stored in the MCP con
 - **SC-003**: After successful authorization, subsequent connection tests include the Bearer token and succeed in under 5 seconds.
 - **SC-004**: Token persistence survives page reloads — the card shows "connected" status on reload if the token is still valid.
 - **SC-005**: Expired/revoked tokens are handled gracefully — the shield button reappears for re-authentication.
+- **SC-006**: Stripe MCP OAuth flow completes without `invalid_scope` error when `scopes_supported` is absent from well-known metadata.
+- **SC-007**: No authorization URL contains `scope=undefined` for any MCP server — verified across all MCPs in the configuration.
 
-## Out of Scope
+### User Story 4 - Stripe MCP OAuth Scope Fix (Priority: P1)
+
+The user configures an HTTP MCP pointing to `https://mcp.stripe.com` which requires OAuth2 authentication. The MCP's `.well-known/oauth-authorization-server` does not include `scopes_supported`. When the auth popup opens, Stripe's authorization server must NOT receive a `scope` parameter with an invalid value, otherwise it returns `invalid_scope`.
+
+**Why this priority**: Without this fix, Stripe MCP authentication is completely broken — the popup immediately fails with `Authorization failed: invalid_scope` and no token exchange is possible.
+
+**Independent Test**: Configure an HTTP MCP for `https://mcp.stripe.com`, click the shield button, and verify the popup URL does NOT contain `scope=undefined` and the OAuth flow completes without `invalid_scope` error.
+
+**Acceptance Scenarios**:
+
+1. **Given** Stripe MCP's well-known metadata does not include `scopes_supported`, **When** the authorization URL is generated, **Then** the `scope` parameter MUST be omitted entirely from the URL (not set to `undefined` or empty).
+2. **Given** Stripe MCP's well-known metadata includes `scopes_supported`, **When** the authorization URL is generated, **Then** the scopes are joined with spaces and included as the `scope` parameter.
+3. **Given** the authorization popup opens without `scope` parameter, **When** Stripe's authorization server processes it, **Then** Stripe uses its default scopes and the popup completes successfully.
+
+---
+
+### User Story 5 - Graceful Scope Handling for All MCPs (Priority: P2)
+
+Any MCP server that omits `scopes_supported` from its well-known metadata must be handled gracefully — the scope parameter is simply omitted from the authorization URL rather than sending an invalid value.
+
+**Why this priority**: Other MCP servers may also omit `scopes_supported`; the fix should be generic, not Stripe-specific.
+
+**Independent Test**: Mock a well-known endpoint that omits `scopes_supported`, initiate OAuth flow, and verify the authorization URL contains no `scope` parameter.
+
+**Acceptance Scenarios**:
+
+1. **Given** any MCP server's well-known endpoint returns metadata without `scopes_supported`, **When** the authorization URL is built, **Then** no `scope` query parameter is present.
+2. **Given** any MCP server's well-known endpoint returns `scopes_supported: []` (empty array), **When** the authorization URL is built, **Then** no `scope` query parameter is present.
+3. **Given** any MCP server's well-known endpoint returns `scopes_supported: ["read", "write"]`, **When** the authorization URL is built, **Then** `scope=read%20write` is present in the URL.
+
+---
+
+### Edge Cases (Stripe Auth)
+
+- What if the Stripe well-known endpoint is unreachable? → The shield button won't appear; generic 401 error displayed. (Handled by existing logic.)
+- What if Stripe's authorization server requires specific scopes that are not discoverable? → The user can manually configure scopes in the MCP config's `auth.scopes` field. Feature assumes Stripe's server works with default (omitted) scopes.
+- Does this affect non-HTTPS MCPs? → No, OAuth2 is only applicable to HTTPS MCP endpoints.
+- What if `scopes_supported` contains an empty string? → Filtered out before joining; empty strings produce no scope parameter.
+
+---
+
 
 - Manual OAuth2 configuration UI (auth URLs must be discovered automatically or configured manually in `.mcp.json`)
 - OAuth2 client registration (the user must register their app with the MCP provider separately)

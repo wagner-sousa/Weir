@@ -1,8 +1,8 @@
 # Implementation Plan: MCP Connection Manager
 
-**Branch**: `002-mcp-connection-manager` | **Date**: 2026-06-22 | **Spec**: [spec.md](./spec.md)
+**Branch**: `002-mcp-connection-manager` | **Date**: 2026-06-24 | **Spec**: [spec.md](./spec.md)
 
-**Input**: Feature specification from `/specs/002-mcp-connection-manager/spec.md`
+**Input**: Feature specification from `/specs/002-mcp-connection-manager/spec.md` + planning args from `plan-args.md`
 
 ## Summary
 
@@ -12,6 +12,8 @@ before saving, view live connection status per card, reconnect on failure, see
 tool counts, and remove MCPs — all with toast notifications for feedback.
 Extends the existing .mcp.json read/write flow with new backend API endpoints
 for test-connection, tool-count, add, and remove operations.
+
+Creates 5 standalone demo MCP servers under `backend/src/examples/` for testing.
 
 ## Technical Context
 
@@ -42,8 +44,17 @@ for test-connection, tool-count, add, and remove operations.
 - Lint before every commit (Dev Workflow 8)
 - Docs updated in same commit (Dev Workflow 9)
 
-**New Fields**:
+**Existing Fields**:
 - `env` field added to stdio transport in modal (FR-004): editable table with key-value pairs, "Add variable" button opens two input fields. Only shown for stdio transport. Passed as environment variables to the spawned MCP process during test and runtime.
+
+**New: Demo MCP Servers** (`backend/src/examples/`):
+- 5 standalone `.ts` files, each runnable via `tsx`
+- Each includes MCP `initialize` handler + `tools/list` returning ≥1 demo tool
+- Types:
+  1. `stdio-server.ts` — child_process, JSON-RPC over stdin/stdout
+  2. `http-server.ts` — Fastify, JSON-RPC over POST
+  3. `sse-server.ts` — Fastify, Server-Sent Events
+  4. `oauth-server.ts` — Fastify, OAuth2 flow mock
 
 **Docker Networking**:
 - HTTP/SSE connection tests run on the **backend** (inside Docker container)
@@ -66,9 +77,10 @@ for test-connection, tool-count, add, and remove operations.
 |-----------|-----------|--------|
 | I. SDD | New API endpoints need Zod schemas before implementation | ✅ Pass |
 | II. Test-First | All endpoints need tests before implementation | ✅ Pass |
-| III. pt-BR for Users | Toasts, modal labels, tooltips must be pt-BR | ✅ Pass |
+| III. English for Users | ✅ Spec and artifacts use English for user-facing messages since the i18n commit. | ✅ Pass |
 | IV. .mcp.json Truth | Add/remove writes directly to .mcp.json — no parallel config | ✅ Pass |
 | V. Simplicity | Reuse existing backend/frontend patterns, no duplication | ✅ Pass |
+| VI. Icon Library | Status icons use lucide-react (already in place) | ✅ Pass |
 | Dev Workflow 7 | Any new config params need .env.example entry | ✅ Pass — `MCP_CONNECTION_TIMEOUT` added to `.env.example` with default `5000` |
 | Dev Workflow 8 | Lint before commit | ✅ Pass |
 | Dev Workflow 9 | Docs updated in same commit | ✅ Pass |
@@ -102,6 +114,11 @@ backend/
 │   │   ├── schema.ts          # Already supports flat+nested
 │   │   ├── loader.ts          # Already reads .mcp.json
 │   │   └── writer.ts          # NEW: write/append/remove entries
+│   ├── examples/              # NEW: demo MCP servers
+│   │   ├── stdio-server.ts
+│   │   ├── http-server.ts
+│   │   ├── sse-server.ts
+│   │   └── oauth-server.ts
 │   └── services/
 │       └── mcp-client.ts      # NEW: test connection, query tools
 ├── tests/

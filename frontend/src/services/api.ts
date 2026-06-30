@@ -1,3 +1,5 @@
+import { notifyError } from './notifications';
+
 const API_BASE = '/api';
 const WS_URL = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`;
 const SSE_URL = `${API_BASE}/mcps/events`;
@@ -9,7 +11,7 @@ export interface MCPClient {
   args?: string[];
   url?: string;
   env?: Record<string, string>;
-  status?: 'connecting' | 'connected' | 'error' | 'disconnected';
+  status?: 'connecting' | 'connected' | 'error' | 'disconnected' | 'testing' | 'unknown';
   error?: string | null;
   toolCount?: number;
   needsAuth?: boolean;
@@ -32,7 +34,7 @@ export interface TransportConfig {
 
 export interface StatusEvent {
   name: string;
-  status: 'connecting' | 'connected' | 'error' | 'disconnected';
+  status: 'connecting' | 'connected' | 'error' | 'disconnected' | 'testing' | 'unknown';
   toolCount: number | null;
   error: string | null;
 }
@@ -45,7 +47,9 @@ export interface ToolsResponse {
 export async function fetchMCPs(): Promise<MCPResponse> {
   const res = await fetch(`${API_BASE}/mcps`);
   if (!res.ok) {
-    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    const message = `HTTP ${res.status}: ${res.statusText}`;
+    notifyError(message);
+    throw new Error(message);
   }
   return res.json();
 }
@@ -75,10 +79,17 @@ export async function testConnection(
   return res.json();
 }
 
+export interface SaveMCPResult {
+  success: boolean;
+  name?: string;
+  error?: string;
+  testResult?: TestConnectionResult;
+}
+
 export async function addMCP(
   name: string,
   transport: TransportConfig,
-): Promise<{ success: boolean; name?: string; error?: string }> {
+): Promise<SaveMCPResult> {
   const res = await fetch(`${API_BASE}/mcps`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -118,7 +129,7 @@ export async function updateMCP(
   originalName: string,
   name: string,
   transport: TransportConfig,
-): Promise<{ success: boolean; name?: string; error?: string }> {
+): Promise<SaveMCPResult> {
   const res = await fetch(`${API_BASE}/mcps/${encodeURIComponent(originalName)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -131,7 +142,10 @@ export async function updateMCP(
   return body;
 }
 
-export function connectWebSocket(onConfigChanged: () => void): () => void {
+export function connectWebSocket(
+  onConfigChanged: () => void,
+  onStatusEvent?: (event: StatusEvent) => void,
+): () => void {
   let ws: WebSocket | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -150,6 +164,8 @@ export function connectWebSocket(onConfigChanged: () => void): () => void {
         const msg = JSON.parse(event.data);
         if (msg.event === 'config:changed') {
           onConfigChanged();
+        } else if (msg.event === 'status' && onStatusEvent) {
+          onStatusEvent(msg.data as StatusEvent);
         }
       } catch {
         // ignore malformed messages
@@ -180,6 +196,15 @@ export function connectSSE(onStatusEvent: (event: StatusEvent) => void): () => v
     try {
       const data: StatusEvent = JSON.parse(e.data);
       onStatusEvent(data);
+    } catch {
+      // ignore malformed events
+    }
+  });
+
+  source.addEventListener('testing', (e: MessageEvent) => {
+    try {
+      const data = JSON.parse(e.data);
+      onStatusEvent({ name: data.name, status: 'testing', toolCount: null, error: null });
     } catch {
       // ignore malformed events
     }

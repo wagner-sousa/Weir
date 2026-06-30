@@ -1,14 +1,14 @@
-# Specification Quality Checklist: OAuth2 MCP Auth
+# Specification Quality Checklist: OAuth2 MCP Auth (Stripe + Auto-Test)
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2026-06-22
+**Created**: 2026-06-27
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
 
 - [x] No implementation details (languages, frameworks, APIs)
 - [x] Focused on user value and business needs
-- [x] Written for non-stakeholders
+- [x] Written for non-technical stakeholders
 - [x] All mandatory sections completed
 
 ## Requirement Completeness
@@ -31,4 +31,9 @@
 
 ## Notes
 
-- All items pass validation. Spec is ready for the planning phase.
+- Added User Story 6 (Auto-Test on Save) and User Story 7 (Auto OAuth Popup) — implemented
+- Added User Story 8 (Card Icons — Only One) — implemented
+- Backend: POST/PUT /api/mcps retornam testResult síncrono (fire-and-forget → await)
+- Frontend AddMCPModal: auto OAuth popup após save se needsAuth
+- Frontend MCPCard: shield OU reconnect, nunca ambos
+- Typecheck/lint: sem erros novos

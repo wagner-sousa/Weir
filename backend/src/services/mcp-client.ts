@@ -277,6 +277,7 @@ export async function queryTools(
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Accept': 'text/event-stream, application/json',
     };
     if (transport.accessToken) {
       headers['Authorization'] = `Bearer ${transport.accessToken}`;
@@ -298,13 +299,44 @@ export async function queryTools(
       return [];
     }
 
-    const data = await response.json();
-    if (data.result?.tools) {
-      return data.result.tools.map((t: { name: string; description?: string; inputSchema?: unknown }) => ({
-        name: t.name,
-        description: t.description,
-        inputSchema: t.inputSchema,
-      }));
+    const contentType = response.headers.get('content-type') || '';
+    const text = await response.text();
+
+    // Parse SSE response (text/event-stream)
+    if (contentType.includes('text/event-stream')) {
+      const lines = text.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const parsed = JSON.parse(line.slice(6));
+            const tools = parsed.result?.tools || parsed?.result?.tools;
+            if (tools) {
+              return tools.map((t: { name: string; description?: string; inputSchema?: unknown }) => ({
+                name: t.name,
+                description: t.description,
+                inputSchema: t.inputSchema,
+              }));
+            }
+          } catch {
+            // skip malformed SSE data
+          }
+        }
+      }
+      return [];
+    }
+
+    // Parse JSON response
+    try {
+      const data = JSON.parse(text);
+      if (data.result?.tools) {
+        return data.result.tools.map((t: { name: string; description?: string; inputSchema?: unknown }) => ({
+          name: t.name,
+          description: t.description,
+          inputSchema: t.inputSchema,
+        }));
+      }
+    } catch {
+      // invalid JSON
     }
     return [];
   } catch {
@@ -378,3 +410,5 @@ async function queryStdioTools(transport: TransportConfig): Promise<ToolResult[]
     }
   });
 }
+
+

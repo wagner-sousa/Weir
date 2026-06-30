@@ -75,7 +75,7 @@ Also accepts **flat format**:
 
 **Response** `200` (Docker host unreachable):
 ```json
-{ "success": false, "error": "Host Docker não disponível. Verifique se o serviço está acessível." }
+{ "success": false, "error": "Docker host unavailable. Check if the service is accessible." }
 ```
 
 ---
@@ -113,12 +113,12 @@ Add a new MCP to .mcp.json.
 
 **Response** `403` (permission error):
 ```json
-{ "success": false, "error": "Arquivo não pôde ser lido/escrito." }
+{ "success": false, "error": "Could not read/write the file." }
 ```
 
 **Response** `503` (backend unreachable):
 ```json
-{ "success": false, "error": "Erro ao salvar: backend indisponível." }
+{ "success": false, "error": "Error saving: backend unavailable." }
 ```
 
 ---
@@ -139,12 +139,12 @@ Remove an MCP from .mcp.json.
 
 **Response** `403` (permission error):
 ```json
-{ "success": false, "error": "Arquivo não pôde ser lido/escrito." }
+{ "success": false, "error": "Could not read/write the file." }
 ```
 
 **Response** `503` (backend unreachable):
 ```json
-{ "success": false, "error": "Erro ao remover: backend indisponível." }
+{ "success": false, "error": "Error removing: backend unavailable." }
 ```
 
 ---

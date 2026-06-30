@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { buildApp } from '../../src/index.js';
 import type { FastifyInstance } from 'fastify';
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { clearCacheForTesting } from '../../src/services/status-cache.js';
 
 let app: FastifyInstance;
 let tmpDir: string;
@@ -18,6 +19,10 @@ beforeAll(async () => {
 afterAll(async () => {
   await app.close();
   rmSync(tmpDir, { recursive: true, force: true });
+});
+
+afterEach(() => {
+  clearCacheForTesting();
 });
 
 beforeEach(() => {
@@ -159,7 +164,7 @@ describe('GET /api/mcps (extended)', () => {
     expect(client).toHaveProperty('toolCount');
   });
 
-  it('returns disconnected status for unreachable MCPs', async () => {
+  it('returns unknown status for uncached unreachable MCPs', async () => {
     writeFileSync(
       process.env.MCP_CONFIG_PATH!,
       JSON.stringify({
@@ -172,8 +177,9 @@ describe('GET /api/mcps (extended)', () => {
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body.clients).toHaveLength(1);
-    expect(body.clients[0].status).toBe('error');
-    expect(body.clients[0].error).toBeDefined();
+    // Status comes from cache — uncached MCPs show "unknown"
+    expect(body.clients[0].status).toBe('unknown');
+    expect(body.clients[0].error).toBeNull();
   });
 });
 

@@ -116,7 +116,7 @@ frontend/
 ├── src/
 │   ├── components/
 │   │   ├── CardGrid.tsx     # Grid 3 colunas de MCP cards
-│   │   ├── MCPCard.tsx      # Card individual (nome, tipo, badge)
+│   │   ├── MCPCard.tsx      # Card individual (nome, tipo, 6 variantes de badge)
 │   │   ├── EmptyState.tsx   # Mensagem quando sem .mcp.json
 │   │   └── ErrorState.tsx   # Mensagem de erro de parse
 │   ├── services/

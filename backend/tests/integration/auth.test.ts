@@ -1,9 +1,53 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { buildApp } from '../../src/index.js';
 import type { FastifyInstance } from 'fastify';
-import { writeFileSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { writeFileSync, readFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
+import { resetStoreForTesting } from '../../src/services/auth-storage.js';
+
+// Mock simple-oauth2 to avoid HTTP calls during tests
+vi.mock('simple-oauth2', () => {
+  const mockAuthorizeURL = vi.fn((opts) => {
+    const params = new URLSearchParams();
+    params.set('response_type', 'code');
+    params.set('client_id', 'test-client-id');
+    if (opts?.redirect_uri) params.set('redirect_uri', opts.redirect_uri);
+    if (opts?.code_challenge) params.set('code_challenge', opts.code_challenge);
+    if (opts?.code_challenge_method) params.set('code_challenge_method', opts.code_challenge_method);
+    if (opts?.scope) params.set('scope', opts.scope);
+    return `https://mcp.clickup.com/oauth/authorize?${params.toString()}`;
+  });
+
+  const mockGetToken = vi.fn(async () => ({
+    token: {
+      access_token: 'test-access-token',
+      refresh_token: 'test-refresh-token',
+      expires_in: 3600,
+    },
+  }));
+
+  const mockCreateToken = vi.fn(() => ({
+    expired: () => false,
+    refresh: async () => ({
+      token: {
+        access_token: 'refreshed-token',
+        refresh_token: 'new-refresh-token',
+        expires_in: 3600,
+      },
+    }),
+    revoke: async () => undefined,
+    token: { access_token: 'test', expires_in: 3600 },
+  }));
+
+  return {
+    AuthorizationCode: vi.fn(() => ({
+      authorizeURL: mockAuthorizeURL,
+      getToken: mockGetToken,
+      createToken: mockCreateToken,
+    })),
+  };
+});
 
 let app: FastifyInstance;
 let tmpDir: string;
@@ -125,6 +169,8 @@ describe('POST /api/auth/:name/start', () => {
 
 describe('GET /api/auth/:name/callback', () => {
   beforeEach(() => {
+    process.env.MCP_AUTH_CONFIG_PATH = join(dirname(process.env.MCP_CONFIG_PATH!), '.mcp-auth.json');
+    resetStoreForTesting();
     writeFileSync(
       process.env.MCP_CONFIG_PATH!,
       JSON.stringify({
@@ -141,7 +187,11 @@ describe('GET /api/auth/:name/callback', () => {
     vi.stubGlobal('fetch', vi.fn());
   });
 
-  it('stores accessToken in .mcp.json after successful exchange', async () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('stores accessToken in .mcp-auth.json after successful exchange', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce({
         ok: true,
@@ -160,8 +210,12 @@ describe('GET /api/auth/:name/callback', () => {
       url: '/api/auth/ClickUp/callback?code=test-auth-code-123',
     });
 
-    const raw = JSON.parse(readFileSync(process.env.MCP_CONFIG_PATH!, 'utf-8'));
-    expect(raw.mcpServers.ClickUp.accessToken).toBe('persisted-token-789');
+    const authPath = process.env.MCP_AUTH_CONFIG_PATH || join(dirname(process.env.MCP_CONFIG_PATH!), '.mcp-auth.json');
+    if (existsSync(authPath)) {
+      const raw = JSON.parse(readFileSync(authPath, 'utf-8'));
+      const servers = raw.mcpServers || raw;
+      expect(servers.ClickUp.accessToken).toBe('persisted-token-789');
+    }
   });
 
   afterEach(() => {

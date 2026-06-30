@@ -5,6 +5,7 @@ build/
 .env*
 !.env.example
 .mcp.json
+mcp-auth.json
 .DS_Store
 Thumbs.db
 *.tmp
@@ -12,3 +13,6 @@ Thumbs.db
 .vscode/
 .idea/
 coverage/
+analysis-fixes.md
+analysis-report.md
+plan-args.md

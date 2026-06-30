@@ -3,9 +3,9 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AddMCPModal } from '../../src/components/AddMCPModal';
 
-const { mockMutateAsync, mockShowToast } = vi.hoisted(() => ({
+const { mockMutateAsync, mockToast } = vi.hoisted(() => ({
   mockMutateAsync: vi.fn(),
-  mockShowToast: vi.fn(),
+  mockToast: { success: vi.fn(), error: vi.fn() },
 }));
 
 vi.mock('../../src/hooks/useMCPs', async (importOriginal) => {
@@ -27,8 +27,8 @@ vi.mock('../../src/hooks/useMCPs', async (importOriginal) => {
   };
 });
 
-vi.mock('../../src/components/Toast', () => ({
-  showToast: mockShowToast,
+vi.mock('sonner', () => ({
+  toast: mockToast,
 }));
 
 function renderWithQuery(ui: React.ReactElement) {
@@ -42,7 +42,7 @@ function fillStdioForm() {
   fireEvent.change(screen.getByPlaceholderText('e.g.: my-server'), {
     target: { value: 'test-mcp' },
   });
-  const typeSelect = screen.getByDisplayValue('stdio');
+  const typeSelect = screen.getByDisplayValue('STDIO');
   fireEvent.change(typeSelect, { target: { value: 'stdio' } });
   fireEvent.change(screen.getByPlaceholderText('e.g.: npx'), {
     target: { value: 'echo' },
@@ -52,7 +52,8 @@ function fillStdioForm() {
 describe('AddMCPModal — User Story 1: Test Then Auto-Save', () => {
   beforeEach(() => {
     mockMutateAsync.mockReset();
-    mockShowToast.mockReset();
+    mockToast.success.mockReset();
+    mockToast.error.mockReset();
   });
 
   it('auto-saves and closes modal when test succeeds', async () => {
@@ -69,7 +70,7 @@ describe('AddMCPModal — User Story 1: Test Then Auto-Save', () => {
     await waitFor(() => {
       expect(onClose).toHaveBeenCalled();
     });
-    expect(mockShowToast).toHaveBeenCalled();
+    expect(mockToast.success).toHaveBeenCalled();
   });
 
   it('auto-saves and closes modal when test returns needsAuth', async () => {
@@ -108,7 +109,8 @@ describe('AddMCPModal — User Story 1: Test Then Auto-Save', () => {
 describe('English messages (FR-010)', () => {
   beforeEach(() => {
     mockMutateAsync.mockReset();
-    mockShowToast.mockReset();
+    mockToast.success.mockReset();
+    mockToast.error.mockReset();
   });
 
   const englishMessages = [
@@ -137,9 +139,8 @@ describe('English messages (FR-010)', () => {
     fireEvent.click(screen.getByText('Test Connection'));
 
     await waitFor(() => { expect(onClose).toHaveBeenCalled(); });
-    expect(mockShowToast).toHaveBeenCalledWith(
+    expect(mockToast.success).toHaveBeenCalledWith(
       expect.stringContaining('added successfully'),
-      'success',
     );
   });
 
@@ -159,7 +160,8 @@ describe('English messages (FR-010)', () => {
 describe('AddMCPModal — User Story 2: Save Triggers Auto-Test', () => {
   beforeEach(() => {
     mockMutateAsync.mockReset();
-    mockShowToast.mockReset();
+    mockToast.success.mockReset();
+    mockToast.error.mockReset();
   });
 
   it('auto-tests when save is clicked without prior test', async () => {
@@ -241,7 +243,7 @@ describe('AddMCPModal — User Story 2: Save Triggers Auto-Test', () => {
     fillStdioForm();
 
     // Set the URL to trigger HTTP type
-    const typeSelect = screen.getByDisplayValue('stdio');
+    const typeSelect = screen.getByDisplayValue('STDIO');
     fireEvent.change(typeSelect, { target: { value: 'http' } });
     fireEvent.change(screen.getByPlaceholderText('https://example.com/mcp'), {
       target: { value: 'https://example.com/mcp' },

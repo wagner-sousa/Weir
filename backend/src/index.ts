@@ -3,12 +3,14 @@ import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import websocket from '@fastify/websocket';
 import { join, dirname, resolve } from 'node:path';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { mcpRoutes } from './api/mcp.routes.js';
 import { authRoutes } from './api/auth.routes.js';
 import { healthRoutes } from './api/health.routes.js';
 import { setupWebSocket } from './api/ws.js';
 import { createWatcher } from './config/watcher.js';
+import { migrateFromMcpJson } from './services/auth-storage.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -32,10 +34,24 @@ export async function buildApp() {
 
   const mcpConfigPath = process.env.MCP_CONFIG_PATH || resolve(process.cwd(), '.mcp.json');
 
-  const watcher = createWatcher(mcpConfigPath, () => {
-    ws.broadcast('config:changed', { path: mcpConfigPath });
-    app.log.info('Config changed, broadcasting');
-  });
+  // Migrate OAuth data from .mcp.json to .mcp-auth.json on startup
+  migrateFromMcpJson(mcpConfigPath);
+
+  if (!existsSync(mcpConfigPath)) {
+    app.log.warn(`Arquivo .mcp.json nao encontrado em: ${mcpConfigPath}`);
+  }
+
+  const watcher = createWatcher(
+    mcpConfigPath,
+    () => {
+      ws.broadcast('config:changed', { path: mcpConfigPath });
+      app.log.info('Config changed, broadcasting');
+    },
+    (deletedPath) => {
+      ws.broadcast('config:deleted', { path: deletedPath });
+      app.log.warn(`Config deleted: ${deletedPath}`);
+    },
+  );
 
   await app.register(async (instance) => {
     instance.decorate('ws', ws);
@@ -64,8 +80,15 @@ export async function start() {
   try {
     await app.listen({ port, host });
     app.log.info(`Weir running at http://${host}:${port}`);
-  } catch (err) {
-    app.log.error(err);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes('EADDRINUSE')) {
+      console.error(`Erro: Porta ${port} ja esta em uso. Escolha outra porta com PORT=xxxx.`);
+    } else if (message.includes('EACCES')) {
+      console.error(`Erro: Permissao negada para a porta ${port}. Use uma porta superior a 1024.`);
+    } else {
+      console.error(`Erro ao iniciar servidor: ${message}`);
+    }
     process.exit(1);
   }
 }
