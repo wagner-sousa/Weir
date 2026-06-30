@@ -22,12 +22,6 @@ export function useMCPs() {
     refetchInterval: 30_000,
   });
 
-  useEffect(() => {
-    if (!query.isFetching) {
-      setIsRefreshing(false);
-    }
-  }, [query.isFetching]);
-
   const handleStatusEvent = useCallback((event: StatusEvent) => {
     setStatusMap((prev) => ({ ...prev, [event.name]: event }));
   }, []);
@@ -48,6 +42,13 @@ export function useMCPs() {
     const disconnect = connectSSE(handleStatusEvent);
     return disconnect;
   }, [handleStatusEvent]);
+
+  useEffect(() => {
+    if (!query.isFetching) {
+      setIsRefreshing(false);
+    }
+  }, [query.isFetching]);
+
 
   const clientsWithStatus: MCPClient[] = (query.data?.clients ?? []).map(
     (client: MCPClient) => {
