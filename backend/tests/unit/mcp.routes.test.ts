@@ -65,9 +65,9 @@ describe('T011: testSingleMCP error message detail', () => {
       method: 'POST',
       url: '/api/mcps',
       payload: {
-        name: 'test-serena',
+        name: 'test-http-mcp',
         type: 'http',
-        url: 'http://host.docker.internal:9121/mcp',
+        url: 'http://host.docker.internal:19999/mcp',
       },
     });
 

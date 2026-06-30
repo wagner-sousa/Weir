@@ -16,7 +16,7 @@ vi.mock('simple-oauth2', () => {
     if (opts?.code_challenge) params.set('code_challenge', opts.code_challenge);
     if (opts?.code_challenge_method) params.set('code_challenge_method', opts.code_challenge_method);
     if (opts?.scope) params.set('scope', opts.scope);
-    return `https://mcp.clickup.com/oauth/authorize?${params.toString()}`;
+    return `https://mcp-test-oauth.local/oauth/authorize?${params.toString()}`;
   });
 
   const mockGetToken = vi.fn(async () => ({
@@ -71,9 +71,9 @@ describe('POST /api/auth/:name/start', () => {
       process.env.MCP_CONFIG_PATH!,
       JSON.stringify({
         mcpServers: {
-          'ClickUp': {
+          'TestOAuthMCP': {
             type: 'http',
-            url: 'https://mcp.clickup.com/mcp',
+            url: 'https://mcp-test-oauth.local/mcp',
             auth: { clientId: 'test-client-id' },
           },
         },
@@ -90,20 +90,20 @@ describe('POST /api/auth/:name/start', () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({
-        authorization_endpoint: 'https://mcp.clickup.com/oauth/authorize',
-        token_endpoint: 'https://mcp.clickup.com/oauth/token',
+      authorization_endpoint: 'https://mcp-test-oauth.local/oauth/authorize',
+        token_endpoint: 'https://mcp-test-oauth.local/oauth/token',
         scopes_supported: ['read', 'write'],
       }),
     } as Response);
 
     const res = await app.inject({
       method: 'POST',
-      url: '/api/auth/ClickUp/start',
+      url: '/api/auth/TestOAuthMCP/start',
     });
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body.success).toBe(true);
-    expect(body.url).toContain('https://mcp.clickup.com/oauth/authorize');
+    expect(body.url).toContain('https://mcp-test-oauth.local/oauth/authorize');
     expect(body.url).toContain('response_type=code');
     expect(body.url).toContain('client_id=test-client-id');
   });
@@ -127,7 +127,7 @@ describe('POST /api/auth/:name/start', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/api/auth/ClickUp/start',
+      url: '/api/auth/TestOAuthMCP/start',
     });
     expect(res.statusCode).toBe(400);
     const body = JSON.parse(res.body);
@@ -175,9 +175,9 @@ describe('GET /api/auth/:name/callback', () => {
       process.env.MCP_CONFIG_PATH!,
       JSON.stringify({
         mcpServers: {
-          'ClickUp': {
+          'TestOAuthMCP': {
             type: 'http',
-            url: 'https://mcp.clickup.com/mcp',
+            url: 'https://mcp-test-oauth.local/mcp',
             auth: { clientId: 'test-client-id' },
             accessToken: undefined,
           },
@@ -210,8 +210,8 @@ describe('GET /api/auth/:name/callback', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({
-          authorization_endpoint: 'https://mcp.clickup.com/oauth/authorize',
-          token_endpoint: 'https://mcp.clickup.com/oauth/token',
+          authorization_endpoint: 'https://mcp-test-oauth.local/oauth/authorize',
+          token_endpoint: 'https://mcp-test-oauth.local/oauth/token',
         }),
         headers: { get: () => 'application/json' },
         text: () => Promise.resolve(toolsJson),
@@ -242,15 +242,15 @@ describe('GET /api/auth/:name/callback', () => {
 
     const callbackRes = await app.inject({
       method: 'GET',
-      url: '/api/auth/ClickUp/callback?code=test-code',
+      url: '/api/auth/TestOAuthMCP/callback?code=test-code',
     });
     expect(callbackRes.statusCode).toBe(200);
 
     const mcpsRes = await app.inject({ method: 'GET', url: '/api/mcps' });
     const body = JSON.parse(mcpsRes.body);
-    const clickup = body.clients.find((c: { name: string }) => c.name === 'ClickUp');
-    expect(clickup).toBeDefined();
-    expect(clickup.toolCount).toBe(3);
+    const oauthMcp = body.clients.find((c: { name: string }) => c.name === 'TestOAuthMCP');
+    expect(oauthMcp).toBeDefined();
+    expect(oauthMcp.toolCount).toBe(3);
   });
 
   afterEach(() => {
@@ -262,8 +262,8 @@ describe('GET /api/auth/:name/callback', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({
-          authorization_endpoint: 'https://mcp.clickup.com/oauth/authorize',
-          token_endpoint: 'https://mcp.clickup.com/oauth/token',
+          authorization_endpoint: 'https://mcp-test-oauth.local/oauth/authorize',
+          token_endpoint: 'https://mcp-test-oauth.local/oauth/token',
         }),
       } as Response)
       .mockResolvedValueOnce({
@@ -273,14 +273,14 @@ describe('GET /api/auth/:name/callback', () => {
 
     await app.inject({
       method: 'GET',
-      url: '/api/auth/ClickUp/callback?code=test-auth-code-123',
+      url: '/api/auth/TestOAuthMCP/callback?code=test-auth-code-123',
     });
 
     const authPath = process.env.MCP_AUTH_CONFIG_PATH || join(dirname(process.env.MCP_CONFIG_PATH!), '.mcp-auth.json');
     if (existsSync(authPath)) {
       const raw = JSON.parse(readFileSync(authPath, 'utf-8'));
       const servers = raw.mcpServers || raw;
-      expect(servers.ClickUp.accessToken).toBe('persisted-token-789');
+      expect(servers.TestOAuthMCP.accessToken).toBe('persisted-token-789');
     }
   });
 
@@ -295,8 +295,8 @@ describe('GET /api/auth/:name/callback', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({
-          authorization_endpoint: 'https://mcp.clickup.com/oauth/authorize',
-          token_endpoint: 'https://mcp.clickup.com/oauth/token',
+          authorization_endpoint: 'https://mcp-test-oauth.local/oauth/authorize',
+          token_endpoint: 'https://mcp-test-oauth.local/oauth/token',
         }),
       } as Response)
       .mockResolvedValueOnce({
@@ -306,7 +306,7 @@ describe('GET /api/auth/:name/callback', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/api/auth/ClickUp/callback?code=test-auth-code-123',
+      url: '/api/auth/TestOAuthMCP/callback?code=test-auth-code-123',
     });
     expect(res.statusCode).toBe(200);
     expect(res.headers['content-type']).toContain('text/html');
@@ -317,7 +317,7 @@ describe('GET /api/auth/:name/callback', () => {
   it('returns error when no code provided', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/api/auth/ClickUp/callback',
+      url: '/api/auth/TestOAuthMCP/callback',
     });
     expect(res.statusCode).toBe(200);
     expect(res.body).toContain('No authorization code received');
@@ -335,7 +335,7 @@ describe('GET /api/auth/:name/callback', () => {
   it('returns error page when auth error is present', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/api/auth/ClickUp/callback?error=access_denied',
+      url: '/api/auth/TestOAuthMCP/callback?error=access_denied',
     });
     expect(res.statusCode).toBe(200);
     expect(res.body).toContain('Authorization failed');

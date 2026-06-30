@@ -20,8 +20,8 @@ broadcast('status', { toolCount })
 
 ### Required Change: Improve Error Detail
 
-When `testConnection` fails for a local HTTP MCP (like Serena), the error message
-must distinguish between:
+When `testConnection` fails for a local HTTP MCP, the error message must
+distinguish between:
 1. **DNS resolution failure** — `host.docker.internal` not found
 2. **Connection refused** — server is down
 3. **Timeout** — server is slow or unreachable
