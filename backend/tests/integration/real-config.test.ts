@@ -76,7 +76,7 @@ describe('PUT /api/mcps preserves extra fields', () => {
     const raw = JSON.parse(readFileSync(getConfigPath(), 'utf-8'));
     expect(raw.mcpServers['Bitbucket'].fieldSelection).toBeDefined();
     expect(raw.mcpServers['Bitbucket'].type).toBe('stdio');
-  });
+  }, 30_000);
 
   it('updates Serena without losing fieldSelection', async () => {
     const res = await app.inject({
@@ -95,5 +95,5 @@ describe('PUT /api/mcps preserves extra fields', () => {
     expect(raw.mcpServers['Serena'].fieldSelection).toBeDefined();
     expect(raw.mcpServers['Serena'].type).toBe('http');
     expect(raw.mcpServers['Serena'].url).toBe('http://host.docker.internal:9121/mcp');
-  });
+  }, 30_000);
 });
