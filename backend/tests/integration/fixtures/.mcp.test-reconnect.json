@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "crashable-mcp": {
+      "transport": {
+        "type": "stdio",
+        "command": "npx",
+        "args": ["tsx", "tests/integration/fixtures/crashable-mcp-server.ts"]
+      }
+    }
+  }
+}

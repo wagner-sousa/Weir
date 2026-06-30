@@ -5,6 +5,7 @@ import { TestConnectionRequest } from '../config/schema.js';
 import { testConnection, queryTools } from '../services/mcp-client.js';
 import { getCachedStatus, setCachedStatus, deleteCachedStatus } from '../services/status-cache.js';
 import { getAuthConfig } from '../services/auth-storage.js';
+import { refreshTokenIfExpired } from '../services/token-refresh.js';
 import { resolve, dirname } from 'node:path';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { broadcast } from './ws.js';
@@ -34,6 +35,11 @@ async function testSingleMCP(name: string): Promise<CachedStatus> {
     return status;
   }
 
+  // Refresh token if expired before testing
+  if (client.url) {
+    await refreshTokenIfExpired(name, client.url);
+  }
+
   const raw = existsSync(configPath) ? JSON.parse(readFileSync(configPath, 'utf-8')) : { mcpServers: {} };
   const rawEntry = raw.mcpServers[name];
   const authConfig = getAuthConfig(name);
@@ -49,7 +55,7 @@ async function testSingleMCP(name: string): Promise<CachedStatus> {
   });
 
   let toolCount = 0;
-  if (connResult.success) {
+  if (connResult.success || accessToken) {
     try {
       const tools = await queryTools(name, {
         type: client.transport as 'stdio' | 'http' | 'sse',
@@ -64,6 +70,8 @@ async function testSingleMCP(name: string): Promise<CachedStatus> {
       // tools query failed, leave count as 0
     }
   }
+
+
 
   const cached: CachedStatus = {
     status: connResult.success ? 'connected' : connResult.needsAuth ? 'needsAuth' : ('error' as 'connected' | 'error' | 'needsAuth'),
@@ -217,10 +225,20 @@ export async function mcpRoutes(app: FastifyInstance) {
 
     broadcast('config:changed', { path: configPath });
 
-    // Test only the newly created MCP asynchronously
-    testSingleMCP(name as string).then((status) => broadcastStatusUpdate(name as string, status));
+    // Test the newly created MCP and return result
+    const testStatus = await testSingleMCP(name as string);
+    broadcastStatusUpdate(name as string, testStatus);
 
-    return reply.status(201).send({ success: true, name });
+    return reply.status(201).send({
+      success: true,
+      name,
+      testResult: {
+        success: testStatus.status === 'connected',
+        needsAuth: testStatus.needsAuth,
+        authUrl: testStatus.authUrl,
+        error: testStatus.error,
+      },
+    });
   });
 
   app.get('/api/mcps/:name/tools', async (request, reply) => {
@@ -327,10 +345,20 @@ export async function mcpRoutes(app: FastifyInstance) {
 
     broadcast('config:changed', { path: configPath });
 
-    // Test only the updated MCP asynchronously
-    testSingleMCP(name as string).then((status) => broadcastStatusUpdate(name as string, status));
+    // Test the updated MCP and return result
+    const testStatus = await testSingleMCP(name as string);
+    broadcastStatusUpdate(name as string, testStatus);
 
-    return { success: true, name: name as string };
+    return {
+      success: true,
+      name: name as string,
+      testResult: {
+        success: testStatus.status === 'connected',
+        needsAuth: testStatus.needsAuth,
+        authUrl: testStatus.authUrl,
+        error: testStatus.error,
+      },
+    };
   });
 
   app.delete('/api/mcps/:name', async (request, reply) => {

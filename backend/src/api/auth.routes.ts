@@ -4,12 +4,12 @@ import { writeMCPConfig } from '../config/writer.js';
 import { discoverOAuth2, testConnection, queryTools } from '../services/mcp-client.js';
 import { setCachedStatus } from '../services/status-cache.js';
 import { getAuthConfig, setAuthConfig } from '../services/auth-storage.js';
+import { createOAuth2Client, refreshTokenIfExpired } from '../services/token-refresh.js';
 import { broadcast } from './ws.js';
 import { randomBytes, createHash } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import type { CachedStatus, StatusUpdate } from '../config/types.js';
-import { AuthorizationCode } from 'simple-oauth2';
 import type { AuthorizationTokenConfig, Token } from 'simple-oauth2';
 
 function getConfigPath(): string {
@@ -62,73 +62,6 @@ function saveRawConfig(configPath: string, raw: Record<string, unknown>): void {
   writeMCPConfig(configPath, raw as never);
 }
 
-function createOAuth2Client(
-  clientId: string,
-  clientSecret: string | undefined,
-  authorizationEndpoint: string,
-  tokenEndpoint: string,
-): AuthorizationCode {
-  const authUrl = new URL(authorizationEndpoint);
-  const tokenUrl = new URL(tokenEndpoint);
-
-  return new AuthorizationCode({
-    client: { id: clientId, secret: clientSecret },
-    auth: {
-      authorizeHost: authUrl.origin,
-      authorizePath: authUrl.pathname,
-      tokenHost: tokenUrl.origin,
-      tokenPath: tokenUrl.pathname,
-    },
-    options: {
-      bodyFormat: 'form',
-      authorizationMethod: 'body',
-    },
-  });
-}
-
-async function refreshTokenIfExpired(name: string, clientUrl: string): Promise<void> {
-  const authData = getAuthConfig(name);
-  if (!authData?.refreshToken || !authData.expiresAt) return;
-
-  // Check if token is expired (with 5 min buffer)
-  if (Date.now() < authData.expiresAt - 300_000) return;
-
-  const authConfig = await discoverOAuth2(clientUrl);
-  if (!authConfig) return;
-
-  const clientId = authData.auth?.clientId;
-  if (!clientId) return;
-
-  const oauth2 = createOAuth2Client(
-    clientId,
-    authData.auth?.clientSecret,
-    authConfig.authorizationEndpoint,
-    authConfig.tokenEndpoint,
-  );
-
-  try {
-    const token = oauth2.createToken({
-      access_token: authData.accessToken || '',
-      refresh_token: authData.refreshToken,
-      expires_in: Math.floor((authData.expiresAt - Date.now()) / 1000),
-    });
-
-    if (token.expired()) {
-      const refreshed = await token.refresh();
-      const refreshedData = refreshed.token;
-      setAuthConfig(name, {
-        accessToken: refreshedData.access_token as string,
-        refreshToken: refreshedData.refresh_token as string | undefined,
-        expiresAt: refreshedData.expires_in
-          ? Date.now() + (refreshedData.expires_in as number) * 1000
-          : undefined,
-      });
-    }
-  } catch {
-    // Refresh failed — will try again next time
-  }
-}
-
 async function testSingleMCPAndBroadcast(name: string): Promise<void> {
   try {
     const configPath = getConfigPath();
@@ -154,7 +87,7 @@ async function testSingleMCPAndBroadcast(name: string): Promise<void> {
     });
 
     let toolCount = 0;
-    if (connResult.success) {
+    if (connResult.success || accessToken) {
       try {
         const tools = await queryTools(name, {
           type: client.transport as 'stdio' | 'http' | 'sse',
@@ -186,9 +119,9 @@ async function testSingleMCPAndBroadcast(name: string): Promise<void> {
       error: cached.error,
       toolCount: cached.toolCount,
     };
-    broadcast('status', update);
-    broadcast('config:changed', { path: getConfigPath() });
-  } catch {
+      broadcast('status', update);
+      broadcast('config:changed', { path: getConfigPath() });
+    } catch {
     // background test failed silently
   }
 }
@@ -270,12 +203,20 @@ export async function authRoutes(app: FastifyInstance) {
       authConfig.tokenEndpoint,
     );
 
-    const authorizationUri = oauth2.authorizeURL({
+    // Only include scope if scopesSupported has valid entries;
+    // omitting it entirely avoids sending scope=undefined as a string.
+    const authorizeParams: Record<string, string> = {
       redirect_uri: redirectUri,
-      scope: authConfig.scopesSupported?.join(' ') || undefined,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
-    });
+    };
+    const scope = authConfig.scopesSupported?.filter(Boolean).join(' ');
+    console.log('[auth] scopesSupported:', authConfig.scopesSupported, '→ scope string:', JSON.stringify(scope));
+    if (scope) {
+      authorizeParams.scope = scope;
+    }
+    const authorizationUri = oauth2.authorizeURL(authorizeParams as never);
+    console.log('[auth] authorizationUri:', authorizationUri);
 
     return { success: true, url: authorizationUri };
   });
@@ -285,6 +226,7 @@ export async function authRoutes(app: FastifyInstance) {
     const { code, error: authError } = request.query as { code?: string; error?: string };
 
     if (authError) {
+      console.log('[auth] callback error for', name, ':', authError);
       return reply.type('text/html').send(
         `<html><body><p>Authorization failed: ${authError}</p></body></html>`,
       );
@@ -364,15 +306,47 @@ export async function authRoutes(app: FastifyInstance) {
       if (expiresIn) authData.expiresAt = Date.now() + expiresIn * 1000;
       setAuthConfig(name, authData);
 
-      // Optimistic update: set status to connected immediately
+      // Query tools immediately with the access token before broadcasting
+      let toolCount = 0;
+      try {
+        const tools = await queryTools(name, {
+          type: client.transport as 'stdio' | 'http' | 'sse',
+          command: client.command,
+          args: client.args,
+          url: client.url,
+          env: client.env,
+          accessToken,
+        });
+        toolCount = tools.length;
+      } catch {
+        // first query attempt failed
+      }
+
+      if (toolCount === 0) {
+        try {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          const tools = await queryTools(name, {
+            type: client.transport as 'stdio' | 'http' | 'sse',
+            command: client.command,
+            args: client.args,
+            url: client.url,
+            env: client.env,
+            accessToken,
+          });
+          toolCount = tools.length;
+        } catch {
+          // retry also failed, leave as 0
+        }
+      }
+
       setCachedStatus(name, {
         status: 'connected',
         error: null,
-        toolCount: 0,
+        toolCount,
         needsAuth: false,
         authUrl: null,
       });
-      broadcast('status', { name, status: 'connected', error: null, toolCount: 0 });
+      broadcast('status', { name, status: 'connected', error: null, toolCount });
       broadcast('config:changed', { path: getConfigPath() });
 
       // Try to create a token object for potential refresh

@@ -47,6 +47,7 @@ services:
     working_dir: /app/backend
     environment:
       NODE_ENV: test
+      MCP_CONFIG_PATH: /app/.mcp.json
       MCP_CONNECTION_TIMEOUT: ${MCP_CONNECTION_TIMEOUT:-5000}
       MCP_ADD_TIMEOUT: ${MCP_ADD_TIMEOUT:-30000}
     extra_hosts:

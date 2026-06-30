@@ -22,6 +22,29 @@ export interface ToolResult {
   inputSchema?: unknown;
 }
 
+function parseFetchError(err: unknown, url: string): string {
+  if (err instanceof TypeError && err.message === 'fetch failed') {
+    const cause = err.cause as { code?: string; message?: string } | undefined;
+    if (cause?.code === 'ENOTFOUND') {
+      return `Server unreachable: DNS resolution failed for ${url}`;
+    }
+    if (cause?.code === 'ECONNREFUSED') {
+      return `Server unreachable: Connection refused at ${url}`;
+    }
+    if (cause?.message?.includes('getaddrinfo ENOTFOUND')) {
+      const host = cause.message.split(' ').pop() || 'unknown';
+      return `Server unreachable: DNS resolution failed for ${host}`;
+    }
+  }
+  if (err instanceof Error && err.name === 'TimeoutError') {
+    return `Server unreachable: Connection timed out at ${url}`;
+  }
+  if (err instanceof Error) {
+    return err.message;
+  }
+  return String(err);
+}
+
 function replaceLocalhost(url: string): string {
   return url.replace(/localhost/g, 'host.docker.internal').replace(/127\.0\.0\.1/g, 'host.docker.internal');
 }
@@ -163,7 +186,7 @@ async function testHttpConnection(transport: TransportConfigWithToken): Promise<
       return { success: true };
     }
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return { success: false, error: parseFetchError(err, url) };
   }
 }
 
@@ -242,7 +265,7 @@ async function testSseConnection(transport: TransportConfigWithToken): Promise<C
       return { success: true };
     }
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return { success: false, error: parseFetchError(err, url) };
   }
 }
 
@@ -270,7 +293,7 @@ export async function queryTools(
   const url = replaceLocalhost(transport.url!);
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(
+    let timeout = setTimeout(
       () => controller.abort(),
       parseInt(process.env.MCP_CONNECTION_TIMEOUT ?? '5000', 10),
     );
@@ -283,12 +306,51 @@ export async function queryTools(
       headers['Authorization'] = `Bearer ${transport.accessToken}`;
     }
 
+    // Step 1: Establish session via initialize (needed for MCPs that require sessions,
+    // e.g. Postman and Serena which return mcp-session-id header)
+    let sessionId: string | null = null;
+    try {
+      const initResponse = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'initialize',
+          params: {
+            protocolVersion: '2024-11-05',
+            capabilities: {},
+            clientInfo: { name: 'weir', version: '0.1.0' },
+          },
+        }),
+        signal: controller.signal,
+      });
+      if (initResponse.ok) {
+        sessionId = initResponse.headers.get('mcp-session-id') || null;
+      }
+      await initResponse.text().catch(() => {});
+    } catch {
+      // initialize failed, continue without session
+    }
+
+    // Reset timeout for tools/list request
+    clearTimeout(timeout);
+    timeout = setTimeout(
+      () => controller.abort(),
+      parseInt(process.env.MCP_CONNECTION_TIMEOUT ?? '5000', 10),
+    );
+
+    // Step 2: Send tools/list with session ID if available
+    const headers2: Record<string, string> = { ...headers };
+    if (sessionId) {
+      headers2['MCP-Session-ID'] = sessionId;
+    }
     const response = await fetch(url, {
       method: 'POST',
-      headers,
+      headers: headers2,
       body: JSON.stringify({
         jsonrpc: '2.0',
-        id: 1,
+        id: 2,
         method: 'tools/list',
       }),
       signal: controller.signal,
@@ -296,6 +358,8 @@ export async function queryTools(
     clearTimeout(timeout);
 
     if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      console.log(`[queryTools] ${name}: HTTP ${response.status}, body=${body.slice(0, 200)}`);
       return [];
     }
 
@@ -310,33 +374,34 @@ export async function queryTools(
           try {
             const parsed = JSON.parse(line.slice(6));
             const tools = parsed.result?.tools || parsed?.result?.tools;
-            if (tools) {
-              return tools.map((t: { name: string; description?: string; inputSchema?: unknown }) => ({
-                name: t.name,
-                description: t.description,
-                inputSchema: t.inputSchema,
-              }));
-            }
+    if (tools) {
+      const toolsArr = tools as Array<{ name: string; description?: string; inputSchema?: unknown }>;
+      return toolsArr.map((t) => ({
+        name: t.name,
+        description: t.description,
+        inputSchema: t.inputSchema,
+      }));
+    }
           } catch {
             // skip malformed SSE data
           }
         }
       }
-      return [];
+    return [];
     }
 
     // Parse JSON response
     try {
       const data = JSON.parse(text);
       if (data.result?.tools) {
-        return data.result.tools.map((t: { name: string; description?: string; inputSchema?: unknown }) => ({
+        const toolsArr = data.result.tools as Array<{ name: string; description?: string; inputSchema?: unknown }>;
+        return toolsArr.map((t) => ({
           name: t.name,
           description: t.description,
           inputSchema: t.inputSchema,
         }));
       }
     } catch {
-      // invalid JSON
     }
     return [];
   } catch {

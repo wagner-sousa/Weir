@@ -39,9 +39,12 @@ export function CardGrid({ clients, onRemove, removePending, mcpPort }: CardGrid
     queryClient.invalidateQueries({ queryKey: ['mcps'] });
   }
 
-  async function handleAuth(client: MCPClient) {
+  async function handleAuth(client: MCPClient): Promise<void>;
+  async function handleAuth(name: string): Promise<void>;
+  async function handleAuth(arg: MCPClient | string): Promise<void> {
+    const name = typeof arg === 'string' ? arg : arg.name;
     try {
-      const res = await fetch(`/api/auth/${encodeURIComponent(client.name)}/start`, {
+      const res = await fetch(`/api/auth/${encodeURIComponent(name)}/start`, {
         method: 'POST',
       });
       const data = await res.json();
@@ -177,12 +180,14 @@ export function CardGrid({ clients, onRemove, removePending, mcpPort }: CardGrid
           setModalOpen(false);
           queryClient.invalidateQueries({ queryKey: ['mcps'] });
         }}
+        onAuth={handleAuth}
       />
       <AddMCPModal
         open={editModalOpen}
         existingNames={clients.map((c) => c.name)}
         existingMCP={editingMCP ?? undefined}
         onClose={closeEditModal}
+        onAuth={handleAuth}
       />
       {configName && (
         <MCPConnectionModal

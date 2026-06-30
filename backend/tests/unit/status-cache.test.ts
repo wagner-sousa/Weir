@@ -1,10 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { mkdirSync, rmSync } from 'node:fs';
 
 let getCachedStatus: typeof import('../../src/services/status-cache.js')['getCachedStatus'];
 let setCachedStatus: typeof import('../../src/services/status-cache.js')['setCachedStatus'];
 let deleteCachedStatus: typeof import('../../src/services/status-cache.js')['deleteCachedStatus'];
 let getAllCachedStatuses: typeof import('../../src/services/status-cache.js')['getAllCachedStatuses'];
 let clearCacheForTesting: typeof import('../../src/services/status-cache.js')['clearCacheForTesting'];
+let reloadCacheForTesting: typeof import('../../src/services/status-cache.js')['reloadCacheForTesting'];
+
+let tmpDir: string;
 
 describe('StatusCache', () => {
   const mockStatus = {
@@ -16,6 +22,9 @@ describe('StatusCache', () => {
   };
 
   beforeEach(async () => {
+    tmpDir = join(tmpdir(), `weir-cache-${Date.now()}`);
+    mkdirSync(tmpDir, { recursive: true });
+    vi.stubEnv('MCP_CONFIG_PATH', join(tmpDir, '.mcp.json'));
     vi.stubEnv('MCP_CACHE_TTL', '60000');
     const mod = await import('../../src/services/status-cache.js');
     getCachedStatus = mod.getCachedStatus;
@@ -23,10 +32,12 @@ describe('StatusCache', () => {
     deleteCachedStatus = mod.deleteCachedStatus;
     getAllCachedStatuses = mod.getAllCachedStatuses;
     clearCacheForTesting = mod.clearCacheForTesting;
+    reloadCacheForTesting = mod.reloadCacheForTesting;
     clearCacheForTesting();
   });
 
   afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
     vi.unstubAllEnvs();
   });
 
@@ -79,5 +90,39 @@ describe('StatusCache', () => {
   it('returns empty map when nothing is cached', () => {
     const all = getAllCachedStatuses();
     expect(all.size).toBe(0);
+  });
+
+  it('persists to disk and survives reload', () => {
+    setCachedStatus('persist-mcp', mockStatus);
+
+    clearCacheForTesting();
+    reloadCacheForTesting();
+
+    const result = getCachedStatus('persist-mcp');
+    expect(result).toBeDefined();
+    expect(result!.toolCount).toBe(5);
+  });
+
+  it('does not load expired entries from disk', () => {
+    setCachedStatus('expired-mcp', mockStatus);
+
+    clearCacheForTesting();
+    vi.stubEnv('MCP_CACHE_TTL', '0');
+    reloadCacheForTesting();
+
+    const result = getCachedStatus('expired-mcp');
+    expect(result).toBeUndefined();
+  });
+
+  it('delete removes from disk too', () => {
+    setCachedStatus('delete-me', mockStatus);
+
+    deleteCachedStatus('delete-me');
+
+    clearCacheForTesting();
+    reloadCacheForTesting();
+
+    const result = getCachedStatus('delete-me');
+    expect(result).toBeUndefined();
   });
 });

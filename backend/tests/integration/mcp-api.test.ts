@@ -114,7 +114,7 @@ describe('POST /api/mcps', () => {
       payload: {
         name: 'flat-server',
         type: 'stdio',
-        command: 'cat',
+        command: 'true',
       },
     });
     expect(res.statusCode).toBe(201);

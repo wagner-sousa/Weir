@@ -1,8 +1,8 @@
-# Specification Quality Checklist: Save on Test
+# Specification Quality Checklist: Fix Zeroed Counters for Serena and Postman
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2026-06-22
-**Feature**: [spec.md](../spec.md)
+**Created**: 2026-06-30
+**Feature**: specs/011-fix-zeroed-counters/spec.md
 
 ## Content Quality
 
@@ -29,12 +29,6 @@
 - [x] Feature meets measurable outcomes defined in Success Criteria
 - [x] No implementation details leak into specification
 
-## Validation Notes
+## Notes
 
-- All mandatory sections present: User Scenarios, Requirements, Success Criteria, Out of Scope, Assumptions
-- No NEEDS CLARIFICATION markers needed — description was detailed enough for reasonable defaults
-- Edge cases documented: missing clientId, timeout, modal close during test, blocked popup
-- Dependencies on existing features (test-connection endpoint, OAuth2 popup flow) explicitly listed in Assumptions
-- All FRs have corresponding acceptance scenarios
-- Success criteria are measurable and technology-agnostic
-- Constitution compliance satisfied: English for user-facing messages (FR-010), no icon library violations
+- All items pass. Spec is ready for planning.
