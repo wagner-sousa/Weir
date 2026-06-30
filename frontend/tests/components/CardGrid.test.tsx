@@ -13,8 +13,12 @@ vi.mock('../../src/hooks/useMCPs', async (importOriginal) => {
   };
 });
 
-vi.mock('../../src/components/Toast', () => ({
-  showToast: vi.fn(),
+const { mockToast } = vi.hoisted(() => ({
+  mockToast: { success: vi.fn(), error: vi.fn() },
+}));
+
+vi.mock('sonner', () => ({
+  toast: mockToast,
 }));
 
 function renderWithQuery(ui: React.ReactElement) {
@@ -86,8 +90,6 @@ describe('CardGrid', () => {
     });
 
     it('shows toast when popup is blocked', async () => {
-      const { showToast } = await import('../../src/components/Toast');
-
       vi.mocked(fetch).mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ success: true, url: 'https://example.com/oauth/authorize?client_id=test' }),
@@ -100,16 +102,13 @@ describe('CardGrid', () => {
       fireEvent.click(screen.getByRole('button', { name: /authorize mcp/i }));
 
       await waitFor(() => {
-        expect(showToast).toHaveBeenCalledWith(
+        expect(mockToast.error).toHaveBeenCalledWith(
           'Popup blocked. Please allow popups for this site.',
-          'error',
         );
       });
     });
 
     it('shows toast when API returns error', async () => {
-      const { showToast } = await import('../../src/components/Toast');
-
       vi.mocked(fetch).mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ success: false, error: 'OAuth2 config not found' }),
@@ -120,7 +119,7 @@ describe('CardGrid', () => {
       fireEvent.click(screen.getByRole('button', { name: /authorize mcp/i }));
 
       await waitFor(() => {
-        expect(showToast).toHaveBeenCalledWith('OAuth2 config not found', 'error');
+        expect(mockToast.error).toHaveBeenCalledWith('OAuth2 config not found');
       });
     });
   });
