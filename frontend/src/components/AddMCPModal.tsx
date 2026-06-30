@@ -16,9 +16,10 @@ interface AddMCPModalProps {
   existingNames: string[];
   existingMCP?: MCPClient;
   onClose: () => void;
+  onAuth?: (name: string, url?: string, transport?: string) => void;
 }
 
-export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMCPModalProps) {
+export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth }: AddMCPModalProps) {
   const [type, setType] = useState<'stdio' | 'http' | 'sse'>('stdio');
   const [command, setCommand] = useState('');
   const [argsStr, setArgsStr] = useState('');
@@ -139,7 +140,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
     return t;
   }
 
-  async function handleTest() {
+  async function handleTest(autoSave = true) {
     setTesting(true);
     setTestResult(null);
     const transport = buildTransport();
@@ -147,14 +148,14 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
     const result = await testMutation.mutateAsync({ transport, name: testName });
     setTestResult(result);
     setTesting(false);
+
+    if (autoSave && (result.success || result.needsAuth)) {
+      await doSave(transport);
+    }
   }
 
-  async function handleSave(e: FormEvent) {
-    e.preventDefault();
-    if (nameError || !name.trim()) return;
-    const transport = buildTransport();
+  async function doSave(transport: TransportConfig, triggerAuth = false) {
     const trimmedName = name.trim();
-
     let result: { success: boolean; name?: string; error?: string; testResult?: TestConnectionResult };
 
     if (isEditing) {
@@ -175,7 +176,10 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
     toast.success(`MCP "${trimmedName}" ${isEditing ? 'updated' : 'added'} successfully.`);
     onClose();
 
-    // Auto-open OAuth popup if test indicates auth is needed
+    if (triggerAuth && onAuth) {
+      onAuth(trimmedName);
+    }
+
     if (result.testResult?.needsAuth && result.testResult?.authUrl) {
       try {
         const authRes = await fetch(`/api/auth/${encodeURIComponent(trimmedName)}/start`, {
@@ -207,6 +211,29 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
       } catch {
         toast.error('Failed to start OAuth2 authorization.');
       }
+    }
+  }
+
+  async function handleSave(e: FormEvent) {
+    e.preventDefault();
+    if (nameError || !name.trim()) return;
+    const transport = buildTransport();
+
+    if (!testResult) {
+      setTesting(true);
+      const testResultData = await testMutation.mutateAsync({ transport, name: isEditing ? originalName : undefined });
+      setTestResult(testResultData);
+      setTesting(false);
+
+      if (testResultData.success || testResultData.needsAuth) {
+        const needsAuth = testResultData.needsAuth && type === 'http';
+        await doSave(transport, needsAuth);
+      } else {
+        return;
+      }
+    } else {
+      const needsAuth = testResult.needsAuth && type === 'http';
+      await doSave(transport, needsAuth);
     }
   }
 
