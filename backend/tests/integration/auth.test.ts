@@ -187,6 +187,72 @@ describe('GET /api/auth/:name/callback', () => {
     vi.stubGlobal('fetch', vi.fn());
   });
 
+  const MOCK_TOOLS = [
+    { name: 'tool-1', description: 'Tool 1' },
+    { name: 'tool-2', description: 'Tool 2' },
+    { name: 'tool-3', description: 'Tool 3' },
+  ];
+
+  it('T007: GET /api/mcps shows correct toolCount after callback', async () => {
+    const toolsJson = JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      result: { tools: MOCK_TOOLS },
+    });
+    const initResponse = {
+      ok: true as const,
+      json: () => Promise.resolve({ jsonrpc: '2.0' as const, id: 1, result: {} }),
+      headers: { get: () => 'application/json' as const },
+      text: () => Promise.resolve(JSON.stringify({ jsonrpc: '2.0' as const, id: 1, result: {} })),
+    };
+
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          authorization_endpoint: 'https://mcp.clickup.com/oauth/authorize',
+          token_endpoint: 'https://mcp.clickup.com/oauth/token',
+        }),
+        headers: { get: () => 'application/json' },
+        text: () => Promise.resolve(toolsJson),
+      } as unknown as Response)
+      .mockResolvedValueOnce({
+        ok: true as const,
+        headers: { get: () => 'application/json' as const },
+        text: () => Promise.resolve(toolsJson),
+        json: () => Promise.resolve(JSON.parse(toolsJson)),
+      } as unknown as Response)
+      .mockResolvedValueOnce(initResponse as unknown as Response)
+      .mockResolvedValueOnce(initResponse as unknown as Response)
+      .mockResolvedValueOnce({
+        ok: true as const,
+        headers: { get: () => 'application/json' as const },
+        text: () => Promise.resolve(toolsJson),
+        json: () => Promise.resolve(JSON.parse(toolsJson)),
+      } as unknown as Response)
+      // Mocks for testSingleMCPAndBroadcast (background call after callback)
+      .mockResolvedValueOnce(initResponse as unknown as Response)
+      .mockResolvedValueOnce(initResponse as unknown as Response)
+      .mockResolvedValueOnce({
+        ok: true as const,
+        headers: { get: () => 'application/json' as const },
+        text: () => Promise.resolve(toolsJson),
+        json: () => Promise.resolve(JSON.parse(toolsJson)),
+      } as unknown as Response);
+
+    const callbackRes = await app.inject({
+      method: 'GET',
+      url: '/api/auth/ClickUp/callback?code=test-code',
+    });
+    expect(callbackRes.statusCode).toBe(200);
+
+    const mcpsRes = await app.inject({ method: 'GET', url: '/api/mcps' });
+    const body = JSON.parse(mcpsRes.body);
+    const clickup = body.clients.find((c: { name: string }) => c.name === 'ClickUp');
+    expect(clickup).toBeDefined();
+    expect(clickup.toolCount).toBe(3);
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
   });

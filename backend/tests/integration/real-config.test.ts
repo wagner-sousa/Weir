@@ -59,6 +59,26 @@ describe('Serena MCP (http)', () => {
   });
 });
 
+describe('T012: Error message clarity for unreachable MCP', () => {
+  it('returns distinguishable error for connection refused (not generic "Connection failed")', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/mcps/test-connection',
+      payload: {
+        transport: {
+          type: 'http',
+          url: 'http://host.docker.internal:19121/mcp',
+        },
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.success).toBe(false);
+    expect(body.error).toBeDefined();
+    expect(body.error).toContain('Connection refused');
+  }, 15_000);
+});
+
 describe('PUT /api/mcps preserves extra fields', () => {
   it('updates Bitbucket without losing fieldSelection', async () => {
     const res = await app.inject({

@@ -397,7 +397,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={handleTest}
+                    onClick={() => handleTest()}
                     disabled={!isValid || testing}
                     className={`flex-1 rounded px-4 py-2 text-sm font-medium ${
                       !isValid || testing

@@ -87,7 +87,7 @@ async function testSingleMCPAndBroadcast(name: string): Promise<void> {
     });
 
     let toolCount = 0;
-    if (connResult.success) {
+    if (connResult.success || accessToken) {
       try {
         const tools = await queryTools(name, {
           type: client.transport as 'stdio' | 'http' | 'sse',
@@ -119,9 +119,9 @@ async function testSingleMCPAndBroadcast(name: string): Promise<void> {
       error: cached.error,
       toolCount: cached.toolCount,
     };
-    broadcast('status', update);
-    broadcast('config:changed', { path: getConfigPath() });
-  } catch {
+      broadcast('status', update);
+      broadcast('config:changed', { path: getConfigPath() });
+    } catch {
     // background test failed silently
   }
 }
@@ -306,15 +306,47 @@ export async function authRoutes(app: FastifyInstance) {
       if (expiresIn) authData.expiresAt = Date.now() + expiresIn * 1000;
       setAuthConfig(name, authData);
 
-      // Optimistic update: set status to connected immediately
+      // Query tools immediately with the access token before broadcasting
+      let toolCount = 0;
+      try {
+        const tools = await queryTools(name, {
+          type: client.transport as 'stdio' | 'http' | 'sse',
+          command: client.command,
+          args: client.args,
+          url: client.url,
+          env: client.env,
+          accessToken,
+        });
+        toolCount = tools.length;
+      } catch {
+        // first query attempt failed
+      }
+
+      if (toolCount === 0) {
+        try {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          const tools = await queryTools(name, {
+            type: client.transport as 'stdio' | 'http' | 'sse',
+            command: client.command,
+            args: client.args,
+            url: client.url,
+            env: client.env,
+            accessToken,
+          });
+          toolCount = tools.length;
+        } catch {
+          // retry also failed, leave as 0
+        }
+      }
+
       setCachedStatus(name, {
         status: 'connected',
         error: null,
-        toolCount: 0,
+        toolCount,
         needsAuth: false,
         authUrl: null,
       });
-      broadcast('status', { name, status: 'connected', error: null, toolCount: 0 });
+      broadcast('status', { name, status: 'connected', error: null, toolCount });
       broadcast('config:changed', { path: getConfigPath() });
 
       // Try to create a token object for potential refresh

@@ -55,7 +55,7 @@ async function testSingleMCP(name: string): Promise<CachedStatus> {
   });
 
   let toolCount = 0;
-  if (connResult.success) {
+  if (connResult.success || accessToken) {
     try {
       const tools = await queryTools(name, {
         type: client.transport as 'stdio' | 'http' | 'sse',
@@ -70,6 +70,8 @@ async function testSingleMCP(name: string): Promise<CachedStatus> {
       // tools query failed, leave count as 0
     }
   }
+
+
 
   const cached: CachedStatus = {
     status: connResult.success ? 'connected' : connResult.needsAuth ? 'needsAuth' : ('error' as 'connected' | 'error' | 'needsAuth'),
