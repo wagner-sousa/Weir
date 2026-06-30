@@ -12,9 +12,10 @@ interface CardGridProps {
   clients: MCPClient[];
   onRemove?: (name: string) => void;
   removePending?: boolean;
+  mcpPort?: number;
 }
 
-export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
+export function CardGrid({ clients, onRemove, removePending, mcpPort }: CardGridProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingMCP, setEditingMCP] = useState<MCPClient | null>(null);
   const [reconnectingName, setReconnectingName] = useState<string | null>(null);
@@ -188,12 +189,14 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
           open={configModalOpen}
           names={[configName]}
           onClose={() => setConfigName(null)}
+          mcpPort={mcpPort}
         />
       )}
       <MCPConnectionModal
         open={globalConfigOpen}
         names={clients.map((c) => c.name)}
         onClose={() => setGlobalConfigOpen(false)}
+        mcpPort={mcpPort}
       />
     </div>
   );

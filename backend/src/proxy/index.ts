@@ -1,6 +1,6 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { type ProxyConfig, type ProxyOptions, type JsonRpcMessage, defaultProxyOptions } from './types.js';
+import { ProxyState, type ProxyConfig, type ProxyOptions, type JsonRpcMessage, type ProxySessionHandle, defaultProxyOptions } from './types.js';
 import { createTransport } from './transport.js';
 import { startProxy } from './proxy.js';
 
@@ -60,6 +60,44 @@ export function resolveBackendConfig(name: string): ProxyConfig {
   }
 
   throw new Error(`Unable to determine transport for MCP "${name}"`);
+}
+
+export function createProxySession(name: string): ProxySessionHandle {
+  const config = resolveBackendConfig(name);
+  const transport = createTransport(config);
+  let state = ProxyState.CONNECTING;
+  let messageHandler: ((msg: JsonRpcMessage) => void) | null = null;
+  let disconnectHandler: (() => void) | null = null;
+  let errorHandler: ((err: Error) => void) | null = null;
+
+  transport.onMessage((msg) => messageHandler?.(msg));
+  transport.onDisconnect(() => disconnectHandler?.());
+  transport.onError((err) => errorHandler?.(err));
+
+  return {
+    async connect() {
+      state = ProxyState.CONNECTING;
+      await transport.connect();
+      state = ProxyState.CONNECTED;
+    },
+    disconnect() {
+      state = ProxyState.CLOSED;
+      transport.disconnect();
+    },
+    async send(message) {
+      await transport.send(message);
+    },
+    onMessage(handler) {
+      messageHandler = handler;
+    },
+    onDisconnect(handler) {
+      disconnectHandler = handler;
+    },
+    onError(handler) {
+      errorHandler = handler;
+    },
+    getState: () => state,
+  };
 }
 
 export async function sendOneMessage(

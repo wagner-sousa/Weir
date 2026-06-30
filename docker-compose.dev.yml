@@ -23,10 +23,12 @@ services:
       WEIR_PROXY_KEEPALIVE_MS: ${WEIR_PROXY_KEEPALIVE_MS:-15000}
       WEIR_PROXY_HTTP_TIMEOUT: ${WEIR_PROXY_HTTP_TIMEOUT:-30000}
       WEIR_PROXY_MAX_BODY_SIZE: ${WEIR_PROXY_MAX_BODY_SIZE:-1048576}
+      WEIR_MCP_PORT: ${WEIR_MCP_PORT:-4000}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
       - "3000:3000"
+      - "4000:4000"
       - "5173:5173"
     volumes:
       - .:/app

@@ -8,10 +8,10 @@ import { fileURLToPath } from 'node:url';
 import { mcpRoutes } from './api/mcp.routes.js';
 import { authRoutes } from './api/auth.routes.js';
 import { healthRoutes } from './api/health.routes.js';
-import { proxyRoutes } from './api/proxy.routes.js';
 import { setupWebSocket } from './api/ws.js';
 import { createWatcher } from './config/watcher.js';
 import { migrateFromMcpJson } from './services/auth-storage.js';
+import { startMcpServer } from './mcp/mcp.server.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -62,7 +62,6 @@ export async function buildApp() {
   await app.register(mcpRoutes);
   await app.register(authRoutes);
   await app.register(healthRoutes);
-  await app.register(proxyRoutes);
 
   const webDir = join(__dirname, 'web');
   await app.register(fastifyStatic, {
@@ -93,13 +92,23 @@ export async function start() {
     }
     process.exit(1);
   }
+
+  const mcpPort = parseInt(process.env['WEIR_MCP_PORT'] || '4000', 10);
+  if (mcpPort > 0) {
+    try {
+      await startMcpServer(mcpPort);
+      app.log.info(`MCP port server running at http://0.0.0.0:${mcpPort}`);
+    } catch (err: unknown) {
+      app.log.warn(`Failed to start MCP port server on ${mcpPort}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (isMain) {
-  const proxyIndex = process.argv.indexOf('--proxy');
-  if (proxyIndex !== -1 && process.argv[proxyIndex + 1]) {
-    const name = process.argv[proxyIndex + 1];
+  const mcpIndex = process.argv.indexOf('--mcp');
+  if (mcpIndex !== -1 && process.argv[mcpIndex + 1]) {
+    const name = process.argv[mcpIndex + 1];
     const { runProxy } = await import('./proxy/index.js');
     await runProxy(name, process.argv);
   } else {
