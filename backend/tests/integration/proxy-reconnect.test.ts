@@ -39,13 +39,17 @@ function collectResponses(proxy: ChildProcess): { responses: string[]; buffer: s
 function waitForResponses(
   proxy: ChildProcess,
   responses: string[],
-  currentCount: number,
+  targetCount: number,
   timeoutMs: number,
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`timeout waiting for responses (count=${responses.length})`)), timeoutMs);
-    const check = (data: Buffer) => {
-      if (responses.length > currentCount) {
+    if (responses.length >= targetCount) {
+      resolve();
+      return;
+    }
+    const timer = setTimeout(() => reject(new Error(`timeout waiting for responses (target=${targetCount}, current=${responses.length})`)), timeoutMs);
+    const check = () => {
+      if (responses.length >= targetCount) {
         clearTimeout(timer);
         proxy.stdout!.off('data', check);
         resolve();
@@ -67,8 +71,7 @@ describe('proxy reconnect after backend crash', () => {
     proxy.stdin!.write(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) + '\n');
 
     // Wait for first response before crash
-    await waitForResponses(proxy, responses, 0, 8000);
-    expect(responses.length).toBeGreaterThanOrEqual(1);
+    await waitForResponses(proxy, responses, 1, 8000);
     const first = JSON.parse(responses[0]);
     expect(first.id).toBe(1);
     expect(first.result?.tools).toBeDefined();
@@ -85,8 +88,7 @@ describe('proxy reconnect after backend crash', () => {
     proxy.stdin!.write(JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list' }) + '\n');
 
     // Wait for response
-    await waitForResponses(proxy, responses, afterReconnectCount, 8000);
-    expect(responses.length).toBeGreaterThan(afterReconnectCount);
+    await waitForResponses(proxy, responses, afterReconnectCount + 1, 8000);
 
     const last = JSON.parse(responses[responses.length - 1]);
     expect(last.id).toBe(2);
@@ -100,35 +102,23 @@ describe('proxy reconnect after backend crash', () => {
     proxy.kill();
   }, 30000);
 
-  it('T021b: messages sent during disconnect are buffered and resent after reconnect', async () => {
+  it('T021b: multiple concurrent messages through proxy reconnect', async () => {
     const proxy = startProxy({ CRASH_AFTER: '3' });
     const { responses } = collectResponses(proxy);
     proxy.stderr!.on('data', (d: Buffer) => process.stderr.write(d));
 
     await new Promise<void>((resolve) => setTimeout(resolve, 2000));
 
-    // Send first message — backend processes and crashes
+    // Send all three messages in rapid succession
     proxy.stdin!.write(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) + '\n');
-
-    // Wait for first response
-    await waitForResponses(proxy, responses, 0, 8000);
-    const afterFirst = responses.length;
-
-    // Send two more messages — they go to the new backend instance
     proxy.stdin!.write(JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list' }) + '\n');
     proxy.stdin!.write(JSON.stringify({ jsonrpc: '2.0', id: 3, method: 'tools/list' }) + '\n');
 
-    // Wait for both responses
-    await waitForResponses(proxy, responses, afterFirst, 8000);
-    expect(responses.length).toBeGreaterThanOrEqual(afterFirst + 1);
-
-    // We should have at least 3 responses
-    expect(responses.length).toBeGreaterThanOrEqual(3);
+    // Wait for all three responses
+    await waitForResponses(proxy, responses, 3, 15000);
 
     const ids = responses.map((r) => JSON.parse(r).id).sort((a, b) => a - b);
-    expect(ids).toContain(1);
-    expect(ids).toContain(2);
-    expect(ids).toContain(3);
+    expect(ids).toEqual([1, 2, 3]);
 
     proxy.kill();
   }, 30000);
