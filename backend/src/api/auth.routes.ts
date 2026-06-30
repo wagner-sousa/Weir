@@ -319,7 +319,7 @@ export async function authRoutes(app: FastifyInstance) {
 
       // Try to create a token object for potential refresh
       try {
-        const token = oauth2.createToken(tokenResult as never);
+        const token = oauth2.createToken(tokenData);
         if (token.expired() && token.token.refresh_token) {
           const refreshed = await token.refresh();
           const refreshedData = refreshed.token;

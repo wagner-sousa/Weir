@@ -135,12 +135,33 @@ export async function mcpRoutes(app: FastifyInstance) {
 
     // Cache result and broadcast if MCP name is known
     if (parsed.data.name) {
-      setCachedStatus(parsed.data.name, {
-        status: result.success ? 'connected' : result.needsAuth ? 'needsAuth' : 'error',
+      let toolCount = 0;
+      if (result.success) {
+        try {
+          const tools = await queryTools(parsed.data.name, { ...parsed.data.transport, accessToken });
+          toolCount = tools.length;
+        } catch {
+          // tools query failed, leave count as 0
+        }
+      }
+
+      const st = result.success ? 'connected' : result.needsAuth ? 'needsAuth' : 'error';
+      const cachedStatus: CachedStatus = {
+        status: st,
         error: result.error ?? null,
-        toolCount: 0,
+        toolCount,
         needsAuth: result.needsAuth ?? false,
         authUrl: result.authUrl ?? null,
+        lastTestedAt: Date.now(),
+      };
+      setCachedStatus(parsed.data.name, cachedStatus);
+
+      // Broadcast status via WebSocket so frontend card updates immediately
+      broadcast('status', {
+        name: parsed.data.name,
+        status: st === 'needsAuth' ? 'error' as const : st,
+        error: cachedStatus.error,
+        toolCount,
       });
     }
 

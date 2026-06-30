@@ -1,6 +1,6 @@
 import type { MCPClient } from '../services/api';
 import { Badge } from './Badge';
-import { ShieldAlert, CircleCheck, CircleX, LoaderCircle, Circle, Pencil, RotateCcw, Trash2 } from 'lucide-react';
+import { ShieldAlert, CircleCheck, CircleX, LoaderCircle, Circle, Pencil, RotateCcw, Trash2, Plug } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 interface MCPCardProps {
@@ -9,6 +9,7 @@ interface MCPCardProps {
   onEdit?: (client: MCPClient) => void;
   onReconnect?: (client: MCPClient) => void;
   onAuth?: (client: MCPClient) => void;
+  onConfig?: (name: string) => void;
   removing?: boolean;
   reconnecting?: boolean;
 }
@@ -34,7 +35,7 @@ const transportVariant: Record<string, string> = {
   sse: 'default',
 };
 
-export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removing, reconnecting }: MCPCardProps) {
+export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, onConfig, removing, reconnecting }: MCPCardProps) {
   const status = client.status || 'disconnected';
   const si = statusIcons[status] || statusIcons.disconnected;
   const variant = transportVariant[client.transport] || 'outline';
@@ -102,6 +103,14 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removin
             {reconnecting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
           </button>
         )}
+        <button
+          onClick={() => onConfig?.(client.name)}
+          aria-label="Connection info"
+          title="Show connection details for this MCP"
+          className="rounded p-1.5 text-gray-400 hover:bg-purple-600/20 hover:text-purple-400"
+        >
+          <Plug className="h-4 w-4" />
+        </button>
         <button
           onClick={() => onEdit?.(client)}
           aria-label="Edit MCP"

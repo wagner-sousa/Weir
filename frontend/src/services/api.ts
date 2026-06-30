@@ -167,6 +167,9 @@ export function connectWebSocket(
         } else if (msg.event === 'status' && onStatusEvent) {
           onStatusEvent(msg.data as StatusEvent);
         }
+        if (msg.event === 'status' && onStatusEvent) {
+          onStatusEvent(msg.data);
+        }
       } catch {
         // ignore malformed messages
       }

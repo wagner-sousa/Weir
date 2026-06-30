@@ -4,8 +4,9 @@ import { toast } from 'sonner';
 import type { MCPClient } from '../services/api';
 import { MCPCard } from './MCPCard';
 import { AddMCPModal } from './AddMCPModal';
+import { MCPConnectionModal } from './MCPConnectionModal';
 import { useTestConnection } from '../hooks/useMCPs';
-import { Plus } from 'lucide-react';
+import { Plus, Plug } from 'lucide-react';
 
 interface CardGridProps {
   clients: MCPClient[];
@@ -17,12 +18,19 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingMCP, setEditingMCP] = useState<MCPClient | null>(null);
   const [reconnectingName, setReconnectingName] = useState<string | null>(null);
+  const [configName, setConfigName] = useState<string | null>(null);
+  const [globalConfigOpen, setGlobalConfigOpen] = useState(false);
   const editModalOpen = editingMCP !== null;
+  const configModalOpen = configName !== null;
   const testMutation = useTestConnection();
   const queryClient = useQueryClient();
 
   function handleEdit(client: MCPClient) {
     setEditingMCP(client);
+  }
+
+  function handleConfig(name: string) {
+    setConfigName(name);
   }
 
   function closeEditModal() {
@@ -131,7 +139,15 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
 
   return (
     <div>
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex justify-end gap-2">
+        <button
+          onClick={() => setGlobalConfigOpen(true)}
+          className="rounded border border-theme-border p-2 text-theme-muted hover:bg-theme-border hover:text-theme-text"
+          title="Show connection details for all MCPs"
+          aria-label="Connection info for all MCPs"
+        >
+          <Plug className="h-5 w-5" />
+        </button>
         <button
           onClick={() => setModalOpen(true)}
           className="rounded bg-theme-accent p-2 text-gray-900 hover:bg-theme-accent-dark"
@@ -148,6 +164,7 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
             client={client}
             onRemove={onRemove}
             onEdit={handleEdit}
+            onConfig={handleConfig}
             onReconnect={handleReconnect}
             onAuth={handleAuth}
             removing={removePending}
@@ -170,6 +187,18 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
         existingMCP={editingMCP ?? undefined}
         onClose={closeEditModal}
         onAuth={handleAuth}
+      />
+      {configName && (
+        <MCPConnectionModal
+          open={configModalOpen}
+          names={[configName]}
+          onClose={() => setConfigName(null)}
+        />
+      )}
+      <MCPConnectionModal
+        open={globalConfigOpen}
+        names={clients.map((c) => c.name)}
+        onClose={() => setGlobalConfigOpen(false)}
       />
     </div>
   );

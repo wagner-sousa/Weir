@@ -49,6 +49,7 @@ export function useMCPs() {
     }
   }, [query.isFetching]);
 
+
   const clientsWithStatus: MCPClient[] = (query.data?.clients ?? []).map(
     (client: MCPClient) => {
       const statusEvent = statusMap[client.name];
