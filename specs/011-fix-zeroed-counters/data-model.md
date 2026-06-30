@@ -1,10 +1,11 @@
-# Data Model: Fix Zeroed Counters for Serena and Postman
+# Data Model: Fix Zeroed Counters for Auth-Gated and Local HTTP MCPs
 
 ## Existing Types (Affected)
 
 ### CachedStatus
 
-Stored in `StatusCache` (in-memory, 60s TTL). No new fields needed — `toolCount` already exists.
+Stored in `StatusCache` (in-memory, 60s TTL). No new fields needed — `toolCount`
+already exists.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -28,7 +29,7 @@ Broadcast via WebSocket and SSE.
 
 ## State Transitions
 
-### Postman (OAuth HTTP MCP) — Current (Buggy)
+### Auth-Gated HTTP MCP — Current (Buggy)
 
 ```
 testConnection → 401 (needsAuth)
@@ -40,7 +41,7 @@ testConnection → 401 (needsAuth)
               testSingleMCPAndBroadcast (background, may fail silently)
 ```
 
-### Postman (OAuth HTTP MCP) — Fixed
+### Auth-Gated HTTP MCP — Fixed
 
 ```
 testConnection → 401 (needsAuth)
@@ -50,7 +51,7 @@ testConnection → 401 (needsAuth)
               Status broadcast with correct toolCount
 ```
 
-### Serena (Local HTTP MCP) — Current (Buggy)
+### Local HTTP MCP — Current (Buggy)
 
 ```
 testConnection → unreachable (host.docker.internal not resolved)
@@ -60,7 +61,7 @@ testConnection → unreachable (host.docker.internal not resolved)
               Error: generic "connection failed" (does not distinguish DNS vs tool count)
 ```
 
-### Serena (Local HTTP MCP) — Fixed
+### Local HTTP MCP — Fixed
 
 ```
 testConnection → unreachable

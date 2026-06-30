@@ -1,4 +1,4 @@
-# Quickstart: Fix Zeroed Counters for Serena and Postman
+# Quickstart: Fix Zeroed Counters for Auth-Gated and Local HTTP MCPs
 
 ## Prerequisites
 
@@ -20,11 +20,14 @@ docker compose -f docker-compose.dev.yml run --rm setup
 docker compose -f docker-compose.dev.yml exec dev sh -c "curl -s http://localhost:3001/api/mcps | jq '.clients[] | {name, toolCount, status}'"
 ```
 
-Expected before fix: Postman shows `toolCount: 0` and `status: "needsAuth"` (or `"connected"` if OAuth already completed but count still 0). Serena may show `toolCount: 0` and `status: "error"` if `host.docker.internal` is unreachable.
+Expected before fix: auth-gated HTTP MCPs (e.g., Postman) show `toolCount: 0`
+and `status: "needsAuth"` (or `"connected"` if OAuth already completed but count
+still 0). Local HTTP MCPs (e.g., Serena) may show `toolCount: 0` and
+`status: "error"` if unreachable.
 
 ## Validation Scenarios
 
-### Scenario 1: Postman Tool Count After OAuth
+### Scenario 1: Auth-Gated HTTP MCP Tool Count After OAuth
 
 1. Configure Postman MCP in `.mcp.json` (already configured in production config)
 2. Open Weir dashboard in browser
@@ -32,11 +35,13 @@ Expected before fix: Postman shows `toolCount: 0` and `status: "needsAuth"` (or 
 4. Complete OAuth authorization
 5. After redirect back to Weir, observe the Postman card
 
-**Expected**: Postman card displays the actual tool count (not 0) within 5 seconds of OAuth completion.
+**Expected**: Postman card displays the actual tool count (not 0) within 5
+seconds of OAuth completion.
 
-### Scenario 2: Serena Reachability Check
+### Scenario 2: Local HTTP MCP Reachability Check
 
-1. Ensure Serena is running at `http://localhost:9121/mcp` (or wherever configured)
+1. Ensure Serena is running at `http://localhost:9121/mcp` (or wherever
+   configured)
 2. If on Linux Docker, ensure `host.docker.internal` resolves:
    ```bash
    # Add to docker-compose.dev.yml under 'dev' service:
@@ -47,15 +52,18 @@ Expected before fix: Postman shows `toolCount: 0` and `status: "needsAuth"` (or 
 3. Open Weir dashboard
 4. Observe Serena card
 
-**Expected**: Serena displays correct tool count when reachable, or a clear "unreachable" error message (not "0 tools") when unreachable.
+**Expected**: Serena displays correct tool count when reachable, or a clear
+"unreachable" error message (not "0 tools") when unreachable.
 
 ### Scenario 3: Error Message Clarity
 
-1. Stop Serena server (`docker compose stop` or kill the serena process)
+1. Stop a local HTTP MCP server (e.g., `docker compose stop` or kill the serena
+   process)
 2. Open Weir dashboard
-3. Observe Serena card error message
+3. Observe the MCP card error message
 
-**Expected**: Error message says "Server unreachable: Connection refused" (or similar), not just "Connection failed".
+**Expected**: Error message says "Server unreachable: Connection refused" (or
+similar), not just "Connection failed".
 
 ### Scenario 4: OAuth Token Refresh
 
@@ -71,7 +79,8 @@ Expected before fix: Postman shows `toolCount: 0` and `status: "needsAuth"` (or 
 docker compose -f docker-compose.dev.yml exec dev sh -c "cd /app/backend && npm test"
 ```
 
-Expected: All tests pass, including new unit tests for OAuth callback tool count propagation and new integration tests for error message clarity.
+Expected: All tests pass, including new unit tests for OAuth callback tool count
+propagation and new integration tests for error message clarity.
 
 ## Type Checking
 
@@ -84,9 +93,10 @@ Expected: Zero type errors.
 
 ## Manual Verification Checklist
 
-- [ ] Postman OAuth → correct tool count
-- [ ] Serena reachable → correct tool count
-- [ ] Serena unreachable → clear error, not "0"
+- [ ] Auth-gated HTTP MCP OAuth → correct tool count
+- [ ] Local HTTP MCP reachable → correct tool count
+- [ ] Local HTTP MCP unreachable → clear error, not "0"
 - [ ] Token refresh → tool count persists
-- [ ] Non-auth HTTP MCP (e.g., a test echo server) → correct tool count (no regression)
+- [ ] Non-auth HTTP MCP (e.g., a test echo server) → correct tool count (no
+      regression)
 - [ ] Stdio MCP → correct tool count (no regression)

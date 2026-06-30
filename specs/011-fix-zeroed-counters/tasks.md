@@ -1,10 +1,10 @@
 ---
 
-description: "Task list for fixing zeroed tool counters for Serena and Postman MCPs"
+description: "Task list for fixing zeroed tool counters for auth-gated and local HTTP MCPs"
 
 ---
 
-# Tasks: Fix Zeroed Counters for Serena and Postman
+# Tasks: Fix Zeroed Counters for Auth-Gated and Local HTTP MCPs
 
 **Input**: Design documents from `specs/011-fix-zeroed-counters/`
 
@@ -41,15 +41,15 @@ description: "Task list for fixing zeroed tool counters for Serena and Postman M
 **Purpose**: Test infrastructure that enables TDD for both user stories
 
 - [x] T004 [P] Create auth route test helper that imports `buildApp`, mocks `simple-oauth2`, and configures a temporary `.mcp.json` with a test HTTP MCP entry (follow pattern from `backend/tests/integration/auth.test.ts`)
-- [x] T005 [P] Create Serena reachability test helper that mocks `testConnection` to simulate DNS failure vs connection refused vs timeout vs success, following the pattern from `backend/tests/integration/real-config.test.ts`
+- [x] T005 [P] Create HTTP MCP reachability test helper that mocks `testConnection` to simulate DNS failure vs connection refused vs timeout vs success, following the pattern from `backend/tests/integration/real-config.test.ts`
 
 **Checkpoint**: Foundation ready — user story implementation can now begin
 
 ---
 
-## Phase 3: User Story 1 — Postman OAuth Tool Count (Priority: P1) 🎯 MVP
+## Phase 3: User Story 1 — Auth-Gated HTTP MCP OAuth Tool Count (Priority: P1) 🎯 MVP
 
-**Goal**: After OAuth callback completes, Postman card displays the actual tool count (not 0) within 5 seconds.
+**Goal**: After OAuth callback completes, the auth-gated HTTP MCP card displays the actual tool count (not 0) within 5 seconds.
 
 **Independent Test**: Mock OAuth callback, inject a `tools/list` response with N tools, verify cache and broadcast contain toolCount=N.
 
@@ -65,20 +65,20 @@ description: "Task list for fixing zeroed tool counters for Serena and Postman M
 - [x] T009 [US1] Add retry logic: if `queryTools` in the OAuth callback throws or returns empty, retry once after 2 seconds before falling back to `toolCount: 0` in `backend/src/api/auth.routes.ts`
 - [x] T010 [US1] Verify tests T006 and T007 pass: `docker compose -f docker-compose.dev.yml exec dev sh -c "cd /app/backend && npx vitest run backend/tests/unit/auth.routes.test.ts backend/tests/integration/auth.test.ts"`
 
-**Checkpoint**: Postman OAuth flow now propagates correct tool count
+**Checkpoint**: Auth-gated HTTP MCP OAuth flow now propagates correct tool count
 
 ---
 
-## Phase 4: User Story 2 — Serena Reachability (Priority: P1)
+## Phase 4: User Story 2 — Local HTTP MCP Reachability (Priority: P1)
 
-**Goal**: Serena card displays correct tool count when reachable, and a clear "unreachable" error (not "0 tools") when not.
+**Goal**: Local HTTP MCP card displays correct tool count when reachable, and a clear "unreachable" error (not "0 tools") when not.
 
 **Independent Test**: Mock testConnection to return DNS failure vs connection refused vs success with tools; verify error message differs for each case.
 
 ### Tests for User Story 2 (TDD — write first, ensure FAIL before implementation) ⚠️
 
 - [x] T011 [P] [US2] Write failing unit test: mock `testConnection` to return `{ success: false, error: 'connection refused' }`, call `testSingleMCP`, assert cached error message contains "Connection refused" (not generic "Connection failed") in `backend/tests/unit/mcp.routes.test.ts`
-- [x] T012 [P] [US2] Write failing integration test: stop the Serena server (simulate unreachable), call `GET /api/mcps`, assert Serena's `error` field contains a distinguishable message vs a "0 tools" state in `backend/tests/integration/real-config.test.ts`
+- [x] T012 [P] [US2] Write failing integration test: stop a test HTTP server (simulate unreachable), call `GET /api/mcps`, assert the unreachable MCP's `error` field contains a distinguishable message vs a "0 tools" state in `backend/tests/integration/real-config.test.ts`
 
 ### Implementation for User Story 2
 
@@ -86,7 +86,7 @@ description: "Task list for fixing zeroed tool counters for Serena and Postman M
 - [x] T014 [US2] Propagate the detailed error message through `backend/src/api/mcp.routes.ts` `testSingleMCP` so the cached status includes the specific error string
 - [x] T015 [US2] Verify tests T011 and T012 pass: `docker compose -f docker-compose.dev.yml exec dev sh -c "cd /app/backend && npx vitest run backend/tests/unit/mcp.routes.test.ts backend/tests/integration/real-config.test.ts"`
 
-**Checkpoint**: Serena errors are now distinguishable from zero-tool responses
+**Checkpoint**: Local HTTP MCP errors are now distinguishable from zero-tool responses
 
 ---
 
@@ -161,15 +161,15 @@ docker compose -f docker-compose.dev.yml exec dev sh -c "cd /app/backend && npx 
 
 1. Phase 1: Code understanding
 2. Phase 2: Test helpers (T004 only)
-3. Phase 3: US1 complete (Postman OAuth fix)
+3. Phase 3: US1 complete (auth-gated HTTP MCP OAuth fix)
 4. **STOP and VALIDATE**: Test US1 independently
-5. Deploy/demo if Postman fix is the priority
+5. Deploy/demo if auth-gated MCP fix is the priority
 
 ### Incremental Delivery
 
 1. Setup + Foundational → ready to develop
-2. Add US1 (Postman OAuth) → Test independently → Deploy
-3. Add US2 (Serena reachability) → Test independently → Deploy
+2. Add US1 (auth-gated HTTP MCP OAuth) → Test independently → Deploy
+3. Add US2 (local HTTP MCP reachability) → Test independently → Deploy
 4. Add US3 (MORPH docs) → Review
 5. Polish → Final validation
 
@@ -178,8 +178,8 @@ docker compose -f docker-compose.dev.yml exec dev sh -c "cd /app/backend && npx 
 With two developers:
 
 1. Both complete Phase 1 + 2 together
-2. Developer A: US1 (Phases 3) — Postman OAuth fix
-3. Developer B: US2 (Phase 4) — Serena reachability fix
+2. Developer A: US1 (Phases 3) — auth-gated HTTP MCP OAuth fix
+3. Developer B: US2 (Phase 4) — local HTTP MCP reachability fix
 4. Both stories integrate without conflicts (different files)
 5. Developer A or B: US3 (Phase 5) — documentation
 6. Together: Phase 6 polish
@@ -203,7 +203,7 @@ After T020, user reported counters still zeroed. Investigation revealed:
 `testSingleMCPAndBroadcast` (`backend/src/api/auth.routes.ts`) conditionally
 skipped `queryTools` when `connResult.success === false`, even when a valid
 access token was available. This meant `queryTools` was never called for
-Postman if `testConnection` failed for any reason (e.g., JSON-RPC method
+auth-gated MCPs if `testConnection` failed for any reason (e.g., JSON-RPC method
 not supported, transient error, token propagation delay).
 
 **Fix**: Changed the condition from `if (connResult.success)` to
