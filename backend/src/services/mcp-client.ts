@@ -58,7 +58,7 @@ async function testStdioConnection(transport: TransportConfig): Promise<Connecti
 
     const timeout = setTimeout(() => {
       child.kill();
-      resolve({ success: false, error: 'Connection timed out' });
+      resolve({ success: false, error: 'Connection timeout exceeded' });
     }, parseInt(process.env.MCP_CONNECTION_TIMEOUT ?? '5000', 10));
 
     let output = '';
