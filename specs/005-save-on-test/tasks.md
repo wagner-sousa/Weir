@@ -89,6 +89,17 @@ No tasks in this phase.
 
 ---
 
+## Phase 6: Convergence
+
+**Purpose**: Close gaps between spec/plan requirements and implementation.
+
+- [X] T014 Fix Save button text during auto-test: change `{savePending ? 'Saving...' : 'Save'}` to include `testing` state so it shows "Testing..." while auto-test is in progress, per FR-006 and T008 (FR-006 — partial)
+- [X] T015 Add warning toast assertion for missing clientId: in `AddMCPModal.test.tsx`, add assertion verifying toast `"OAuth2 client_id not configured. See card for details."` when needsAuth but no clientId, per FR-008 / spec edge case (FR-008 — missing)
+- [X] T016 Remove redundant inline popup logic: delete lines 228–258 in `AddMCPModal.tsx` `doSave()` — the `onAuth` callback at line 224 already handles the OAuth2 popup, causing double popup. Replaced with proper FR-008 warning toast logic (FR-004, SC-002 — contradicts)
+- [X] T017 Guard modal close during auto-test: add `testing || savePending` guard to `handleClose()`, so modal cannot be dismissed while test/save is in progress (spec edge case — partial)
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
