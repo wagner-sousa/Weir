@@ -2,46 +2,65 @@
 
 ## GET /api/mcps
 
-Retorna a lista de servidores MCP configurados.
+Returns the list of configured MCP servers with their connection status.
 
 **Response 200:**
 
 ```json
 {
-  "mcps": [
+  "clients": [
     {
       "name": "my-server",
       "transport": "stdio",
-      "status": "configured"
+      "command": "npx",
+      "args": ["-y", "server-fs"],
+      "status": "unknown",
+      "error": null,
+      "toolCount": 0,
+      "needsAuth": false,
+      "authUrl": null
     },
     {
       "name": "api-server",
       "transport": "http",
-      "status": "configured"
+      "url": "https://api.example.com/mcp",
+      "status": "connected",
+      "error": null,
+      "toolCount": 5,
+      "needsAuth": false,
+      "authUrl": null
     }
-  ]
+  ],
+  "error": null,
+  "timestamp": "2026-06-19T12:00:00.000Z",
+  "mcpPort": 4000
 }
 ```
 
-**Response 200 (vazio):**
+**Response 200 (empty):**
 
 ```json
 {
-  "mcps": []
+  "clients": [],
+  "error": null,
+  "timestamp": "2026-06-19T12:00:00.000Z",
+  "mcpPort": 4000
 }
 ```
 
-**Response 500 (erro de parse):**
+**Response 200 (parse error — clients empty, error populated):**
 
 ```json
 {
-  "error": "Falha ao ler o arquivo .mcp.json: [detalhe do erro]"
+  "clients": [],
+  "error": "Failed to read .mcp.json file: [error detail]",
+  "timestamp": "2026-06-19T12:00:00.000Z"
 }
 ```
 
 ## GET /api/health
 
-Healthcheck do servidor.
+Server healthcheck.
 
 **Response 200:**
 
@@ -53,7 +72,7 @@ Healthcheck do servidor.
 }
 ```
 
-**Response 200 (sem config):**
+**Response 200 (no config):**
 
 ```json
 {
@@ -65,9 +84,9 @@ Healthcheck do servidor.
 
 ## WebSocket /ws
 
-Broadcast de eventos de alteracao do .mcp.json.
+Broadcast of .mcp.json change events.
 
-**Evento `config:changed`:**
+**Event `config:changed`:**
 
 ```json
 {
@@ -76,12 +95,12 @@ Broadcast de eventos de alteracao do .mcp.json.
 }
 ```
 
-**Evento `config:error`:**
+**Event `config:error`:**
 
 ```json
 {
   "type": "config:error",
-  "error": "Falha ao parsear .mcp.json",
+  "error": "Failed to parse .mcp.json",
   "timestamp": "2026-06-19T12:00:00.000Z"
 }
 ```
@@ -94,7 +113,7 @@ Browser                     Fastify                      chokidar
   │  GET /api/mcps            │                            │
   ├──────────────────────────►│                            │
   │  ◄────────────────────────┤                            │
-  │    200 { mcps: [...] }    │                            │
+  │    200 { clients: [] }    │                            │
   │                           │                            │
   │  WebSocket connect /ws    │                            │
   ├──────────────────────────►│                            │
@@ -107,5 +126,5 @@ Browser                     Fastify                      chokidar
   │  GET /api/mcps (refetch)  │                            │
   ├──────────────────────────►│                            │
   │  ◄────────────────────────┤                            │
-  │    200 { mcps: [...] }    │                            │
+  │    200 { clients: [] }    │                            │
 ```

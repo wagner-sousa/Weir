@@ -200,6 +200,55 @@ describe('MCPCard', () => {
     });
   });
 
+  it('renders unknown transport type with outline variant and "Unknown" label', () => {
+    const client = {
+      name: 'custom',
+      transport: 'websocket',
+      url: 'ws://example.com',
+    };
+    render(<MCPCard client={client} />);
+    const badge = screen.getByText('Unknown');
+    expect(badge.className).toContain('border');
+  });
+
+  describe('connection indicator colors', () => {
+    it('shows green icon for connected status', () => {
+      const client = {
+        name: 'api',
+        transport: 'http' as const,
+        url: 'https://example.com/mcp',
+        status: 'connected' as const,
+      };
+      render(<MCPCard client={client} />);
+      const icon = screen.getByLabelText('Connected');
+      expect(icon.className).toContain('text-green-500');
+    });
+
+    it('shows gray icon for disconnected status', () => {
+      const client = {
+        name: 'api',
+        transport: 'http' as const,
+        url: 'https://example.com/mcp',
+        status: 'disconnected' as const,
+      };
+      render(<MCPCard client={client} />);
+      const icon = screen.getByLabelText('Disconnected');
+      expect(icon.className).toContain('text-gray-400');
+    });
+
+    it('shows gray icon for unknown status', () => {
+      const client = {
+        name: 'api',
+        transport: 'http' as const,
+        url: 'https://example.com/mcp',
+        status: 'unknown' as const,
+      };
+      render(<MCPCard client={client} />);
+      const icon = screen.getByLabelText('Unknown');
+      expect(icon.className).toContain('text-gray-400');
+    });
+  });
+
   describe('FR-008: badge colors distinct from status colors', () => {
     const statusColorClasses = ['green-500', 'red-500', 'amber-500', 'yellow-500', 'gray-400'];
     const transportColors = ['blue-800', 'purple-800', 'cyan-800'];
