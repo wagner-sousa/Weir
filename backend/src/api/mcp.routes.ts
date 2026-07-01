@@ -86,6 +86,12 @@ async function testSingleMCP(name: string): Promise<CachedStatus> {
   return cached;
 }
 
+function isPermissionError(err: unknown): boolean {
+  if (!(err instanceof Error) || !('code' in err)) return false;
+  const code = (err as { code: string }).code;
+  return code === 'EACCES' || code === 'EPERM';
+}
+
 export async function mcpRoutes(app: FastifyInstance) {
   app.get('/api/mcps', async (_request, _reply) => {
     const configPath = getConfigPath();
@@ -216,7 +222,13 @@ export async function mcpRoutes(app: FastifyInstance) {
 
     try {
       writeMCPConfig(configPath, updated);
-    } catch {
+    } catch (err) {
+      if (isPermissionError(err)) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Could not read/write the file.',
+        });
+      }
       return reply.status(503).send({
         success: false,
         error: 'Error saving: backend unavailable.',
@@ -336,7 +348,13 @@ export async function mcpRoutes(app: FastifyInstance) {
 
     try {
       writeMCPConfig(configPath, raw);
-    } catch {
+    } catch (err) {
+      if (isPermissionError(err)) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Could not read/write the file.',
+        });
+      }
       return reply.status(503).send({
         success: false,
         error: 'Error saving: backend unavailable.',
@@ -373,7 +391,13 @@ export async function mcpRoutes(app: FastifyInstance) {
       const updated = removeMCPEntry(raw, name);
       try {
         writeMCPConfig(configPath, updated);
-      } catch {
+      } catch (err) {
+        if (isPermissionError(err)) {
+          return reply.status(403).send({
+            success: false,
+            error: 'Could not read/write the file.',
+          });
+        }
         return reply.status(503).send({
           success: false,
           error: 'Error removing: backend unavailable.',

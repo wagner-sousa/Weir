@@ -46,6 +46,7 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, onConfi
       className="rounded-lg border border-theme-border bg-theme-panel p-4 shadow-sm transition-shadow hover:shadow-md"
     >
       <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-theme-text">{client.name}</h3>
         <div className="flex items-center gap-2">
           <span
             className={si.color}
@@ -54,9 +55,6 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, onConfi
           >
             {si.icon}
           </span>
-          <h3 className="text-lg font-semibold text-theme-text">{client.name}</h3>
-        </div>
-        <div className="flex items-center gap-2">
           <Badge variant={variant} label={client.transport} />
           {client.toolCount !== undefined && (
             <span

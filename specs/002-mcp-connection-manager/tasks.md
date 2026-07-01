@@ -144,6 +144,19 @@ description: "Task list for MCP Connection Manager feature"
 - [x] T049 [P] Create `backend/src/examples/oauth-server.ts` — Fastify on port 3103, mock OAuth2 authorize/token endpoints + /mcp with Bearer auth
 - [x] T050 Quickstart.md validation — scenarios defined, structure verified
 
+## Phase 7: Convergence
+
+**Purpose**: Address remaining gaps identified by `/speckit.converge` — UI polish, error handling, and spec alignment
+
+- [x] T051 Add Cancel button and unsaved-changes confirmation dialog to `frontend/src/components/AddMCPModal.tsx` — all close methods (Esc, click-outside, Cancel, X) warn "Unsaved changes will be lost. Continue?" when form is dirty per FR-002
+- [x] T052 Replace space-separated args input with chip-based UI in `frontend/src/components/AddMCPModal.tsx` — input field + "Add" button, each value becomes a removable chip/tag per FR-004
+- [x] T053 Add env variable name validation against regex `[a-zA-Z_][a-zA-Z0-9_]*` in `frontend/src/components/AddMCPModal.tsx` env table — show inline error for invalid names per FR-004, data-model.md
+- [x] T054 Disable Save button during connection test in `frontend/src/components/AddMCPModal.tsx` — `disabled` must depend on both `savePending` and `testing` per FR-006, FR-009
+- [x] T055 Add LoaderCircle spinner icon to Test Connection button while testing in `frontend/src/components/AddMCPModal.tsx` — show spinner + text per FR-006
+- [x] T056 Replace "Connection successful!" text with green check icon (CircleCheck from lucide-react) next to Test Connection button on success per FR-007
+- [x] T057 Move connection status icon to the top-right corner of the card header in `frontend/src/components/MCPCard.tsx` per FR-011
+- [x] T058 Distinguish permission errors from backend errors in `backend/src/api/mcp.routes.ts` — return 403 "Could not read/write the file" for write failures vs 503 "Error saving: backend unavailable" for backend-unreachable per FR-024, FR-025, contracts/api.md
+
 ---
 
 ## Dependencies & Execution Order

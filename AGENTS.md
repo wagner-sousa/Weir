@@ -1,6 +1,6 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan at specs/011-fix-zeroed-counters/plan.md
+shell commands, and other important information, read the current plan at specs/002-mcp-connection-manager/plan.md
 <!-- SPECKIT END -->
 
 ## Conhecidos Pitfalls (Docker & ESM)
