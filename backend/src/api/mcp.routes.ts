@@ -89,7 +89,7 @@ async function testSingleMCP(name: string): Promise<CachedStatus> {
 function isPermissionError(err: unknown): boolean {
   if (!(err instanceof Error) || !('code' in err)) return false;
   const code = (err as { code: string }).code;
-  return code === 'EACCES' || code === 'EPERM';
+  return code === 'EACCES' || code === 'EPERM' || code === 'EROFS';
 }
 
 export async function mcpRoutes(app: FastifyInstance) {
@@ -238,15 +238,21 @@ export async function mcpRoutes(app: FastifyInstance) {
     broadcast('config:changed', { path: configPath });
 
     // Test the newly created MCP and return result (with MCP_ADD_TIMEOUT override)
-    const addTimeoutMs = parseInt(process.env.MCP_ADD_TIMEOUT ?? '30000', 10);
+    const DEFAULT_ADD_TIMEOUT_MS = 30000;
+    const parsedTimeout = parseInt(process.env.MCP_ADD_TIMEOUT ?? '', 10);
+    const addTimeoutMs = Number.isFinite(parsedTimeout) && parsedTimeout > 0 ? parsedTimeout : DEFAULT_ADD_TIMEOUT_MS;
+    let timeoutHandle: ReturnType<typeof setTimeout>;
+    const timeoutPromise = new Promise<CachedStatus>((_, reject) => {
+      timeoutHandle = setTimeout(() => reject(new Error('Add MCP timed out')), addTimeoutMs);
+    });
     const testStatus = await Promise.race([
       testSingleMCP(name as string),
-      new Promise<CachedStatus>((_, reject) =>
-        setTimeout(() => reject(new Error('Add MCP timed out')), addTimeoutMs),
-      ),
+      timeoutPromise,
     ]).catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Operation timed out.';
       return { status: 'error' as const, error: msg, toolCount: 0, needsAuth: false, authUrl: null, lastTestedAt: Date.now() };
+    }).finally(() => {
+      clearTimeout(timeoutHandle);
     });
     broadcastStatusUpdate(name as string, testStatus);
 

@@ -352,7 +352,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
                         <input
                           type="text"
                           value={argInput}
-                          onChange={(e) => setArgInput(e.target.value)}
+                          onChange={(e) => { setArgInput(e.target.value); setDirty(true); }}
                           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addArg(); } }}
                           className="flex-1 rounded border border-theme-border bg-theme-bg px-3 py-2 text-sm text-theme-text"
                           placeholder="e.g.: -y"
@@ -360,6 +360,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
                         <button
                           type="button"
                           onClick={addArg}
+                          aria-label="Add argument"
                           className="rounded bg-theme-accent px-3 text-sm text-gray-900 hover:bg-theme-accent-dark"
                         >
                           <Plus className="h-4 w-4" />
