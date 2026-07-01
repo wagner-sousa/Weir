@@ -4,15 +4,13 @@
 
 **Input**: Feature specification from `specs/001-mcp-gateway-web/spec.md`
 
-**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/plan-template.md` for the execution workflow.
-
 ## Summary
 
-Weir e um hub/gateway MCP que le o arquivo .mcp.json e exibe os servidores
-MCP configurados em uma interface web com cartoes (3 por linha), cada um
-mostrando nome e tipo de transporte (http/stdio). Suporta deploy via Docker
-com o .mcp.json montado como volume e atualizacao automatica em alteracoes
-do arquivo. A interface e apenas de leitura — sem edicao ou gerenciamento.
+Weir is an MCP hub/gateway that reads .mcp.json and displays the configured
+MCP servers in a web interface with cards (3 per row), each showing
+name and transport type (http/stdio). Supports deployment via Docker
+with .mcp.json mounted as a volume and automatic updates on file changes.
+The interface is read-only — no editing or management.
 
 ## Technical Context
 
@@ -20,56 +18,68 @@ do arquivo. A interface e apenas de leitura — sem edicao ou gerenciamento.
 
 **Primary Dependencies**:
 - Backend: Fastify 5 (@fastify/cors, @fastify/static, @fastify/websocket),
-  Zod 3.24 (schema + validacao), chokidar 4 (file watcher), pino 9 (logging),
-  @modelcontextprotocol/sdk 1.29 (conhecimento do protocolo)
+  Zod 3.24 (schema + validation), chokidar 4 (file watcher), pino 9 (logging),
+  @modelcontextprotocol/sdk 1.29 (protocol awareness)
 - Frontend: React 19, Vite 6, Tailwind CSS 4, TanStack React Query 5,
   TanStack React Router 1, Radix UI (dialog, tooltip), lucide-react,
-  sonner (notificacoes)
+  sonner (notifications)
 
-**Storage**: Nenhum — configuracao lida diretamente do .mcp.json (fonte da verdade)
+**Storage**: Configuration read from .mcp.json (source of truth). Status cache persisted via `conf` npm package to `<config-dir>/mcp-cache.json`.
 
 **Testing**: Vitest 3 (unit + integration)
 
-**Target Platform**: Linux (Docker + standalone), acessivel via navegador
+**Target Platform**: Linux (Docker + standalone), accessible via browser
 
-**Project Type**: Web application (backend Fastify servindo API + SPA frontend)
+**Project Type**: Web application (backend Fastify serving API + SPA frontend)
 
 **Performance Goals**:
-- Pagina carrega em <2s apos iniciar o Weir (CS-001)
-- Alteracoes no .mcp.json refletem em <5s (CS-002)
-- Container Docker inicia e fica acessivel em <5s (CS-003)
+- Page loads in <2s after starting Weir (CS-001)
+- .mcp.json changes reflect in <5s (CS-002)
+- Docker container starts and is accessible in <5s (CS-003)
 
 **Constraints**:
-- Apenas leitura — sem edicao pela interface
-- Deploy via Docker com volume unico: .mcp.json
-- Mensagens da interface em portugues brasileiro (pt-BR)
-- Backend e frontend compartilham o mesmo processo (backend serve SPA)
-- Todos os comandos (dev, test, build, lint) via docker-compose.*.yml
+- Read-only — no editing via the interface
+- Docker deployment with a single volume: .mcp.json
+- UI messages in English per Constitution Principle III
+- Backend and frontend share the same process (backend serves SPA)
+- All commands (dev, test, build, lint) via docker-compose.*.yml
 
-**Scale/Scope**: Usuario unico, ambiente local (sem autenticacao)
+**Scale/Scope**: Single user, local environment (no authentication)
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-**Principios aplicaveis e conformidade**:
+**Applicable principles and compliance**:
 
-1. **SDD (Schema-Driven Development)**: Schema .mcp.json definido com Zod
-   antes de qualquer implementacao. Schema executavel como fonte da verdade.
+1. **SDD (Schema-Driven Development)**: .mcp.json schema defined with Zod
+   before any implementation. Executable schema as source of truth.
 
-2. **Test-First (NON-NEGOTIABLE)**: Testes escritos antes da implementacao
-   para parser, validador, API e componentes. Ciclo Red-Green-Refactor.
+2. **Test-First (NON-NEGOTIABLE)**: Tests written before implementation
+   for parser, validator, API, and components. Red-Green-Refactor cycle.
 
-3. **pt-BR para Agentes e Usuarios**: Toda interface web e mensagens em
-   portugues brasileiro. Codigo e documentacao tecnica em ingles.
+3. **English for User-Facing Messages**: All web interface messages in
+   English per Constitution Principle III. Code and technical docs in English.
 
-4. **.mcp.json como Fonte da Verdade**: Exatamente o proposito do Weir —
-   ler e exibir o que esta no .mcp.json. Nenhuma configuracao paralela.
+4. **.mcp.json as Source of Truth**: Exactly Weir's purpose —
+   read and display what is in .mcp.json. No parallel configuration.
 
-5. **Simplicidade e Gateway Unificado**: Modo web e Docker compartilham a
-   mesma logica (src/). Interface minimalista, sem funcionalidades extras.
+5. **Simplicity and Unified Gateway**: Web mode and Docker share the
+   same logic (src/). Minimalist interface, no extra features.
 
-**Violacoes**: Nenhuma. O projeto esta 100% alinhado com a Constituicao.
+6. **Consistent Icon Library (VI)**: lucide-react used for all icons.
+   No inline SVG or raw Unicode characters.
+
+7. **Dependency First (VII)**: All capabilities implemented via existing
+   npm packages (Fastify, Zod, chokidar, React, TanStack, etc.).
+
+8. **Icon-First Buttons (VIII)**: Actionable controls outside forms use
+   icons with tooltips (e.g., reconnect, remove).
+
+9. **Spec Naming Convention (IX)**: Spec uses service-agnostic names
+   (e.g., "stdio MCP", "HTTP MCP") — no real service names in stories/FRs.
+
+**Violations**: None. The project is 100% aligned with the Constitution.
 
 ## Project Structure
 
@@ -84,7 +94,7 @@ specs/001-mcp-gateway-web/
 ├── quickstart.md        # Phase 1: validation guide
 ├── contracts/           # Phase 1: API contracts
 │   └── api.md
-└── tasks.md             # Created by /speckit.tasks
+└── tasks.md             # Task list
 ```
 
 ### Source Code (repository root)
@@ -93,16 +103,16 @@ specs/001-mcp-gateway-web/
 backend/
 ├── src/
 │   ├── config/
-│   │   ├── schema.ts        # Zod schema do .mcp.json (SPEC)
-│   │   ├── types.ts         # Tipos inferidos do schema
-│   │   ├── loader.ts        # Leitura + parse + validacao do .mcp.json (IMPL)
-│   │   └── watcher.ts       # chokidar watch + eventos de alteracao (IMPL)
+│   │   ├── schema.ts        # Zod schema for .mcp.json (SPEC)
+│   │   ├── types.ts         # Types inferred from schema
+│   │   ├── loader.ts        # Read + parse + validate .mcp.json (IMPL)
+│   │   └── watcher.ts       # chokidar watch + change events (IMPL)
 │   ├── api/
-│   │   ├── mcp.routes.ts    # GET /api/mcps — lista de MCPs (IMPL)
+│   │   ├── mcp.routes.ts    # GET /api/mcps — MCP list (IMPL)
 │   │   ├── health.routes.ts # GET /api/health — healthcheck (IMPL)
-│   │   └── ws.ts            # WebSocket para push de alteracoes (IMPL)
+│   │   └── ws.ts            # WebSocket for push updates (IMPL)
 │   ├── web/
-│   │   └── (frontend build output — gerado pelo Vite)
+│   │   └── (frontend build output — generated by Vite)
 │   └── index.ts             # Entry point: Fastify server + static serve (IMPL)
 └── tests/
     ├── unit/
@@ -115,14 +125,14 @@ backend/
 frontend/
 ├── src/
 │   ├── components/
-│   │   ├── CardGrid.tsx     # Grid 3 colunas de MCP cards
-│   │   ├── MCPCard.tsx      # Card individual (nome, tipo, 6 variantes de badge)
-│   │   ├── EmptyState.tsx   # Mensagem quando sem .mcp.json
-│   │   └── ErrorState.tsx   # Mensagem de erro de parse
+│   │   ├── CardGrid.tsx     # 3-column grid of MCP cards
+│   │   ├── MCPCard.tsx      # Individual card (name, type, 6 badge variants)
+│   │   ├── EmptyState.tsx   # Message when no .mcp.json
+│   │   └── ErrorState.tsx   # Parse error message
 │   ├── services/
-│   │   └── api.ts           # Cliente HTTP (fetch + polling/WS)
+│   │   └── api.ts           # HTTP client (fetch + polling/WS)
 │   ├── hooks/
-│   │   └── useMCPs.ts       # React Query hook para listar MCPs
+│   │   └── useMCPs.ts       # React Query hook for MCP list
 │   ├── App.tsx
 │   └── main.tsx
 └── tests/
@@ -134,11 +144,11 @@ Dockerfile                  # Multi-stage: build frontend + backend
 docker-compose.yml
 ```
 
-**Structure Decision**: Web application (Option 2). Backend Fastify serve
-API REST + WebSocket + static frontend. Frontend React com Vite, construido
-para `backend/src/web/`. Backend e frontend sao publicados juntos no mesmo
-container Docker.
+**Structure Decision**: Web application (Option 2). Backend Fastify serves
+REST API + WebSocket + static frontend. Frontend React with Vite, built
+to `backend/src/web/`. Backend and frontend are published together in the same
+Docker container.
 
 ## Complexity Tracking
 
-> Nenhuma — Constitution Check aprovado sem violacoes.
+> None — Constitution Check approved with no violations.

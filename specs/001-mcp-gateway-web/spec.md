@@ -1,207 +1,208 @@
-# Especificacao: Hub/Gateway MCP com Visualizacao Web
+# Specification: MCP Hub/Gateway with Web Visualization
 
 **Branch**: `main`
 
-**Criado em**: 2026-06-19
+**Created**: 2026-06-19
 
-**Ultima atualizacao**: 2026-06-24
+**Last Updated**: 2026-06-24
 
 **Status**: Implemented
 
-**Entrada**: "Vamos criar um hub/gateway de mcps com visualizacao web. A princípio vamos usar os mesmo padrao de arquivo mcp (.mcp.json) para o caso do modo de utilizacao com docker, o usuario deve colocar apenas o arquivo de configuracao do mcp como volume. A apresentacao sera em cards, um por mcp, 3 por linha. O titulo do card sera o titulo do mcp no arquivo. Deve informar o tipo (http/stdio, tem outros tipos?), A listagem sera atualizada conforme a atualizacao do arquivo. A tela ira apenas listar os mcps." + "Migrar frontend para Tailwind CSS v4 com sistema de design temático, substituir toast customizado por sonner, substituir fetch nativo por ofetch, implementar variantes de badge e indicadores de conexao."
+**Input**: "Let's create an MCP hub/gateway with web visualization. Initially we'll use the same .mcp.json file pattern for Docker mode — the user should only mount the MCP config file as a volume. Cards display MCPs, 3 per row. The card title is the MCP title from the file. It must show the type (http/stdio, are there other types?). The listing updates when the file changes. The screen will only list MCPs." + "Migrate frontend to Tailwind CSS v4 with thematic design system, replace custom toast with sonner, replace native fetch with ofetch, implement badge variants and connection indicators."
 
-## Cenarios de Uso e Testes
+## User Scenarios & Testing
 
-### Historia 1 - Visualizar lista de MCPs em modo web (P1)
+### Story 1 - View MCP list in web mode (P1)
 
-Como usuario do Weir, quero acessar uma interface web que liste todos os meus servidores MCP configurados no arquivo .mcp.json para visualizar rapidamente quais estao disponiveis e seus tipos de transporte.
+As a Weir user, I want a web interface that lists all my MCP servers configured in .mcp.json so I can quickly see which ones are available and their transport types.
 
-**Por que esta prioridade**: E a funcionalidade principal e minima para o produto ser util — sem a listagem, nao ha valor algum.
+**Why this priority**: This is the core feature — without the listing, the product has no value.
 
-**Teste independente**: Iniciar o Weir em modo web, abrir o navegador e verificar se os cartoes dos MCPs configurados no .mcp.json sao exibidos corretamente.
+**Independent Test**: Start Weir in web mode, open the browser, and verify the MCP cards configured in .mcp.json are displayed correctly.
 
-**Cenarios de aceitacao**:
+**Acceptance Scenarios**:
 
-1. **Dado** que o Weir esta rodando em modo web com um arquivo .mcp.json valido contendo 2 servidores MCP, **Quando** o usuario acessa a pagina inicial, **Entao** o sistema exibe 2 cartoes organizados em ate 3 colunas, cada um com o titulo e o tipo de transporte do respectivo MCP.
+1. **Given** Weir is running in web mode with a valid .mcp.json containing 2 MCP servers, **When** the user accesses the home page, **Then** the system displays 2 cards organized in up to 3 columns, each with the title and transport type of the respective MCP.
 
-2. **Dado** que o Weir esta rodando em modo web com um arquivo .mcp.json valido contendo 5 servidores MCP, **Quando** o usuario acessa a pagina inicial, **Entao** o sistema exibe 5 cartoes em linhas de 3, resultando em 2 linhas completas (3 + 2).
-
----
-
-### Historia 2 - Visualizar lista de MCPs em modo Docker (P1)
-
-Como usuario que utiliza Docker, quero montar apenas meu arquivo .mcp.json como volume no container Weir para ver a lista dos meus servidores MCP sem configuracao adicional.
-
-**Por que esta prioridade**: O suporte a Docker e um dos modos de deploy principais, essencial para adocao em infraestruturas existentes.
-
-**Teste independente**: Executar o container Weir com o volume apontando para um .mcp.json valido e acessar a interface web para confirmar a listagem.
-
-**Cenarios de aceitacao**:
-
-1. **Dado** que o usuario executa `docker run -v /path/to/.mcp.json:/app/.mcp.json weir`, **Quando** o container inicia, **Entao** o Weir le o arquivo montado e exibe a lista de MCPs na interface web.
-
-2. **Dado** que o container Weir e iniciado sem um arquivo .mcp.json montado, **Quando** o usuario acessa a interface, **Entao** o sistema exibe uma mensagem informando que nenhum arquivo de configuracao foi encontrado.
+2. **Given** Weir is running in web mode with a valid .mcp.json containing 5 MCP servers, **When** the user accesses the home page, **Then** the system displays 5 cards in rows of 3, resulting in 2 full rows (3 + 2).
 
 ---
 
-### Historia 3 - Atualizacao automatica da listagem (P2)
+### Story 2 - View MCP list in Docker mode (P1)
 
-Como usuario, quero que a lista de MCPs seja atualizada automaticamente quando eu modificar o arquivo .mcp.json para ver as alteracoes sem reiniciar o servidor.
+As a Docker user, I want to mount only my .mcp.json file as a volume in the Weir container to see my MCP servers without additional configuration.
 
-**Por que esta prioridade**: Melhora significativamente a experiencia do desenvolvedor, mas o MVP funciona sem ela (requer reinicializacao manual).
+**Why this priority**: Docker support is one of the main deployment modes, essential for adoption in existing infrastructure.
 
-**Teste independente**: Modificar o arquivo .mcp.json (adicionar/remover MCP) e verificar se a interface web reflete a mudanca em ate 5 segundos sem interacao do usuario.
+**Independent Test**: Run the Weir container with a volume pointing to a valid .mcp.json and access the web interface to confirm the listing.
 
-**Cenarios de aceitacao**:
+**Acceptance Scenarios**:
 
-1. **Dado** que a interface web esta exibindo 2 MCPs, **Quando** o usuario adiciona um novo MCP ao .mcp.json e salva o arquivo, **Entao** a interface exibe 3 MCPs em ate 5 segundos sem necessidade de recarregar a pagina.
+1. **Given** the user runs `docker run -v /path/to/.mcp.json:/app/.mcp.json weir`, **When** the container starts, **Then** Weir reads the mounted file and displays the MCP list in the web interface.
 
-2. **Dado** que a interface web esta exibindo 3 MCPs, **Quando** o usuario remove um MCP do .mcp.json e salva o arquivo, **Entao** a interface exibe 2 MCPs em ate 5 segundos.
-
----
-
-### Historia 4 - Identificacao Visual de Status dos Componentes (P1)
-
-Como usuario da interface web do Weir, quero ver indicadores visuais claros (badges e status de conexao) para cada servidor MCP, utilizando um sistema de cores consistente, para avaliar rapidamente o estado de cada servidor sem precisar ler texto.
-
-**Por que esta prioridade**: Badges e indicadores de conexao sao a melhoria visual mais visivel — estabelecem a base do sistema de design que todos os outros componentes utilizam.
-
-**Teste independente**: Carregar o dashboard principal e verificar se cada cartao MCP exibe um badge colorido com o status correto e um indicador de conexao verde/vermelho.
-
-**Cenarios de aceitacao**:
-
-1. **Dado** que o dashboard MCP esta carregado, **Quando** um servidor esta online, **Entao** seu indicador de conexao mostra verde
-2. **Dado** que o dashboard MCP esta carregado, **Quando** um servidor esta offline, **Entao** seu indicador de conexao mostra vermelho
-3. **Dado** qualquer cartao MCP, **Quando** ele exibe um badge de status (ex: "online", "erro", "aviso", "secundario"), **Entao** o badge usa a variante de cor correta (success verde, destructive vermelho, warning amarelo, default cinza, secondary tom secundario, outline borda)
-4. **Dado** que a aplicacao renderiza, **Quando** qualquer badge de status e exibido, **Entao** ele utiliza a paleta de cores do tema definida pelo sistema de design
+2. **Given** the Weir container is started without a mounted .mcp.json file, **When** the user accesses the interface, **Then** the system displays a message informing that no configuration file was found.
 
 ---
 
-### Historia 5 - Notificacoes nao Intrusivas (P2)
+### Story 3 - Automatic listing update (P2)
 
-Como usuario do Weir, quero receber notificacoes temporarias (toasts) no canto inferior direito da tela quando acoes sao realizadas ou erros ocorrem, para ser informado sem interromper meu fluxo de trabalho.
+As a user, I want the MCP list to update automatically when I modify the .mcp.json file so I can see changes without restarting the server.
 
-**Por que esta prioridade**: Notificacoes fornecem feedback critico ao usuario, mas nao bloqueiam o fluxo principal. Podem ser construidas independentemente da base do sistema de design.
+**Why this priority**: Significantly improves developer experience, but the MVP works without it (requires manual restart).
 
-**Teste independente**: Disparar uma notificacao a partir de qualquer acao do usuario e verificar se o toast aparece com o estilo correto, posicionamento e auto-dispensa.
+**Independent Test**: Modify the .mcp.json file (add/remove MCP) and verify the web interface reflects the change within 5 seconds without user interaction.
 
-**Cenarios de aceitacao**:
+**Acceptance Scenarios**:
 
-1. **Dado** que um usuario realiza uma acao com sucesso, **Quando** o sistema responde, **Entao** um toast verde aparece no canto inferior direito
-2. **Dado** que uma acao do usuario falha, **Quando** o sistema retorna um erro, **Entao** um toast vermelho aparece com a mensagem de erro
-3. **Dado** que o usuario recebe uma notificacao informativa, **Quando** o toast aparece, **Entao** ele utiliza estilo azul
-4. **Dado** que qualquer notificacao e exibida, **Quando** 3 segundos se passam, **Entao** a notificacao e automaticamente dispensada
+1. **Given** the web interface is displaying 2 MCPs, **When** the user adds a new MCP to .mcp.json and saves the file, **Then** the interface displays 3 MCPs within 5 seconds without needing to reload the page.
 
----
-
-### Historia 6 - Carregamento Confiavel de Dados com Feedback Adequado (P3)
-
-Como usuario do Weir, quero que a interface carregue os dados dos servidores MCP de forma confiavel, com tratamento consistente de erros e feedback visual durante o carregamento, para entender o que esta acontecendo em cada momento.
-
-**Por que esta prioridade**: A comunicacao HTTP confiavel e fundamental para todas as funcionalidades dependentes de dados, mas o impacto visivel para o usuario e menor que indicadores visuais e notificacoes.
-
-**Teste independente**: Carregar qualquer view que dependa de dados e verificar se respostas bem-sucedidas renderizam conteudo, enquanto requisicoes falhas mostram feedback de erro apropriado.
-
-**Cenarios de aceitacao**:
-
-1. **Dado** que um usuario navega para qualquer view de dados, **Quando** a requisicao de dados e bem-sucedida, **Entao** o conteudo e exibido em menos de 2 segundos
-2. **Dado** que um usuario navega para qualquer view de dados, **Quando** a requisicao de dados falha, **Entao** uma notificacao de erro apropriada e exibida via sistema de toasts
-3. **Dado** que um usuario navega para qualquer view de dados, **Quando** a requisicao esta em andamento, **Entao** a interface exibe um spinner de carregamento (LoaderCircle com animacao) com a cor de acento do tema
+2. **Given** the web interface is displaying 3 MCPs, **When** the user removes an MCP from .mcp.json and saves the file, **Then** the interface displays 2 MCPs within 5 seconds.
 
 ---
 
-### Casos Extremos
+### Story 4 - Visual Component Status Identification (P1)
 
-- O que acontece quando o arquivo .mcp.json esta mal formatado (JSON invalido)?
-- Como o sistema se comporta quando o arquivo .mcp.json tem uma estrutura inesperada ou campos ausentes?
-- O que acontece quando o arquivo .mcp.json e deletado enquanto o Weir esta rodando?
-- Como a interface se comporta em janelas muito estreitas (< 400px)?
-- O que acontece se o .mcp.json define um tipo de transporte desconhecido (diferente de http e stdio)?
-- Como o sistema lida com arquivos .mcp.json muito grandes (dezenas de MCPs)?
-- O que acontece quando um badge precisa exibir um status que nao corresponde a nenhuma variante definida?
-- Como o sistema de notificacoes lida com toasts rapidos e sucessivos (ex: 10 erros em 2 segundos)?
-- O que acontece quando o cliente HTTP recebe uma resposta em formato nao padrao?
-- Como o indicador de conexao se comporta quando o status do servidor e desconhecido ou indeterminado?
+As a Weir web interface user, I want clear visual indicators (badges and connection status) for each MCP server using a consistent color system, so I can quickly assess each server's state without reading text.
 
-## Esclarecimentos
+**Why this priority**: Badges and connection indicators are the most visible improvement — they establish the design system foundation that all other components use.
 
-### Sessao 2026-06-19
+**Independent Test**: Load the main dashboard and verify each MCP card displays a colored badge with the correct status and a green/red connection indicator.
 
-- Q: Quais funcionalidades estao explicitamente FORA do escopo desta versao? → A: Apenas leitura. Sem edicao, sem iniciar/parar MCPs, sem gerenciamento de configuracoes.
+**Acceptance Scenarios**:
 
-### Sessao 2026-06-24
+1. **Given** the MCP dashboard is loaded, **When** a server is online, **Then** its connection indicator shows green
+2. **Given** the MCP dashboard is loaded, **When** a server is offline, **Then** its connection indicator shows red
+3. **Given** any MCP card, **When** it displays a status badge (e.g., "online", "error", "warning", "secondary"), **Then** the badge uses the correct color variant (success green, destructive red, warning yellow, default gray, secondary tone, outline border)
+4. **Given** the application renders, **When** any status badge is displayed, **Then** it uses the theme color palette defined by the design system
 
-- Q: Qual a metrica para "tempo aceitavel" no carregamento de dados (US6)? → A: <2 segundos para exibir a listagem apos a requisicao.
-- Q: Qual o componente de feedback visual de carregamento? → A: LoaderCircle do lucide-react com animate-spin e cor de acento do tema.
-- Q: Como tratar erros de carregamento de dados? → A: Erro fatal usa componente ErrorState com icone de aviso e titulo vermelho; erro leve usa toast do tipo error com cor vermelha e exibicao inline no card.
+---
 
-## Fora de Escopo (v1)
+### Story 5 - Non-Intrusive Notifications (P2)
 
-As seguintes funcionalidades NAO serao implementadas nesta versao:
-- Iniciar, parar ou reiniciar servidores MCP
-- Gerenciamento de configuracoes (alterar parametros, tipos de transporte)
-- Autenticacao ou multiusuario
-- Notificacoes push ou alertas de conectividade
+As a Weir user, I want temporary notifications (toasts) in the bottom-right corner when actions are performed or errors occur, so I am informed without interrupting my workflow.
 
-## Requisitos
+**Why this priority**: Notifications provide critical user feedback but do not block the main flow. They can be built independently from the design system base.
 
-### Requisitos Funcionais
+**Independent Test**: Trigger a notification from any user action and verify the toast appears with the correct style, positioning, and auto-dismiss.
 
-- **RF-001**: O sistema DEVE ler e validar um arquivo .mcp.json no formato padrao MCP.
-- **RF-002**: O sistema DEVE exibir uma interface web com cartoes organizados em 3 colunas por linha.
-- **RF-003**: Cada cartao DEVE exibir o titulo do MCP conforme definido no .mcp.json.
-- **RF-004**: Cada cartao DEVE exibir o tipo de transporte do MCP (stdio, http ou sse).
-- **RF-010**: O sistema DEVE reconhecer e exibir tipos de transporte desconhecidos como "Desconhecido".
-- **RF-005**: O sistema DEVE suportar execucao via Docker com o .mcp.json montado como volume.
-- **RF-006**: O sistema DEVE monitorar alteracoes no arquivo .mcp.json e atualizar a interface web automaticamente.
-- **RF-007**: O sistema DEVE exibir uma mensagem clara quando nenhum arquivo .mcp.json for encontrado.
-- **RF-008**: O sistema DEVE exibir uma mensagem de erro clara quando o .mcp.json estiver mal formatado.
-- **RF-009**: O modo web e o modo Docker DEVEM compartilhar a mesma logica central de leitura e parse do .mcp.json.
-- **RF-011**: O sistema DEVE exibir uma mensagem de estado vazio quando o .mcp.json for JSON valido mas nao contiver a chave `mcpServers` ou ela estiver vazia.
-- **RF-012**: O sistema DEVE tratar a delecao do arquivo .mcp.json durante a execucao exibindo a mensagem de "arquivo nao encontrado" na interface, similar ao estado inicial sem arquivo.
-- **RF-013**: O sistema DEVE exibir mensagens de erro descritivas no terminal quando nao for possivel iniciar o servidor web (ex: porta ocupada, permissao de leitura negada), permitindo ao usuario diagnosticar e corrigir o problema.
-- **RF-014**: O sistema DEVE renderizar badges de status usando um sistema de variantes de cores consistente com pelo menos 6 estados semanticos: default (neutro/cinza), secondary, destructive (vermelho), success (verde), warning (amarelo) e outline (borda)
-- **RF-015**: O sistema DEVE exibir um indicador de conexao em tempo real para cada servidor MCP, usando verde para online e vermelho para offline
-- **RF-016**: O sistema DEVE exibir notificacoes toast com 3 tipos visuais distintos: success (verde), error (vermelho) e info (azul)
-- **RF-017**: As notificacoes toast DEVEM aparecer ancoradas no canto inferior direito da viewport
-- **RF-018**: As notificacoes toast DEVEM ser dispensadas automaticamente apos 3 segundos
-- **RF-019**: O sistema DEVE utilizar um unico cliente HTTP padrao para todas as requisicoes de dados, com tratamento automatico de erros e parse consistente de respostas
-- **RF-020**: O sistema DEVE fornecer feedback visual de carregamento enquanto requisicoes de dados estao em andamento
-- **RF-021**: Todos os componentes visuais DEVEM aderir a uma paleta de cores tematica unificada definida a nivel de aplicacao, composta pelos seguintes tokens: cor de fundo (bg), cor de painel (panel), cor de borda (border), cor de texto (text), cor de texto secundario (muted), cor de acento (accent) e cor de acento escuro (accent-dark)
+**Acceptance Scenarios**:
 
-### Entidades Envolvidas
+1. **Given** a user performs a successful action, **When** the system responds, **Then** a green toast appears in the bottom-right corner
+2. **Given** a user action fails, **When** the system returns an error, **Then** a red toast appears with the error message
+3. **Given** the user receives an informational notification, **When** the toast appears, **Then** it uses blue styling
+4. **Given** any notification is displayed, **When** 3 seconds pass, **Then** the notification is automatically dismissed
 
-- **Servidor MCP**: Representa um servidor MCP configurado no .mcp.json. Atributos: nome/titulo, tipo de transporte (http/stdio), comando/url para conexao.
-- **Arquivo .mcp.json**: Fonte da verdade contendo a configuracao de todos os servidores MCP. Segue o formato padrao adotado por ferramentas como Cline.
-- **Notificacao Toast**: Mensagem efemera de feedback ao usuario com tipo (success/error/info), texto e temporizador de auto-dispensa
-- **Badge de Status**: Rotulo visual que indica um estado semantico, renderizado com cores especificas da variante
-- **Indicador de Conexao**: Sinal visual binario (online/offline) associado a cada entidade de servidor
-- **Resposta HTTP**: Payload de dados recebido do backend, com tratamento padronizado de sucesso/erro
+---
 
-## Criterios de Sucesso
+### Story 6 - Reliable Data Loading with Proper Feedback (P3)
 
-### Resultados Mensuraveis
+As a Weir user, I want the interface to load MCP server data reliably, with consistent error handling and visual feedback during loading, so I understand what is happening at each moment.
 
-- **CS-001**: Usuarios conseguem ver todos os seus MCPs configurados na primeira tela em menos de 2 segundos apos iniciar o Weir.
-- **CS-002**: Alteracoes no .mcp.json refletem na interface em ate 5 segundos sem acao do usuario.
-- **CS-003**: O container Docker inicia e fica acessivel em menos de 5 segundos com um .mcp.json valido montado.
-- **CS-004**: Usuarios conseguem identificar o tipo de transporte de cada MCP sem clicar em nada adicional (apenas olhando o cartao).
-- **CS-005**: A interface se adapta a diferentes tamanhos de tela, mantendo legibilidade e funcionalidade em janelas a partir de 320px de largura.
-- **CS-006**: Todas as 6 variantes de badge sao visualmente distinguiveis entre si apenas pela cor
-- **CS-007**: Notificacoes toast sao dispensadas automaticamente em ate 3 segundos sem intervencao do usuario
-- **CS-008**: Notificacoes toast aparecem na posicao correta (canto inferior direito) em todos os tamanhos de viewport suportados
-- **CS-009**: Requisicoes HTTP que falham exibem uma notificacao de erro para o usuario em ate 2 segundos apos a falha
-- **CS-010**: Indicadores de conexao sao atualizados corretamente com base nas mudancas de estado do servidor sem necessidade de recarregar a pagina
+**Why this priority**: Reliable HTTP communication is fundamental for all data-dependent features, but the visible user impact is lower than visual indicators and notifications.
 
-## Suposicoes
+**Independent Test**: Load any data-dependent view and verify successful responses render content, while failed requests show appropriate error feedback.
 
-- O formato do .mcp.json segue o padrao estabelecido por ferramentas como Cline, com a estrutura `{ "mcpServers": { "<nome>": { ... } } }`.
-- O usuario executa o Weir em ambiente controlado (local ou Docker) — autenticacao nao e necessaria para v1.
-- O tipo "http" refere-se a transporte SSE (Server-Sent Events) sobre HTTP, padrao do protocolo MCP.
-- Alem de http e stdio, outros tipos de transporte (como websocket) serao tratados como "desconhecido" e exibidos como tal, sem impedir a listagem.
-- A interface web roda na mesma maquina/container que o Weir (acesso local).
-- O Weir sera acessivel via navegador na porta padrao 3000 (http://localhost:3000), documentada no quickstart do projeto.
-- O modelo de dados dos servidores MCP ja fornece informacao de status de conexao (online/offline) para consumo pelo indicador visual
-- O formato atual das respostas da API e bem definido e compativel com a nova abordagem de cliente HTTP
-- As cores do tema definidas no sistema de design sao suficientes para cobrir todas as necessidades das variantes de badge
-- O suporte do navegador a features CSS modernas (custom properties) esta disponivel para a base de usuarios alvo
+**Acceptance Scenarios**:
+
+1. **Given** a user navigates to any data view, **When** the data request succeeds, **Then** the content is displayed in under 2 seconds
+2. **Given** a user navigates to any data view, **When** the data request fails, **Then** an appropriate error notification is displayed via the toast system
+3. **Given** a user navigates to any data view, **When** the request is in progress, **Then** the interface displays a loading spinner (LoaderCircle with animation) in the theme accent color
+
+---
+
+### Edge Cases
+
+- What happens when the .mcp.json file is malformed (invalid JSON)?
+- How does the system behave when .mcp.json has an unexpected structure or missing fields?
+- What happens when the .mcp.json file is deleted while Weir is running?
+- How does the interface behave in very narrow windows (< 400px)?
+- What happens if .mcp.json defines an unknown transport type (different from http and stdio)?
+- How does the system handle very large .mcp.json files (dozens of MCPs)?
+- What happens when a badge needs to display a status that doesn't match any defined variant?
+- How does the notification system handle rapid successive toasts (e.g., 10 errors in 2 seconds)?
+- What happens when the HTTP client receives a response in a non-standard format?
+- How does the connection indicator behave when the server status is unknown or indeterminate?
+
+## Clarifications
+
+### Session 2026-06-19
+
+- Q: Which features are explicitly OUT of scope for this version? → A: Read-only. No editing, no starting/stopping MCPs, no configuration management.
+
+### Session 2026-06-24
+
+- Q: What is the metric for "acceptable time" when loading data (US6)? → A: <2 seconds to display the listing after the request.
+- Q: What is the loading visual feedback component? → A: LoaderCircle from lucide-react with animate-spin and theme accent color.
+- Q: How to handle data loading errors? → A: Fatal error uses ErrorState component with warning icon and red title; mild error uses error-type toast with red color and inline display on the card.
+- Q: How does the system handle rapid successive toasts? → A: sonner queues and stacks toasts natively — no custom queue logic needed.
+
+## Out of Scope (v1)
+
+The following features will NOT be implemented in this version:
+- Start, stop, or restart MCP servers
+- Configuration management (changing parameters, transport types)
+- Authentication or multi-user
+- Push notifications or connectivity alerts
+
+## Requirements
+
+### Functional Requirements
+
+- **RF-001**: The system MUST read and validate a .mcp.json file in the standard MCP format.
+- **RF-002**: The system MUST display a web interface with cards organized in 3 columns per row.
+- **RF-003**: Each card MUST display the MCP title as defined in .mcp.json.
+- **RF-004**: Each card MUST display the MCP transport type (stdio, http, or sse).
+- **RF-005**: The system MUST recognize and display unknown transport types as "Unknown".
+- **RF-006**: The system MUST support execution via Docker with .mcp.json mounted as a volume.
+- **RF-007**: The system MUST monitor changes to the .mcp.json file and update the web interface automatically.
+- **RF-008**: The system MUST display a clear message when no .mcp.json file is found.
+- **RF-009**: The system MUST display a clear error message when .mcp.json is malformed.
+- **RF-010**: Web mode and Docker mode MUST share the same core logic for reading and parsing .mcp.json.
+- **RF-011**: The system MUST display an empty state message when .mcp.json is valid JSON but does not contain the `mcpServers` key or it is empty.
+- **RF-012**: The system MUST handle .mcp.json deletion during runtime by displaying a "file not found" message, similar to the initial state without a file.
+- **RF-013**: The system MUST display descriptive error messages in the terminal when unable to start the web server (e.g., port occupied, permission denied), allowing the user to diagnose and fix the problem.
+- **RF-014**: The system MUST render status badges using a consistent variant color system with at least 6 semantic states: default (neutral/gray), secondary, destructive (red), success (green), warning (yellow), and outline (border).
+- **RF-015**: The system MUST display a real-time connection indicator for each MCP server, using green for online, red for offline, and gray for unknown/indeterminate status.
+- **RF-016**: The system MUST display toast notifications with 3 distinct visual types: success (green), error (red), and info (blue).
+- **RF-017**: Toast notifications MUST appear anchored in the bottom-right corner of the viewport.
+- **RF-018**: Toast notifications MUST be automatically dismissed after 3 seconds.
+- **RF-019**: The system MUST use a single standard HTTP client for all data requests, with automatic error handling and consistent response parsing.
+- **RF-020**: The system MUST provide visual loading feedback while data requests are in progress.
+- **RF-021**: All visual components MUST adhere to a unified theme color palette defined at the application level, composed of the following tokens: background (bg), panel, border, text, muted text, accent, and accent-dark.
+
+### Key Entities
+
+- **MCP Server**: Represents an MCP server configured in .mcp.json. Attributes: name/title, transport type (http/stdio), command/url for connection.
+- **.mcp.json File**: Source of truth containing all MCP server configuration. Follows the standard format adopted by tools like Cline.
+- **Toast Notification**: Ephemeral user feedback message with type (success/error/info), text, and auto-dismiss timer.
+- **Status Badge**: Visual label indicating a semantic state, rendered with variant-specific colors.
+- **Connection Indicator**: Visual signal with three states (online/green, offline/red, unknown/gray) associated with each server entity.
+- **HTTP Response**: Data payload received from the backend, with standardized success/error handling.
+
+## Success Criteria
+
+### Measurable Outcomes
+
+- **SC-001**: Users can see all their configured MCPs on the first screen in under 2 seconds after starting Weir.
+- **SC-002**: Changes to .mcp.json reflect in the UI within 5 seconds without user action.
+- **SC-003**: Docker container starts and becomes accessible in under 5 seconds with a valid .mcp.json mounted.
+- **SC-004**: Users can identify the transport type of each MCP without clicking anything additional (just by looking at the card).
+- **SC-005**: Interface adapts to different screen sizes, maintaining readability and functionality from 320px width.
+- **SC-006**: All 6 badge variants use different Tailwind CSS v4 color families (gray, red, green, yellow, blue, purple) — no two variants share the same hue family, ensuring color-only distinguishability.
+- **SC-007**: Toast notifications are automatically dismissed within 3 seconds without user intervention.
+- **SC-008**: Toast notifications appear in the correct position (bottom-right corner) in all supported viewport sizes.
+- **SC-009**: HTTP requests that fail display an error notification to the user within 2 seconds of the failure.
+- **SC-010**: Connection indicators are updated correctly based on server state changes without needing to reload the page.
+
+## Assumptions
+
+- The .mcp.json format follows the standard established by tools like Cline, with the structure `{ "mcpServers": { "<name>": { ... } } }`.
+- The user runs Weir in a controlled environment (local or Docker) — authentication is not needed for v1.
+- "http" type refers to SSE (Server-Sent Events) over HTTP, the MCP protocol standard.
+- Besides http and stdio, other transport types (such as websocket) will be treated as "unknown" and displayed as such, without preventing the listing.
+- The web interface runs on the same machine/container as Weir (local access).
+- Weir will be accessible via browser on the default port 3000 (http://localhost:3000), documented in the project quickstart.
+- The MCP server data model already provides connection status information (online/offline) for the visual indicator.
+- The current API response format is well-defined and compatible with the new HTTP client approach.
+- The theme colors defined in the design system are sufficient to cover all badge variant needs.
+- Browser support for modern CSS features (custom properties) is available for the target user base.
