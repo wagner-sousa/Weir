@@ -10,7 +10,7 @@ The MCP entry gains two new optional runtime/persisted fields:
 
 | Field | Type | Persisted | Description |
 |-------|------|-----------|-------------|
-| `accessToken` | `string` | Yes (in `.mcp.json`) | OAuth2 access token obtained via authorization code exchange |
+| `accessToken` | `string` | Yes (in `.mcp-auth.json`) | OAuth2 access token obtained via authorization code exchange — stored separately from user-editable `.mcp.json` to avoid conflicts on config edits |
 | `needsAuth` | `boolean` | No (runtime) | Indicates the MCP server returned 401 and OAuth2 metadata was found |
 | `authUrl` | `string` | No (runtime) | The discovered OAuth2 authorization endpoint URL |
 

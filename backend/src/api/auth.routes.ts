@@ -210,7 +210,7 @@ export async function authRoutes(app: FastifyInstance) {
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
     };
-    const scope = authConfig.scopesSupported?.filter(Boolean).join(' ');
+    const scope = authConfig.scopesSupported?.filter((s: string) => s && s.trim().length > 0).join(' ');
     console.log('[auth] scopesSupported:', authConfig.scopesSupported, '→ scope string:', JSON.stringify(scope));
     if (scope) {
       authorizeParams.scope = scope;

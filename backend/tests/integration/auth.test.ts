@@ -165,6 +165,103 @@ describe('POST /api/auth/:name/start', () => {
     expect(body.url).toBeNull();
     expect(body.error).toContain('No client_id');
   });
+
+  describe('scope parameter construction', () => {
+    beforeEach(() => {
+      writeFileSync(
+        process.env.MCP_CONFIG_PATH!,
+        JSON.stringify({
+          mcpServers: {
+            'ScopeTest': {
+              type: 'http',
+              url: 'https://mcp-scope-test.local/mcp',
+              auth: { clientId: 'test-client-id' },
+            },
+          },
+        }, null, 2) + '\n',
+      );
+    });
+
+    it('omits scope when scopes_supported is absent', async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          authorization_endpoint: 'https://mcp-scope-test.local/oauth/authorize',
+          token_endpoint: 'https://mcp-scope-test.local/oauth/token',
+        }),
+      } as Response);
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/auth/ScopeTest/start',
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.success).toBe(true);
+      expect(body.url).not.toContain('scope=');
+    });
+
+    it('omits scope when scopes_supported is empty array', async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          authorization_endpoint: 'https://mcp-scope-test.local/oauth/authorize',
+          token_endpoint: 'https://mcp-scope-test.local/oauth/token',
+          scopes_supported: [],
+        }),
+      } as Response);
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/auth/ScopeTest/start',
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.success).toBe(true);
+      expect(body.url).not.toContain('scope=');
+    });
+
+    it('includes scope when scopes_supported has valid entries', async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          authorization_endpoint: 'https://mcp-scope-test.local/oauth/authorize',
+          token_endpoint: 'https://mcp-scope-test.local/oauth/token',
+          scopes_supported: ['read', 'write'],
+        }),
+      } as Response);
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/auth/ScopeTest/start',
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.success).toBe(true);
+      expect(body.url).toContain('scope=read+write');
+    });
+
+    it('filters out whitespace-only entries from scopes_supported', async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          authorization_endpoint: 'https://mcp-scope-test.local/oauth/authorize',
+          token_endpoint: 'https://mcp-scope-test.local/oauth/token',
+          scopes_supported: ['read', ' ', 'write'],
+        }),
+      } as Response);
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/auth/ScopeTest/start',
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.success).toBe(true);
+      expect(body.url).toContain('scope=read+write');
+      expect(body.url).not.toContain('scope=read++write');
+    });
+  });
 });
 
 describe('GET /api/auth/:name/callback', () => {

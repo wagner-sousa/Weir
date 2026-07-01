@@ -44,17 +44,17 @@ curl -s http://localhost:3000/api/mcps | python3 -m json.tool
 
 1. After popup closes, click the Reconnect button on the card
 2. Verify the connection now succeeds (status changes to "connected")
-3. Verify the `.mcp.json` file now contains an `accessToken` field for the MCP
+3. Verify the `.mcp-auth.json` file now contains an `accessToken` for the MCP
 
 ### 5. Token Persistence on Reload
 
 1. Reload the dashboard page
 2. Verify the MCP card still shows "connected" status
-3. Verify the `accessToken` is still present in `.mcp.json`
+3. Verify the `accessToken` is still present in `.mcp-auth.json`
 
 ### 6. Token Expiry / Re-auth
 
-1. Manually remove or invalidate the `accessToken` from `.mcp.json`
+1. Manually remove or invalidate the `accessToken` from `.mcp-auth.json`
 2. Reload the dashboard
 3. Verify the card shows error status again
 4. Verify the shield button reappears

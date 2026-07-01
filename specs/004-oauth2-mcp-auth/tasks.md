@@ -86,7 +86,7 @@ No tasks in this phase.
 
 **Goal**: Access token is stored in `.mcp.json` and used for all subsequent MCP requests.
 
-**Independent Test**: Complete OAuth2 flow, reload page, verify card shows "connected" and `.mcp.json` contains `accessToken`.
+**Independent Test**: Complete OAuth2 flow, reload page, verify card shows "connected" and `.mcp-auth.json` contains `accessToken`.
 
 ### Tests (TDD — write first, verify they fail)
 
@@ -98,7 +98,7 @@ No tasks in this phase.
   - Extract `code` from query params
   - POST to MCP's `token_endpoint` with `grant_type=authorization_code`, `code`, `redirect_uri`, `client_id`
   - Receive `access_token` from response
-  - Read current `.mcp.json`, add `accessToken` to the MCP entry, write back
+  - Store `accessToken` in auth storage (`setAuthConfig`) for the MCP — written to `.mcp-auth.json` via `conf` npm package
   - Return HTML page with "Authorization successful" and `window.close()` script
 - [X] T018 [US3] Populate `accessToken` in `TransportConfig` when loading MCP clients in `backend/src/api/mcp.routes.ts` `GET /api/mcps` handler — read from config file and pass to `testConnection`
 
@@ -112,6 +112,16 @@ No tasks in this phase.
 
 - [X] T019 Run `quickstart.md` validation scenarios to verify all acceptance criteria pass
 - [X] T020 Run lint and typecheck across backend and frontend
+
+---
+
+## Phase 6: Convergence
+
+**Purpose**: Close gaps between spec/plan requirements and implementation.
+
+- [X] T021 Align token storage location with spec: store `accessToken` in `.mcp.json` per FR-005 / US3/AC1, or document the deviation in `plan.md` Constitution Check and update spec/data-model to reference `.mcp-auth.json` (constitution IV, FR-005, US3/AC1 — contradicts)
+- [X] T022 Fix whitespace-only scope filtering: replace `.filter(Boolean)` with `.filter(s => s && s.trim().length > 0)` in `auth.routes.ts:213` per FR-012 (FR-012 — partial)
+- [X] T023 Add integration tests for scope parameter construction: verify `scope` omitted when `scopesSupported` is absent/empty, included when present, and whitespace-only entries are filtered out per FR-010/FR-011/FR-012/SC-006/SC-007/US4/AC1-3/US5/AC1-3 (FR-010, FR-011, FR-012, SC-006, SC-007 — missing)
 
 ---
 

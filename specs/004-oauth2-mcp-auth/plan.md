@@ -6,7 +6,7 @@
 
 ## Summary
 
-Allow users to authenticate HTTP MCP servers that require OAuth2 directly from the Weir dashboard. When an MCP returns 401, the backend auto-discovers OAuth2 configuration from the server's `/.well-known/oauth-authorization-server` endpoint. The frontend shows a shield icon button on the card; clicking it opens a popup to the authorization URL. After the user completes the OAuth2 flow, the token is stored in `.mcp.json` and used for all subsequent requests.
+Allow users to authenticate HTTP MCP servers that require OAuth2 directly from the Weir dashboard. When an MCP returns 401, the backend auto-discovers OAuth2 configuration from the server's `/.well-known/oauth-authorization-server` endpoint. The frontend shows a shield icon button on the card; clicking it opens a popup to the authorization URL. After the user completes the OAuth2 flow, the token is stored in a separate auth storage file (`.mcp-auth.json`) and used for all subsequent requests. Keeping auth data separate from `.mcp.json` prevents token loss on config edits.
 
 ## Technical Context
 
@@ -17,7 +17,7 @@ Allow users to authenticate HTTP MCP servers that require OAuth2 directly from t
 - Frontend: React 18 + TanStack React Query + Vite
 - Test: Vitest + supertest
 
-**Storage**: .mcp.json (filesystem JSON — accessToken stored per MCP entry as extra field)
+**Storage**: Two files — `.mcp.json` for user-editable MCP configuration, `.mcp-auth.json` for OAuth2 runtime state (accessToken, refreshToken, expiresAt). Token data kept separate to prevent config edits from erasing auth state.
 
 **Testing**: Vitest (unit + integration), supertest for API, mock OAuth2 discovery
 
@@ -49,7 +49,7 @@ Allow users to authenticate HTTP MCP servers that require OAuth2 directly from t
 2. User clicks shield → popup opens to authUrl + params (client_id, redirect_uri, response_type=code)
 3. User authorizes → provider redirects to backend callback with `?code=...`
 4. Backend exchanges code at token_endpoint → receives access_token
-5. Backend stores access_token in `.mcp.json` entry as `accessToken` field
+5. Backend stores access_token in `.mcp-auth.json` (auth storage, separate from config)
 6. Subsequent requests include `Authorization: Bearer <token>` header
 
 **Scale/Scope**: Single-user dashboard, file-based config, HTTP-transport MCPs only
@@ -63,7 +63,7 @@ Allow users to authenticate HTTP MCP servers that require OAuth2 directly from t
 | I. SDD | OAuth2 callback endpoint needs schema; token stored as extra field (already supported) | ✅ Pass |
 | II. Test-First | All new code needs tests before implementation | ✅ Pass |
 | III. English UI | All toasts, labels, tooltips must be English | ✅ Pass |
-| IV. .mcp.json Truth | Token stored directly in .mcp.json — no parallel config | ✅ Pass |
+| IV. .mcp.json Truth | Token stored in separate `.mcp-auth.json` — justified: prevents config edits (PUT/DELETE) from erasing auth state; `.mcp.json` remains the source of truth for user-editable config; auth data is runtime state not user configuration | ⚠️ Deviation (documented in spec/data-model) |
 | V. Simplicity | Reuse existing fetch for discovery; no new npm deps | ✅ Pass |
 | VI. Icon Library | Shield icon from lucide-react (ShieldAlert) | ✅ Pass |
 | Dev Workflow 7 | No new config env vars needed | ✅ Pass |
@@ -120,7 +120,6 @@ frontend/
 
 ## Complexity Tracking
 
-> No constitution violations to justify. Section remains empty.
-
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
+| IV. .mcp.json Truth (separate auth storage) | OAuth2 access tokens are runtime state, not user configuration. Storing them inline in `.mcp.json` causes token loss when users edit config via PUT/DELETE. The `writer.ts` `stripOAuthFields()` ensures tokens never leak into `.mcp.json`. | Storing in `.mcp.json` directly would require the writer to round-trip unknown fields — fragile and contrary to the principle of keeping the user-editable config clean of machine-managed state. |
