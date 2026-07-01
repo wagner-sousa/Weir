@@ -76,7 +76,7 @@ description: "Task list for MCP Connection Manager feature"
 - [x] T014 [US1] Extend `frontend/src/services/api.ts` with `testConnection(transport)`, `addMCP(name, transport)` functions
 - [x] T015 [US1] Extend `frontend/src/hooks/useMCPs.ts` with `useAddMCP` mutation (invalidates query on success, shows toast via callback)
 - [x] T016 [US1] Add "Add MCP" button to `frontend/src/components/CardGrid.tsx` at top right, wire to open AddMCPModal
-- [x] T017 [US1] Add toast notification system for add success (auto-dismiss 3s, stackable, clickable to dismiss) in `frontend/src/components/Toast.tsx`
+- [x] T017 [US1] Wire toast notification system for add success via `sonner` (`<Toaster>` in `App.tsx`, `toast.success`/`toast.error` calls) — auto-dismiss 3s, stackable, clickable to dismiss
 **Checkpoint**: User can add MCPs via modal with connection test — MVP functional
 
 ---
@@ -186,12 +186,12 @@ description: "Task list for MCP Connection Manager feature"
 
 ### Parallel Opportunities
 
-- T003, T004, T038 (test files) can run in parallel
-- T005, T006, T039, T040, T041, T042 (writer + client + schema) can run in parallel
+- T003, T004 (test files) can run in parallel
+- T005, T006 (writer + client + schema) can run in parallel
 - T009, T010, T011, T012 (US1 backend routes + tests) can run together
-- US1 frontend (T013-T017, T043) can run after backend routes are settled
+- US1 frontend (T013-T017) can run after backend routes are settled
 - US2 backend (T018-T020) can run in parallel with US1 frontend
-- US2 MCPCard updates (T044, T045) can run in parallel
+- US2 MCPCard updates (T044) can run in parallel
 - US3 backend (T024, T025) can run independently
 - Demo servers (T046-T050) can all run in parallel
 - T051 and T052 (documentation/validation) run after all implementation
@@ -257,3 +257,12 @@ With multiple developers:
 - All toast messages and modal labels must be in English (Constitution III)
 - .env.example must be updated with new env var (Dev Workflow 7)
 - Demo servers are standalone .ts files runnable via `tsx` — no build step needed
+
+---
+
+## Phase 8: Convergence (Second Pass)
+
+**Purpose**: Env var wiring and spec alignment fixes
+
+- [x] T060 Wire `MCP_ADD_TIMEOUT` env var into the add-MCP operation in `backend/src/api/mcp.routes.ts` — read `process.env.MCP_ADD_TIMEOUT` as timeout for test after save; add `signal` param to `addMCP()` in `frontend/src/services/api.ts` per SC-001 (missing)
+- [x] T061 Update timeout error message in `backend/src/services/mcp-client.ts` — change `'Connection timed out'` to `'Connection timeout exceeded'` on line 61 to match spec.md edge case (partial)

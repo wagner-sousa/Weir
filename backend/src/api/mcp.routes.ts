@@ -237,8 +237,17 @@ export async function mcpRoutes(app: FastifyInstance) {
 
     broadcast('config:changed', { path: configPath });
 
-    // Test the newly created MCP and return result
-    const testStatus = await testSingleMCP(name as string);
+    // Test the newly created MCP and return result (with MCP_ADD_TIMEOUT override)
+    const addTimeoutMs = parseInt(process.env.MCP_ADD_TIMEOUT ?? '30000', 10);
+    const testStatus = await Promise.race([
+      testSingleMCP(name as string),
+      new Promise<CachedStatus>((_, reject) =>
+        setTimeout(() => reject(new Error('Add MCP timed out')), addTimeoutMs),
+      ),
+    ]).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Operation timed out.';
+      return { status: 'error' as const, error: msg, toolCount: 0, needsAuth: false, authUrl: null, lastTestedAt: Date.now() };
+    });
     broadcastStatusUpdate(name as string, testStatus);
 
     return reply.status(201).send({
