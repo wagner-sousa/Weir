@@ -9,11 +9,10 @@ import {
   removeMCP,
   updateMCP,
 } from '../services/api';
-import type { TransportConfig, StatusEvent, MCPClient } from '../services/api';
+import type { TransportConfig, StatusEvent, MCPClient, MCPResponse } from '../services/api';
 
 export function useMCPs() {
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [statusMap, setStatusMap] = useState<Record<string, StatusEvent>>({});
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -22,9 +21,21 @@ export function useMCPs() {
     refetchInterval: 30_000,
   });
 
+  // Merge a status event into the query cache directly, so the card
+  // updates instantly without waiting for a refetch round-trip.
   const handleStatusEvent = useCallback((event: StatusEvent) => {
-    setStatusMap((prev) => ({ ...prev, [event.name]: event }));
-  }, []);
+    queryClient.setQueryData(['mcps'], (old: MCPResponse | undefined) => {
+      if (!old?.clients) return old;
+      return {
+        ...old,
+        clients: old.clients.map((c: MCPClient) =>
+          c.name === event.name
+            ? { ...c, status: event.status, error: event.error, toolCount: event.toolCount ?? c.toolCount }
+            : c,
+        ),
+      };
+    });
+  }, [queryClient]);
 
   useEffect(() => {
     const disconnect = connectWebSocket(
@@ -49,38 +60,7 @@ export function useMCPs() {
     }
   }, [query.isFetching]);
 
-  // Clear stale statusMap entries when query data refreshes,
-  // so fresh backend cache takes precedence over potentially
-  // outdated SSE/WebSocket events.
-  useEffect(() => {
-    if (query.data?.clients) {
-      setStatusMap((prev) => {
-        const next = { ...prev };
-        for (const client of query.data.clients) {
-          delete next[client.name];
-        }
-        return next;
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query.data]);
-
-  const clientsWithStatus: MCPClient[] = (query.data?.clients ?? []).map(
-    (client: MCPClient) => {
-      const statusEvent = statusMap[client.name];
-      if (statusEvent) {
-        return {
-          ...client,
-          status: statusEvent.status,
-          error: statusEvent.error,
-          toolCount: statusEvent.toolCount ?? client.toolCount,
-        };
-      }
-      return client;
-    },
-  );
-
-  return { ...query, data: { ...query.data, clients: clientsWithStatus }, isRefreshing };
+  return { ...query, isRefreshing };
 }
 
 export function useAddMCP() {
