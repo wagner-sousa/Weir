@@ -20,14 +20,8 @@ export function stripOAuthFields(config: MCPConfig): MCPConfig {
 }
 
 export function writeMCPConfig(filePath: string, config: MCPConfig): void {
-  try {
-    const cleaned = stripOAuthFields(config);
-    writeFileSync(filePath, JSON.stringify(cleaned, null, 2) + '\n', 'utf-8');
-  } catch (err) {
-    throw new Error(
-      `Failed to write config: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
+  const cleaned = stripOAuthFields(config);
+  writeFileSync(filePath, JSON.stringify(cleaned, null, 2) + '\n', 'utf-8');
 }
 
 export function addMCPEntry(

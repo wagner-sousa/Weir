@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { loadMCPConfig } from '../config/loader.js';
-import { writeMCPConfig, addMCPEntry, removeMCPEntry } from '../config/writer.js';
+import { writeMCPConfig, addMCPEntry, removeMCPEntry, updateEntry } from '../config/writer.js';
 import { TestConnectionRequest } from '../config/schema.js';
 import { testConnection, queryTools } from '../services/mcp-client.js';
 import { getCachedStatus, setCachedStatus, deleteCachedStatus } from '../services/status-cache.js';
@@ -293,7 +293,7 @@ export async function mcpRoutes(app: FastifyInstance) {
     if (!raw.mcpServers[originalName]) {
       return reply.status(404).send({
         success: false,
-        error: `MCP '${originalName}' not found.`,
+        error: 'MCP not found. It may have been removed.',
       });
     }
 
@@ -324,9 +324,8 @@ export async function mcpRoutes(app: FastifyInstance) {
     if (transportFields.url !== undefined) newEntry.url = transportFields.url;
     if (transportFields.env !== undefined) newEntry.env = transportFields.env;
 
-    // Remove old + write new in one operation
-    delete raw.mcpServers[originalName];
-    raw.mcpServers[name as string] = newEntry;
+    // Use writer's updateEntry for atomic rename + field merge
+    const updatedConfig = updateEntry(raw, originalName, name as string, newEntry as never);
 
     const dir = dirname(configPath);
     if (!existsSync(dir)) {
@@ -334,8 +333,15 @@ export async function mcpRoutes(app: FastifyInstance) {
     }
 
     try {
-      writeMCPConfig(configPath, raw);
-    } catch {
+      writeMCPConfig(configPath, updatedConfig);
+    } catch (err) {
+      const nodeErr = err as NodeJS.ErrnoException;
+      if (nodeErr.code === 'EACCES' || nodeErr.code === 'EPERM') {
+        return reply.status(403).send({
+          success: false,
+          error: 'File could not be written: permission denied.',
+        });
+      }
       return reply.status(503).send({
         success: false,
         error: 'Error saving: backend unavailable.',
@@ -343,6 +349,22 @@ export async function mcpRoutes(app: FastifyInstance) {
     }
 
     broadcast('config:changed', { path: configPath });
+
+    // If name or transport type changed, reset status to disconnected before testing
+    const transportChanged = transportFields.type !== originalEntry.type;
+    if (name !== originalName || transportChanged) {
+      broadcastStatusUpdate(name as string, {
+        status: 'disconnected',
+        error: null,
+        toolCount: 0,
+        needsAuth: false,
+        authUrl: null,
+        lastTestedAt: Date.now(),
+      });
+      if (name !== originalName) {
+        deleteCachedStatus(originalName);
+      }
+    }
 
     // Test the updated MCP and return result
     const testStatus = await testSingleMCP(name as string);

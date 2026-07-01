@@ -25,7 +25,7 @@ export interface MCPClient {
 export type TransportKind = 'stdio' | 'http' | 'sse' | 'unknown';
 
 export interface CachedStatus {
-  status: 'connected' | 'error' | 'needsAuth' | 'unknown';
+  status: 'connected' | 'error' | 'needsAuth' | 'unknown' | 'disconnected';
   error: string | null;
   toolCount: number;
   needsAuth: boolean;
@@ -35,7 +35,7 @@ export interface CachedStatus {
 
 export interface StatusUpdate {
   name: string;
-  status: 'connected' | 'error' | 'needsAuth' | 'testing' | 'unknown';
+  status: 'connected' | 'error' | 'needsAuth' | 'testing' | 'unknown' | 'disconnected';
   error: string | null;
   toolCount: number | null;
 }

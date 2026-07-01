@@ -84,6 +84,7 @@ export interface SaveMCPResult {
   success: boolean;
   name?: string;
   error?: string;
+  status?: number;
   testResult?: TestConnectionResult;
 }
 
@@ -98,7 +99,7 @@ export async function addMCP(
   });
   const body = await res.json();
   if (!res.ok) {
-    return { success: false, error: body.error || `HTTP ${res.status}` };
+    return { success: false, error: body.error || `HTTP ${res.status}`, status: res.status };
   }
   return body;
 }
@@ -138,7 +139,7 @@ export async function updateMCP(
   });
   const body = await res.json();
   if (!res.ok) {
-    return { success: false, error: body.error || `HTTP ${res.status}` };
+    return { success: false, error: body.error || `HTTP ${res.status}`, status: res.status };
   }
   return body;
 }
