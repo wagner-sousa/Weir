@@ -91,11 +91,13 @@ export interface SaveMCPResult {
 export async function addMCP(
   name: string,
   transport: TransportConfig,
+  signal?: AbortSignal,
 ): Promise<SaveMCPResult> {
   const res = await fetch(`${API_BASE}/mcps`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, transport }),
+    signal,
   });
   const body = await res.json();
   if (!res.ok) {

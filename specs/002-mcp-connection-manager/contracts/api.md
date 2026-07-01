@@ -189,6 +189,6 @@ event: done
 data: null
 ```
 
-Statuses: `"connected"` (testConnection OK) or `"error"` (testConnection failed).
+Event types: `testing` (test in progress, no data payload), `"connected"` (testConnection OK), or `"error"` (testConnection failed).
 
 Keepalive comments sent every 15s (`: keepalive`). Full batch re-evaluated every 30s.

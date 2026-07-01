@@ -34,11 +34,12 @@ Runtime state of an MCP connection (not persisted).
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `status` | `"connecting" \| "connected" \| "error" \| "disconnected"` | Current connection state |
+| `status` | `"connecting" \| "connected" \| "error" \| "disconnected" \| "testing" \| "unknown"` | Current connection state |
 | `error` | `string \| null` | Error message if status is "error" |
 | `tools` | `string[]` | List of tool names advertised by the MCP |
 | `toolCount` | `number` | Count of available tools |
 | `lastChecked` | `ISO timestamp` | When the connection was last verified |
+| `needsAuth` | `boolean` | Whether the connection requires authorization |
 
 **State transitions**:
 ```

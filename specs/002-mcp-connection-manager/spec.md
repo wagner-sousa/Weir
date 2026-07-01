@@ -29,7 +29,7 @@
 - Q: Can a connected MCP become disconnected without user action? → A: Yes. If the backend detects a lost connection (e.g., SSE disconnect, process exit), the state transitions from "connected" to "disconnected".
 - Q: What message should be shown when `host.docker.internal` is unreachable? → A: A specific error message: "Docker host unavailable. Check if the service is accessible."
 - Q: What does the success indicator in FR-007 look like? → A: A green check icon next to the Test Connection button, without accompanying text.
-- Q: What is the order of elements in the card footer? → A: Left to right: badge (tool count), Reconnect button, Remove button.
+- Q: What is the order of elements in the card header and footer? → A: Header left to right: status icon, MCP name. Header right side: transport badge, tool count badge. Footer: Reconnect button, auth button (if needed), connection info button, edit button, Remove button.
 - Q: What validation rules apply to env variable names? → A: Must match regex `[a-zA-Z_][a-zA-Z0-9_]*`. Empty names are rejected. Values can be any string (including empty).
 - Q: Should connection test failures from the card footer (Reconnect) show an error toast? → A: Yes. Same behavior as success toasts (3s, stackable, clickable) but with error styling.
 
@@ -59,7 +59,7 @@ The user opens the Weir dashboard and sees an "Add MCP" button at the top right.
 
 ### User Story 2 - View Connection Status and Reconnect (Priority: P1)
 
-Each MCP card displays a connection status icon at the top right. Green indicates connected, red indicates disconnected/failed. If failed, hovering the icon shows a tooltip with the error reason. A "Reconnect" button in the card footer allows the user to attempt reconnection.
+Each MCP card displays a connection status icon. Green indicates connected, red indicates disconnected/failed. If failed, hovering the icon shows a tooltip with the error reason. A "Reconnect" button in the card footer allows the user to attempt reconnection.
 
 **Why this priority**: Connection visibility is essential for users to know which MCPs are working — without it, the dashboard provides no operational value.
 
@@ -67,18 +67,18 @@ Each MCP card displays a connection status icon at the top right. Green indicate
 
 **Acceptance Scenarios**:
 
-1. **Given** an MCP card is displayed for a successfully connected server, **When** the user views the card, **Then** a green checkmark icon is shown at the top right.
-2. **Given** an MCP card is displayed for a failed connection, **When** the user hovers the red icon at the top right, **Then** a tooltip displays the error reason.
+1. **Given** an MCP card is displayed for a successfully connected server, **When** the user views the card, **Then** a green checkmark icon is shown.
+2. **Given** an MCP card is displayed for a failed connection, **When** the user hovers the red icon, **Then** a tooltip displays the error reason.
 3. **Given** an MCP card with a failed connection, **When** the user clicks "Reconnect" in the footer, **Then** a connection attempt is made and the status icon updates accordingly (green on success, red on failure with updated tooltip).
-4. **Given** an MCP card is in "connecting" state, **When** the user views the card, **Then** an amber/yellow spinner icon is shown at the top right.
-5. **Given** an MCP card has not been checked yet ("disconnected"), **When** the user views the card, **Then** a muted/gray icon is shown at the top right.
+4. **Given** an MCP card is in "connecting" state, **When** the user views the card, **Then** an amber/yellow spinner icon is shown.
+5. **Given** an MCP card has not been checked yet ("disconnected"), **When** the user views the card, **Then** a muted/gray icon is shown.
 6. **Given** a connected MCP loses connection unexpectedly, **When** the backend detects the loss, **Then** the status transitions to "disconnected" and the icon updates to muted/gray.
 
 ---
 
 ### User Story 3 - View Tool Count and Remove MCP (Priority: P2)
 
-Each MCP card footer shows a badge with the number of tools exposed by that server. A "Remove" button in the footer deletes the MCP entry from .mcp.json, removes the card from the grid, and shows a confirmation toast.
+Each MCP card shows a badge with the number of tools exposed by that server. A "Remove" button in the footer deletes the MCP entry from .mcp.json, removes the card from the grid, and shows a confirmation toast.
 
 **Why this priority**: Tool visibility helps users assess server capabilities; removal is necessary for maintenance but less frequent than addition.
 
@@ -86,7 +86,7 @@ Each MCP card footer shows a badge with the number of tools exposed by that serv
 
 **Acceptance Scenarios**:
 
-1. **Given** an MCP card for a connected server, **When** the user views the card footer, **Then** a badge displays the number of tools (e.g., "12 tools").
+1. **Given** an MCP card for a connected server, **When** the user views the card header, **Then** a badge displays the number of tools (e.g., "12 tools").
 2. **Given** an MCP card, **When** the user clicks "Remove" in the footer, **Then** the entry is deleted from .mcp.json, the card is removed from the grid, and a toast confirms the removal.
 3. **Given** the .mcp.json file becomes invalid after a removal (e.g., last server removed), **When** the grid re-renders, **Then** the empty state is shown (centered message: "No MCP configured. Click 'Add MCP' to get started.").
 4. **Given** an MCP card, **When** the user clicks "Remove" and the .mcp.json file has permission errors, **Then** a toast error "Error removing: permission denied" is shown and the card remains.
@@ -120,7 +120,7 @@ Each MCP card footer shows a badge with the number of tools exposed by that serv
 - **FR-008**: On failed test, the modal MUST show the error reason.
 - **FR-009**: The modal MUST have a "Save" button that writes the new MCP to .mcp.json. While saving, the button MUST show a spinner and MUST be disabled; "Test Connection" MUST also be disabled during save.
 - **FR-010**: System MUST show a success toast when an MCP is added. Toasts MUST auto-dismiss after 3 seconds, stack vertically if multiple, and be clickable to dismiss early.
-- **FR-011**: Each MCP card MUST display a connection status icon at the top right corner. Status updates MUST be pushed from the backend via SSE and reflected reactively in the UI.
+- **FR-011**: Each MCP card MUST display a connection status icon. Status updates MUST be pushed from the backend via SSE and reflected reactively in the UI.
 - **FR-012**: A green icon indicates a successful connection; a red icon indicates a failed connection; a muted/gray icon indicates disconnected state. All states MUST include appropriate `aria-label` attributes for screen readers (e.g., "Connected to MCP {name}", "Connection failed for {name}: {reason}", "Connecting to {name}", "Disconnected from {name}").
 - **FR-013**: Hovering a red (failed) connection icon MUST show a tooltip with the error reason.
 - **FR-022**: During connection test or reconnect, the status icon MUST show a loading spinner (amber/yellow) while in "connecting" state. The "connecting" state MUST timeout after the same duration as the connection test timeout (FR-021).
@@ -128,9 +128,9 @@ Each MCP card footer shows a badge with the number of tools exposed by that serv
 - **FR-024**: System MUST handle file permission errors when reading/writing .mcp.json. On permission error during add or remove, a toast error MUST be shown ("Could not read/write the file") and the operation MUST be aborted.
 - **FR-025**: System MUST handle backend unreachable errors during add/remove operations. A toast error MUST be shown with the specific message and the operation MUST be aborted.
 - **FR-026**: System MUST warn the user via `beforeunload` event if a connection test is in progress and the user attempts to close or refresh the page.
-- **FR-014**: Each MCP card footer MUST contain a "Reconnect" button that retries the connection. The footer order MUST be: tool count badge (left), Reconnect (center), Remove (right). On reconnect failure, the system MUST show an error toast (3s, stackable, clickable). While reconnecting, the Reconnect button MUST show a spinner and be disabled.
-- **FR-015**: Each MCP card footer MUST contain a badge showing the number of tools exposed by the MCP. If the MCP is in "disconnected" state, the badge MUST display "?".
-- **FR-016**: Each MCP card footer MUST contain a "Remove" button that deletes the MCP entry from .mcp.json.
+- **FR-014**: Each MCP card footer MUST contain a "Reconnect" button that retries the connection. On reconnect failure, the system MUST show an error toast (3s, stackable, clickable). While reconnecting, the Reconnect button MUST show a spinner and be disabled.
+- **FR-015**: Each MCP card header MUST contain a badge showing the number of tools exposed by the MCP. If the MCP has not been checked yet status is "unknown" or "testing", the badge MUST display "?".
+- **FR-016**: Each MCP card MUST contain a "Remove" button that deletes the MCP entry from .mcp.json.
 - **FR-017**: System MUST show a success toast when an MCP is removed. Toasts MUST follow the same behavior as FR-010 (auto-dismiss 3s, stackable, clickable to dismiss).
 - **FR-018**: System MUST support connection testing for stdio transports (verifying the command exists/is executable).
 - **FR-019**: System MUST support connection testing for http/sse transports (making a connectivity request).
@@ -141,7 +141,7 @@ Each MCP card footer shows a badge with the number of tools exposed by that serv
 
 - **MCP Connection**: Represents a configured MCP server. Key attributes: name, transport type, command+args (stdio) or url (http/sse), connection status, tool count.
 - **MCP Configuration (.mcp.json)**: The file storing all MCP server definitions. Supports flat and nested formats.
-- **Connection Status**: Runtime state of an MCP connection (connected, disconnected, connecting, error). Not persisted — determined at runtime.
+- **Connection Status**: Runtime state of an MCP connection (connected, disconnected, connecting, error, testing, unknown). Not persisted — determined at runtime.
 
 ## Success Criteria *(mandatory)*
 

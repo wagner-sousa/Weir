@@ -39,7 +39,8 @@ const transportVariant: Record<string, string> = {
 export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, onConfig, removing, reconnecting }: MCPCardProps) {
   const status = client.status || 'disconnected';
   const si = statusIcons[status] || statusIcons.disconnected;
-  const variant = transportVariant[client.transport] || 'outline';
+  const known = transportVariant[client.transport];
+  const variant = known || 'outline';
 
   return (
     <div
@@ -59,7 +60,7 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, onConfi
           <h3 className="text-lg font-semibold text-theme-text">{client.name}</h3>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={variant} label={client.transport} />
+          <Badge variant={variant} label={known ? client.transport : 'Unknown'} />
           {client.toolCount !== undefined && (
             <span
               className="rounded-full bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-300"

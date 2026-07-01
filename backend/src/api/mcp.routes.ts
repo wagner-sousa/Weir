@@ -85,6 +85,12 @@ async function testSingleMCP(name: string): Promise<CachedStatus> {
   return cached;
 }
 
+function isPermissionError(err: unknown): boolean {
+  if (!(err instanceof Error) || !('code' in err)) return false;
+  const code = (err as { code: string }).code;
+  return code === 'EACCES' || code === 'EPERM' || code === 'EROFS';
+}
+
 export async function mcpRoutes(app: FastifyInstance) {
   app.get('/api/mcps', async (_request, _reply) => {
     const configPath = getConfigPath();
@@ -215,7 +221,13 @@ export async function mcpRoutes(app: FastifyInstance) {
 
     try {
       writeMCPConfig(configPath, updated);
-    } catch {
+    } catch (err) {
+      if (isPermissionError(err)) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Could not read/write the file.',
+        });
+      }
       return reply.status(503).send({
         success: false,
         error: 'Error saving: backend unavailable.',
@@ -224,8 +236,23 @@ export async function mcpRoutes(app: FastifyInstance) {
 
     broadcast('config:changed', { path: configPath });
 
-    // Test the newly created MCP and return result
-    const testStatus = await testSingleMCP(name as string);
+    // Test the newly created MCP and return result (with MCP_ADD_TIMEOUT override)
+    const DEFAULT_ADD_TIMEOUT_MS = 30000;
+    const parsedTimeout = parseInt(process.env.MCP_ADD_TIMEOUT ?? '', 10);
+    const addTimeoutMs = Number.isFinite(parsedTimeout) && parsedTimeout > 0 ? parsedTimeout : DEFAULT_ADD_TIMEOUT_MS;
+    let timeoutHandle: ReturnType<typeof setTimeout>;
+    const timeoutPromise = new Promise<CachedStatus>((_, reject) => {
+      timeoutHandle = setTimeout(() => reject(new Error('Add MCP timed out')), addTimeoutMs);
+    });
+    const testStatus = await Promise.race([
+      testSingleMCP(name as string),
+      timeoutPromise,
+    ]).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Operation timed out.';
+      return { status: 'error' as const, error: msg, toolCount: 0, needsAuth: false, authUrl: null, lastTestedAt: Date.now() };
+    }).finally(() => {
+      clearTimeout(timeoutHandle);
+    });
     broadcastStatusUpdate(name as string, testStatus);
 
     return reply.status(201).send({
@@ -394,7 +421,13 @@ export async function mcpRoutes(app: FastifyInstance) {
       const updated = removeMCPEntry(raw, name);
       try {
         writeMCPConfig(configPath, updated);
-      } catch {
+      } catch (err) {
+        if (isPermissionError(err)) {
+          return reply.status(403).send({
+            success: false,
+            error: 'Could not read/write the file.',
+          });
+        }
         return reply.status(503).send({
           success: false,
           error: 'Error removing: backend unavailable.',

@@ -3,7 +3,7 @@ import { useTestConnection, useAddMCP, useUpdateMCP } from '../hooks/useMCPs';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import * as Dialog from '@radix-ui/react-dialog';
-import { X } from 'lucide-react';
+import { X, LoaderCircle, CircleCheck, Plus } from 'lucide-react';
 import type { TransportConfig, MCPClient, TestConnectionResult } from '../services/api';
 
 interface EnvVar {
@@ -19,16 +19,21 @@ interface AddMCPModalProps {
   onAuth?: (name: string, url?: string, transport?: string) => void;
 }
 
+const envKeyRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
 export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth }: AddMCPModalProps) {
   const [type, setType] = useState<'stdio' | 'http' | 'sse'>('stdio');
   const [command, setCommand] = useState('');
-  const [argsStr, setArgsStr] = useState('');
+  const [args, setArgs] = useState<string[]>([]);
+  const [argInput, setArgInput] = useState('');
   const [url, setUrl] = useState('');
   const [envVars, setEnvVars] = useState<EnvVar[]>([]);
+  const [envKeyErrors, setEnvKeyErrors] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [nameError, setNameError] = useState('');
   const [testResult, setTestResult] = useState<TestConnectionResult | null>(null);
   const [testing, setTesting] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const prevTypeRef = useRef(type);
 
   const testMutation = useTestConnection();
@@ -70,13 +75,16 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
     if (!open) {
       setType('stdio');
       setCommand('');
-      setArgsStr('');
+      setArgs([]);
+      setArgInput('');
       setUrl('');
       setEnvVars([]);
+      setEnvKeyErrors([]);
       setName('');
       setNameError('');
       setTestResult(null);
       setTesting(false);
+      setDirty(false);
       prevTypeRef.current = 'stdio';
       initialSnapshotRef.current = '';
     } else if (existingMCP) {
@@ -85,17 +93,20 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
         : 'stdio';
       setType(transportType);
       setCommand(existingMCP.command ?? '');
-      setArgsStr(existingMCP.args?.join(' ') ?? '');
+      setArgs(existingMCP.args ?? []);
+      setArgInput('');
       setUrl(existingMCP.url ?? '');
       setEnvVars(
         existingMCP.env
           ? Object.entries(existingMCP.env).map(([key, value]) => ({ key, value }))
           : [],
       );
+      setEnvKeyErrors([]);
       setName(existingMCP.name ?? '');
       setNameError('');
       setTestResult(null);
       setTesting(false);
+      setDirty(false);
       prevTypeRef.current = transportType;
       initialSnapshotRef.current = buildSnapshot(
         existingMCP.name ?? '',
@@ -124,8 +135,17 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
     return () => window.removeEventListener('beforeunload', handler);
   }, [testing, testMutation.isPending]);
 
+  function handleClose() {
+    if (dirty) {
+      const confirmed = window.confirm('Unsaved changes will be lost. Continue?');
+      if (!confirmed) return;
+    }
+    onClose();
+  }
+
   function validateName(value: string) {
     setName(value);
+    setDirty(true);
     if (!value.trim()) {
       setNameError('');
       return;
@@ -143,32 +163,56 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
   }
 
   function handleTypeChange(newType: 'stdio' | 'http' | 'sse') {
-    if (isEditing && prevTypeRef.current !== newType) {
-      const confirmed = window.confirm(
-        'Changing transport type will clear type-specific fields. Continue?',
-      );
-      if (!confirmed) return;
+    if (prevTypeRef.current !== newType) {
+      if (isEditing) {
+        const confirmed = window.confirm(
+          'Changing transport type will clear type-specific fields. Continue?',
+        );
+        if (!confirmed) return;
+      }
       if (newType === 'stdio') {
         setUrl('');
       } else {
         setCommand('');
-        setArgsStr('');
+        setArgs([]);
+        setArgInput('');
         setEnvVars([]);
+        setEnvKeyErrors([]);
       }
     }
     setType(newType);
     prevTypeRef.current = newType;
+    setDirty(true);
+  }
+
+  function addArg() {
+    const trimmed = argInput.trim();
+    if (!trimmed) return;
+    setArgs((prev) => [...prev, trimmed]);
+    setArgInput('');
+    setDirty(true);
+  }
+
+  function removeArg(index: number) {
+    setArgs((prev) => prev.filter((_, i) => i !== index));
+    setDirty(true);
+  }
+
+  function validateEnvKey(index: number, value: string) {
+    const next = [...envKeyErrors];
+    if (value && !envKeyRegex.test(value)) {
+      next[index] = 'Invalid name. Use letters, digits, underscores.';
+    } else {
+      next[index] = '';
+    }
+    setEnvKeyErrors(next);
   }
 
   function buildTransport(): TransportConfig {
     const t: TransportConfig = { type };
     if (type === 'stdio') {
       t.command = command;
-      const parsed = argsStr
-        .split(' ')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (parsed.length > 0) t.args = parsed;
+      if (args.length > 0) t.args = args;
       const env: Record<string, string> = {};
       envVars.forEach((e) => {
         if (e.key.trim()) env[e.key.trim()] = e.value;
@@ -217,6 +261,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
     }
 
     toast.success(`MCP "${trimmedName}" ${isEditing ? 'updated' : 'added'} successfully.`);
+    setDirty(false);
     onClose();
 
     if (triggerAuth && onAuth) {
@@ -280,9 +325,11 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
     }
   }
 
+  const hasEnvErrors = envKeyErrors.some((e) => e !== '');
   const isValid =
     name.trim() &&
     !nameError &&
+    !hasEnvErrors &&
     (type === 'stdio' ? command.trim() : url.trim());
 
   return (
@@ -336,23 +383,52 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
                       <input
                         type="text"
                         value={command}
-                        onChange={(e) => setCommand(e.target.value)}
+                        onChange={(e) => { setCommand(e.target.value); setDirty(true); }}
                         className="w-full rounded border border-theme-border bg-theme-bg px-3 py-2 text-sm text-theme-text"
                         placeholder="e.g.: npx"
                       />
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-sm font-medium text-theme-muted">
-                        Arguments (space-separated)
-                      </label>
-                      <input
-                        type="text"
-                        value={argsStr}
-                        onChange={(e) => setArgsStr(e.target.value)}
-                        className="w-full rounded border border-theme-border bg-theme-bg px-3 py-2 text-sm text-theme-text"
-                        placeholder="e.g.: -y @modelcontextprotocol/server-filesystem /tmp"
-                      />
+                      <label className="mb-1 block text-sm font-medium text-theme-muted">Arguments</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={argInput}
+                          onChange={(e) => { setArgInput(e.target.value); setDirty(true); }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addArg(); } }}
+                          className="flex-1 rounded border border-theme-border bg-theme-bg px-3 py-2 text-sm text-theme-text"
+                          placeholder="e.g.: -y"
+                        />
+                        <button
+                          type="button"
+                          onClick={addArg}
+                          aria-label="Add argument"
+                          className="rounded bg-theme-accent px-3 text-sm text-gray-900 hover:bg-theme-accent-dark"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+                      {args.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {args.map((arg, i) => (
+                            <span
+                              key={i}
+                              className="inline-flex items-center gap-1 rounded bg-gray-700 px-2 py-0.5 text-xs text-gray-200"
+                            >
+                              {arg}
+                              <button
+                                type="button"
+                                onClick={() => removeArg(i)}
+                                className="text-gray-400 hover:text-red-400"
+                                aria-label={`Remove argument ${arg}`}
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div>
@@ -362,44 +438,62 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
                         </label>
                         <button
                           type="button"
-                          onClick={() => setEnvVars((prev) => [...prev, { key: '', value: '' }])}
+                          onClick={() => {
+                            setEnvVars((prev) => [...prev, { key: '', value: '' }]);
+                            setEnvKeyErrors((prev) => [...prev, '']);
+                            setDirty(true);
+                          }}
                           className="text-xs text-theme-accent hover:text-theme-accent-dark"
                         >
                           + Add variable
                         </button>
                       </div>
                       {envVars.map((ev, i) => (
-                        <div key={i} className="mb-2 flex gap-2">
-                          <input
-                            type="text"
-                            value={ev.key}
-                            onChange={(e) => {
-                              const next = [...envVars];
-                              next[i] = { ...next[i], key: e.target.value };
-                              setEnvVars(next);
-                            }}
-                            className="flex-1 rounded border border-theme-border bg-theme-bg px-2 py-1 text-sm text-theme-text"
-                            placeholder="KEY"
-                          />
-                          <input
-                            type="text"
-                            value={ev.value}
-                            onChange={(e) => {
-                              const next = [...envVars];
-                              next[i] = { ...next[i], value: e.target.value };
-                              setEnvVars(next);
-                            }}
-                            className="flex-1 rounded border border-theme-border bg-theme-bg px-2 py-1 text-sm text-theme-text"
-                            placeholder="value"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setEnvVars((prev) => prev.filter((_, j) => j !== i))}
-                            className="px-2 text-red-500 hover:text-red-700"
-                            aria-label="Remove variable"
-                          >
-                            &times;
-                          </button>
+                        <div key={i}>
+                          <div className="mb-1 flex gap-2">
+                            <input
+                              type="text"
+                              value={ev.key}
+                              onChange={(e) => {
+                                const next = [...envVars];
+                                next[i] = { ...next[i], key: e.target.value };
+                                setEnvVars(next);
+                                validateEnvKey(i, e.target.value);
+                                setDirty(true);
+                              }}
+                              className={`flex-1 rounded border px-2 py-1 text-sm text-theme-text ${
+                                envKeyErrors[i] ? 'border-red-400' : 'border-theme-border'
+                              } bg-theme-bg`}
+                              placeholder="KEY"
+                            />
+                            <input
+                              type="text"
+                              value={ev.value}
+                              onChange={(e) => {
+                                const next = [...envVars];
+                                next[i] = { ...next[i], value: e.target.value };
+                                setEnvVars(next);
+                                setDirty(true);
+                              }}
+                              className="flex-1 rounded border border-theme-border bg-theme-bg px-2 py-1 text-sm text-theme-text"
+                              placeholder="value"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEnvVars((prev) => prev.filter((_, j) => j !== i));
+                                setEnvKeyErrors((prev) => prev.filter((_, j) => j !== i));
+                                setDirty(true);
+                              }}
+                              className="px-2 text-red-500 hover:text-red-700"
+                              aria-label="Remove variable"
+                            >
+                              &times;
+                            </button>
+                          </div>
+                          {envKeyErrors[i] && (
+                            <p className="mb-1 text-xs text-red-500">{envKeyErrors[i]}</p>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -412,32 +506,26 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
                     <input
                       type="text"
                       value={url}
-                      onChange={(e) => setUrl(e.target.value)}
+                      onChange={(e) => { setUrl(e.target.value); setDirty(true); }}
                       className="w-full rounded border border-theme-border bg-theme-bg px-3 py-2 text-sm text-theme-text"
                       placeholder="https://example.com/mcp"
                     />
                   </div>
                 )}
 
-                {testResult && (
-                  <div
-                    className={`rounded px-3 py-2 text-sm ${
-                      testResult.success
-                        ? 'bg-green-50 text-green-700'
-                        : testResult.needsAuth
-                          ? 'bg-yellow-50 text-yellow-800'
-                          : 'bg-red-50 text-red-700'
-                    }`}
-                  >
-                    {testResult.success
-                      ? 'Connection successful!'
-                      : testResult.needsAuth
-                        ? 'Authentication required. Save the MCP, then click the shield icon to authorize via OAuth2.'
-                        : `Connection failed: ${testResult.error}`}
+                {testResult && !testResult.success && !testResult.needsAuth && (
+                  <div className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+                    Connection failed: {testResult.error}
                   </div>
                 )}
 
-                <div className="flex gap-3">
+                {testResult?.needsAuth && (
+                  <div className="rounded bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
+                    Authentication required. Save the MCP, then click the shield icon to authorize via OAuth2.
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => handleTest()}
@@ -448,13 +536,23 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
                         : 'border border-theme-border text-theme-text hover:bg-theme-border'
                     }`}
                   >
-                    {testing ? 'Testing...' : 'Test Connection'}
+                    {testing ? (
+                      <span className="inline-flex items-center gap-2">
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                        Testing...
+                      </span>
+                    ) : (
+                      'Test Connection'
+                    )}
                   </button>
+                  {testResult?.success && (
+                    <CircleCheck className="h-5 w-5 shrink-0 text-green-500" />
+                  )}
                   <button
                     type="submit"
-                    disabled={!isValid || savePending}
+                    disabled={!isValid || savePending || testing}
                     className={`flex-1 rounded px-4 py-2 text-sm font-medium ${
-                      !isValid || savePending
+                      !isValid || savePending || testing
                         ? 'cursor-not-allowed bg-gray-200 text-gray-400'
                         : 'bg-theme-accent text-gray-900 hover:bg-theme-accent-dark'
                     }`}
