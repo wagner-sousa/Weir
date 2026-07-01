@@ -207,6 +207,7 @@ describe('GET /api/auth/:name/callback', () => {
     };
 
     vi.mocked(fetch)
+      // discoverOAuth2 on callback
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({
@@ -216,21 +217,16 @@ describe('GET /api/auth/:name/callback', () => {
         headers: { get: () => 'application/json' },
         text: () => Promise.resolve(toolsJson),
       } as unknown as Response)
+      // queryTools: initialize (returns ok without tools)
+      .mockResolvedValueOnce(initResponse as unknown as Response)
+      // queryTools: tools/list (returns toolsJson with 3 tools)
       .mockResolvedValueOnce({
         ok: true as const,
         headers: { get: () => 'application/json' as const },
         text: () => Promise.resolve(toolsJson),
         json: () => Promise.resolve(JSON.parse(toolsJson)),
       } as unknown as Response)
-      .mockResolvedValueOnce(initResponse as unknown as Response)
-      .mockResolvedValueOnce(initResponse as unknown as Response)
-      .mockResolvedValueOnce({
-        ok: true as const,
-        headers: { get: () => 'application/json' as const },
-        text: () => Promise.resolve(toolsJson),
-        json: () => Promise.resolve(JSON.parse(toolsJson)),
-      } as unknown as Response)
-      // Mocks for testSingleMCPAndBroadcast (background call after callback)
+      // Background: testSingleMCPAndBroadcast mocks (only if toolCount === 0)
       .mockResolvedValueOnce(initResponse as unknown as Response)
       .mockResolvedValueOnce(initResponse as unknown as Response)
       .mockResolvedValueOnce({

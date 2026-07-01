@@ -49,6 +49,21 @@ export function useMCPs() {
     }
   }, [query.isFetching]);
 
+  // Clear stale statusMap entries when query data refreshes,
+  // so fresh backend cache takes precedence over potentially
+  // outdated SSE/WebSocket events.
+  useEffect(() => {
+    if (query.data?.clients) {
+      setStatusMap((prev) => {
+        const next = { ...prev };
+        for (const client of query.data.clients) {
+          delete next[client.name];
+        }
+        return next;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query.data]);
 
   const clientsWithStatus: MCPClient[] = (query.data?.clients ?? []).map(
     (client: MCPClient) => {
