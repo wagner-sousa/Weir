@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useTestConnection, useAddMCP, useUpdateMCP } from '../hooks/useMCPs';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
@@ -15,9 +16,10 @@ interface AddMCPModalProps {
   existingNames: string[];
   existingMCP?: MCPClient;
   onClose: () => void;
+  onAuth?: (name: string, url?: string, transport?: string) => void;
 }
 
-export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMCPModalProps) {
+export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth }: AddMCPModalProps) {
   const [type, setType] = useState<'stdio' | 'http' | 'sse'>('stdio');
   const [command, setCommand] = useState('');
   const [argsStr, setArgsStr] = useState('');
@@ -32,6 +34,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
   const testMutation = useTestConnection();
   const addMutation = useAddMCP();
   const updateMutation = useUpdateMCP();
+  const queryClient = useQueryClient();
 
   const isEditing = !!existingMCP;
   const originalName = existingMCP?.name ?? '';
@@ -137,7 +140,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
     return t;
   }
 
-  async function handleTest() {
+  async function handleTest(autoSave = true) {
     setTesting(true);
     setTestResult(null);
     const transport = buildTransport();
@@ -145,34 +148,92 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
     const result = await testMutation.mutateAsync({ transport, name: testName });
     setTestResult(result);
     setTesting(false);
+
+    if (autoSave && (result.success || result.needsAuth)) {
+      await doSave(transport);
+    }
+  }
+
+  async function doSave(transport: TransportConfig, triggerAuth = false) {
+    const trimmedName = name.trim();
+    let result: { success: boolean; name?: string; error?: string; testResult?: TestConnectionResult };
+
+    if (isEditing) {
+      result = await updateMutation.mutateAsync({
+        originalName,
+        name: trimmedName,
+        transport,
+      });
+    } else {
+      result = await addMutation.mutateAsync({ name: trimmedName, transport });
+    }
+
+    if (!result.success) {
+      toast.error(result.error || 'Error saving MCP.');
+      return;
+    }
+
+    toast.success(`MCP "${trimmedName}" ${isEditing ? 'updated' : 'added'} successfully.`);
+    onClose();
+
+    if (triggerAuth && onAuth) {
+      onAuth(trimmedName);
+    }
+
+    if (result.testResult?.needsAuth && result.testResult?.authUrl) {
+      try {
+        const authRes = await fetch(`/api/auth/${encodeURIComponent(trimmedName)}/start`, {
+          method: 'POST',
+        });
+        const authData = await authRes.json();
+
+        if (authData.error) {
+          toast.error(authData.error);
+          return;
+        }
+
+        if (!authData.url) return;
+
+        const popup = window.open('', '_blank', 'width=600,height=700');
+        if (!popup) {
+          toast.error('Popup blocked. Please allow popups for this site.');
+          return;
+        }
+
+        popup.location.href = authData.url;
+
+        const timer = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(timer);
+            queryClient.invalidateQueries({ queryKey: ['mcps'] });
+          }
+        }, 500);
+      } catch {
+        toast.error('Failed to start OAuth2 authorization.');
+      }
+    }
   }
 
   async function handleSave(e: FormEvent) {
     e.preventDefault();
     if (nameError || !name.trim()) return;
     const transport = buildTransport();
-    const trimmedName = name.trim();
 
-    if (isEditing) {
-      const result = await updateMutation.mutateAsync({
-        originalName,
-        name: trimmedName,
-        transport,
-      });
-      if (result.success) {
-        toast.success(`MCP "${trimmedName}" updated successfully.`);
-        onClose();
+    if (!testResult) {
+      setTesting(true);
+      const testResultData = await testMutation.mutateAsync({ transport, name: isEditing ? originalName : undefined });
+      setTestResult(testResultData);
+      setTesting(false);
+
+      if (testResultData.success || testResultData.needsAuth) {
+        const needsAuth = testResultData.needsAuth && type === 'http';
+        await doSave(transport, needsAuth);
       } else {
-        toast.error(result.error || 'Error updating MCP.');
+        return;
       }
     } else {
-      const result = await addMutation.mutateAsync({ name: trimmedName, transport });
-      if (result.success) {
-        toast.success(`MCP "${trimmedName}" added successfully.`);
-        onClose();
-      } else {
-        toast.error(result.error || 'Error adding MCP.');
-      }
+      const needsAuth = testResult.needsAuth && type === 'http';
+      await doSave(transport, needsAuth);
     }
   }
 
@@ -336,7 +397,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose }: AddMC
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={handleTest}
+                    onClick={() => handleTest()}
                     disabled={!isValid || testing}
                     className={`flex-1 rounded px-4 py-2 text-sm font-medium ${
                       !isValid || testing

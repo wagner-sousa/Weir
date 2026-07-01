@@ -1,20 +1,21 @@
 <!--
   Sync Impact Report
   ==================
-  Version change: 1.5.0 → 1.6.0
+  Version change: 1.7.0 → 1.8.0
   Modified principles: None (principles unchanged)
   Added sections:
-    - Principle VII: Icon-First Buttons (Non-Form)
+    - Principle IX: Spec Naming Convention
   Removed sections: None
+  Modified sections: None
   Templates requiring updates:
-    - .specify/templates/plan-template.md: ⚠ pending — add VII row to Constitution Check table
+    - .specify/templates/plan-template.md: ⚠ pending — add IX row to Constitution Check table
     - .specify/templates/spec-template.md: ✅ no change needed
     - .specify/templates/tasks-template.md: ✅ no change needed
     - .specify/templates/checklist-template.md: ✅ no change needed
     - .specify/templates/constitution-template.md: ✅ Template is source — no change needed
   Documentation requiring updates: None
   Follow-up TODOs:
-    - Update plan-template.md Constitution Check table with VII
+    - Update plan-template.md Constitution Check table with IX
 -->
 
 # Weir Constitution
@@ -71,7 +72,19 @@ permitted for icons. This ensures visual consistency,
 accessibility (aria-labels), and ease of maintenance.
 Exceptions require explicit approval.
 
-### VII. Icon-First Buttons (Non-Form)
+### VII. Dependency First
+
+Every non-trivial capability MUST be implemented via an existing,
+well-maintained Node.js package unless a strong justification for
+building from scratch is documented. The npm registry is the
+default source for packages. Custom implementations are permitted
+only when no suitable package exists, the package is unmaintained,
+or the required functionality is trivially small (< 50 lines).
+Rationale: proven libraries have fewer bugs, better performance,
+community support, and security audits than custom code. Every
+new npm dependency MUST be justified in the pull request.
+
+### VIII. Icon-First Buttons (Non-Form)
 
 Actionable controls outside form contexts MUST prioritise
 icons over text labels. Every icon-only button MUST include
@@ -80,6 +93,20 @@ remain acceptable inside forms (e.g., "Test Connection",
 "Save") where clarity is paramount. Exceptions for non-form
 buttons that are inherently ambiguous without text require
 explicit approval.
+
+### IX. Spec Naming Convention
+
+User stories and Functional Requirements in specification
+documents (spec.md) MUST use generic role-based descriptors
+(e.g., "auth-gated HTTP MCP", "local HTTP MCP", "stdio MCP")
+instead of real service names (e.g., Postman, Serena, Bitbucket).
+Real service names MAY appear in research.md as implementation
+context, but MUST NOT be used in user stories or FRs.
+Rationale: keeping specs service-agnostic ensures they remain
+valid and reusable across different MCP implementations, prevents
+coupling of requirements to specific third-party services, and
+allows the spec to communicate intent without requiring knowledge
+of specific tools.
 
 ## Stack Tecnologica
 
@@ -101,32 +128,32 @@ Every external dependency MUST be justified.
 ## Development Workflow
 
 1. SDD — contrato primeiro:
-   1a. Schema Zod em src/config/schema.ts.
-   1b. Tipos inferidos em src/config/types.ts via z.infer.
-   1c. JSON Schema gerado via npm run gen:schema (nunca editado
-       manualmente).
-   1d. Arquivos marcados com SPEC: (contratos) e IMPL:
-       (implementacoes).
-   1e. Teste falhando.
-   1f. Implementacao.
+    1a. Schema Zod em src/config/schema.ts.
+    1b. Tipos inferidos em src/config/types.ts via z.infer.
+    1c. JSON Schema gerado via npm run gen:schema (nunca editado
+        manualmente).
+    1d. Arquivos marcados com SPEC: (contratos) e IMPL:
+        (implementacoes).
+    1e. Teste falhando.
+    1f. Implementacao.
 2. TDD — write test → see it fail → implement → see it pass.
 3. Constitutional compliance review is mandatory on every PR.
 4. Every complexity MUST be justified by current need, not
-   future speculation (YAGNI).
+    future speculation (YAGNI).
 5. Frequent, atomic commits after each task or logical group
-   of tasks.
+    of tasks.
 6. Every development, test, build, and execution command MUST
-   be invoked via docker-compose.*.yml. No node/npm commands
-   on the host directly.
+    be invoked via docker-compose.*.yml. No node/npm commands
+    on the host directly.
 7. Every new configuration MUST have a corresponding parameter
-   in .env.example and .env, and MUST be wired in all
-   docker-compose.*.yml files. No hardcoded configuration
-   without an environment variable.
+    in .env.example and .env, and MUST be wired in all
+    docker-compose.*.yml files. No hardcoded configuration
+    without an environment variable.
 8. Lints (ESLint, Prettier, typecheck) MUST pass before every
-   commit. No commit with lint warnings or errors is acceptable.
+    commit. No commit with lint warnings or errors is acceptable.
 9. Every new spec, adjustment, or correction MUST be reflected
-   in documentation (README, docs/, quickstart) in the same
-   commit. Outdated documentation is considered a bug.
+    in documentation (README, docs/, quickstart) in the same
+    commit. Outdated documentation is considered a bug.
 
 ## Governance
 
@@ -139,4 +166,4 @@ Every PR review MUST verify compliance with the principles
 defined herein. Omissions shall be resolved by the general
 principles of simplicity and developer experience.
 
-**Version**: 1.6.0 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-06-25
+**Version**: 1.8.0 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-06-30

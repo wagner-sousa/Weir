@@ -40,7 +40,17 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+| Principle | Gate |
+|-----------|------|
+| I. SDD | Schema defined before implementation? |
+| II. Test-First | Tests written and approved? |
+| III. English | UI/UX language verified? |
+| IV. .mcp.json SOT | Config derives from schema? |
+| V. Simplicity | No unnecessary duplication? |
+| VI. Icon Library | Icons from consistent package? |
+| VII. Dependency First | npm package preferred over custom code? |
+| VIII. Icon-First Buttons | Non-form controls prioritise icons? |
+| IX. Spec Naming Convention | User stories/FRs use generic roles, not real service names? |
 
 ## Project Structure
 

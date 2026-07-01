@@ -23,3 +23,19 @@ export interface MCPClient {
 }
 
 export type TransportKind = 'stdio' | 'http' | 'sse' | 'unknown';
+
+export interface CachedStatus {
+  status: 'connected' | 'error' | 'needsAuth' | 'unknown';
+  error: string | null;
+  toolCount: number;
+  needsAuth: boolean;
+  authUrl: string | null;
+  lastTestedAt: number;
+}
+
+export interface StatusUpdate {
+  name: string;
+  status: 'connected' | 'error' | 'needsAuth' | 'testing' | 'unknown';
+  error: string | null;
+  toolCount: number | null;
+}

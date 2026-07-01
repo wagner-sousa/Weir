@@ -10,6 +10,8 @@ import { authRoutes } from './api/auth.routes.js';
 import { healthRoutes } from './api/health.routes.js';
 import { setupWebSocket } from './api/ws.js';
 import { createWatcher } from './config/watcher.js';
+import { migrateFromMcpJson } from './services/auth-storage.js';
+import { startMcpServer } from './mcp/mcp.server.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -32,6 +34,9 @@ export async function buildApp() {
   const ws = setupWebSocket(app);
 
   const mcpConfigPath = process.env.MCP_CONFIG_PATH || resolve(process.cwd(), '.mcp.json');
+
+  // Migrate OAuth data from .mcp.json to .mcp-auth.json on startup
+  migrateFromMcpJson(mcpConfigPath);
 
   if (!existsSync(mcpConfigPath)) {
     app.log.warn(`Arquivo .mcp.json nao encontrado em: ${mcpConfigPath}`);
@@ -87,9 +92,26 @@ export async function start() {
     }
     process.exit(1);
   }
+
+  const mcpPort = parseInt(process.env['WEIR_MCP_PORT'] || '4000', 10);
+  if (mcpPort > 0) {
+    try {
+      await startMcpServer(mcpPort);
+      app.log.info(`MCP port server running at http://0.0.0.0:${mcpPort}`);
+    } catch (err: unknown) {
+      app.log.warn(`Failed to start MCP port server on ${mcpPort}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (isMain) {
-  start();
+  const mcpIndex = process.argv.indexOf('--mcp');
+  if (mcpIndex !== -1 && process.argv[mcpIndex + 1]) {
+    const name = process.argv[mcpIndex + 1];
+    const { runProxy } = await import('./proxy/index.js');
+    await runProxy(name, process.argv);
+  } else {
+    start();
+  }
 }

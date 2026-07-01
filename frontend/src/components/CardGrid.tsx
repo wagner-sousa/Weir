@@ -4,20 +4,25 @@ import { toast } from 'sonner';
 import type { MCPClient } from '../services/api';
 import { MCPCard } from './MCPCard';
 import { AddMCPModal } from './AddMCPModal';
+import { MCPConnectionModal } from './MCPConnectionModal';
 import { useTestConnection } from '../hooks/useMCPs';
-import { Plus } from 'lucide-react';
+import { Plus, Plug } from 'lucide-react';
 
 interface CardGridProps {
   clients: MCPClient[];
   onRemove?: (name: string) => void;
   removePending?: boolean;
+  mcpPort?: number;
 }
 
-export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
+export function CardGrid({ clients, onRemove, removePending, mcpPort }: CardGridProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingMCP, setEditingMCP] = useState<MCPClient | null>(null);
   const [reconnectingName, setReconnectingName] = useState<string | null>(null);
+  const [configName, setConfigName] = useState<string | null>(null);
+  const [globalConfigOpen, setGlobalConfigOpen] = useState(false);
   const editModalOpen = editingMCP !== null;
+  const configModalOpen = configName !== null;
   const testMutation = useTestConnection();
   const queryClient = useQueryClient();
 
@@ -25,14 +30,21 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
     setEditingMCP(client);
   }
 
+  function handleConfig(name: string) {
+    setConfigName(name);
+  }
+
   function closeEditModal() {
     setEditingMCP(null);
     queryClient.invalidateQueries({ queryKey: ['mcps'] });
   }
 
-  async function handleAuth(client: MCPClient) {
+  async function handleAuth(client: MCPClient): Promise<void>;
+  async function handleAuth(name: string): Promise<void>;
+  async function handleAuth(arg: MCPClient | string): Promise<void> {
+    const name = typeof arg === 'string' ? arg : arg.name;
     try {
-      const res = await fetch(`/api/auth/${encodeURIComponent(client.name)}/start`, {
+      const res = await fetch(`/api/auth/${encodeURIComponent(name)}/start`, {
         method: 'POST',
       });
       const data = await res.json();
@@ -69,6 +81,14 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
 
   async function handleReconnect(client: MCPClient) {
     setReconnectingName(client.name);
+
+    // For HTTP MCPs with needsAuth, open OAuth popup instead of testing
+    if (client.needsAuth && client.transport === 'http') {
+      await handleAuth(client);
+      setReconnectingName(null);
+      return;
+    }
+
     const transport = {
       type: client.transport as 'stdio' | 'http' | 'sse',
       command: client.command,
@@ -76,7 +96,15 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
       url: client.url,
       env: client.env,
     };
-    const result = await testMutation.mutateAsync({ transport });
+    const result = await testMutation.mutateAsync({ transport, name: client.name });
+
+    // If test returns needsAuth for HTTP MCP, redirect to OAuth popup
+    if (result.needsAuth && client.transport === 'http') {
+      await handleAuth(client);
+      setReconnectingName(null);
+      return;
+    }
+
     if (result.success) {
       toast.success(`MCP "${client.name}" connected successfully.`);
     } else {
@@ -112,7 +140,15 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
 
   return (
     <div>
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex justify-end gap-2">
+        <button
+          onClick={() => setGlobalConfigOpen(true)}
+          className="rounded border border-theme-border p-2 text-theme-muted hover:bg-theme-border hover:text-theme-text"
+          title="Show connection details for all MCPs"
+          aria-label="Connection info for all MCPs"
+        >
+          <Plug className="h-5 w-5" />
+        </button>
         <button
           onClick={() => setModalOpen(true)}
           className="rounded bg-theme-accent p-2 text-gray-900 hover:bg-theme-accent-dark"
@@ -129,6 +165,7 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
             client={client}
             onRemove={onRemove}
             onEdit={handleEdit}
+            onConfig={handleConfig}
             onReconnect={handleReconnect}
             onAuth={handleAuth}
             removing={removePending}
@@ -143,12 +180,28 @@ export function CardGrid({ clients, onRemove, removePending }: CardGridProps) {
           setModalOpen(false);
           queryClient.invalidateQueries({ queryKey: ['mcps'] });
         }}
+        onAuth={handleAuth}
       />
       <AddMCPModal
         open={editModalOpen}
         existingNames={clients.map((c) => c.name)}
         existingMCP={editingMCP ?? undefined}
         onClose={closeEditModal}
+        onAuth={handleAuth}
+      />
+      {configName && (
+        <MCPConnectionModal
+          open={configModalOpen}
+          names={[configName]}
+          onClose={() => setConfigName(null)}
+          mcpPort={mcpPort}
+        />
+      )}
+      <MCPConnectionModal
+        open={globalConfigOpen}
+        names={clients.map((c) => c.name)}
+        onClose={() => setGlobalConfigOpen(false)}
+        mcpPort={mcpPort}
       />
     </div>
   );

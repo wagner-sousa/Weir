@@ -1,9 +1,28 @@
 import { writeFileSync } from 'node:fs';
 import type { MCPConfig, MCPServerEntry } from './types.js';
 
+export function stripOAuthFields(config: MCPConfig): MCPConfig {
+  const stripped: MCPConfig = { mcpServers: {} };
+  for (const [name, entry] of Object.entries(config.mcpServers)) {
+    const cleaned = { ...entry } as Record<string, unknown>;
+    delete cleaned.accessToken;
+    delete cleaned.auth;
+    delete cleaned.pendingCodeVerifier;
+    if (cleaned.transport && typeof cleaned.transport === 'object') {
+      const t = cleaned.transport as Record<string, unknown>;
+      delete t.accessToken;
+      delete t.auth;
+      delete t.pendingCodeVerifier;
+    }
+    stripped.mcpServers[name] = cleaned as never;
+  }
+  return stripped;
+}
+
 export function writeMCPConfig(filePath: string, config: MCPConfig): void {
   try {
-    writeFileSync(filePath, JSON.stringify(config, null, 2) + '\n', 'utf-8');
+    const cleaned = stripOAuthFields(config);
+    writeFileSync(filePath, JSON.stringify(cleaned, null, 2) + '\n', 'utf-8');
   } catch (err) {
     throw new Error(
       `Failed to write config: ${err instanceof Error ? err.message : String(err)}`,

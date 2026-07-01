@@ -50,6 +50,7 @@ function MCPDashboard() {
         clients={data?.clients || []}
         onRemove={handleRemove}
         removePending={removeMutation.isPending}
+        mcpPort={data?.mcpPort}
       />
       <Toaster position="bottom-right" toastOptions={{ duration: 3000 }} />
     </div>

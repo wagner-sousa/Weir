@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "test-mcp": {
+      "transport": {
+        "type": "stdio",
+        "command": "npx",
+        "args": ["tsx", "tests/integration/fixtures/test-mcp-server.ts"]
+      }
+    }
+  }
+}

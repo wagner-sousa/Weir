@@ -5,6 +5,8 @@ build/
 .env*
 !.env.example
 .mcp.json
+mcp-auth.json
+mcp-cache.json
 .DS_Store
 Thumbs.db
 *.tmp

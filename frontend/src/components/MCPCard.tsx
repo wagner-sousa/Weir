@@ -1,6 +1,6 @@
 import type { MCPClient } from '../services/api';
 import { Badge } from './Badge';
-import { ShieldAlert, CircleCheck, CircleX, LoaderCircle, Circle, Pencil, RotateCcw, Trash2 } from 'lucide-react';
+import { ShieldAlert, CircleCheck, CircleX, LoaderCircle, Circle, Pencil, RotateCcw, Trash2, Plug } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 interface MCPCardProps {
@@ -9,6 +9,7 @@ interface MCPCardProps {
   onEdit?: (client: MCPClient) => void;
   onReconnect?: (client: MCPClient) => void;
   onAuth?: (client: MCPClient) => void;
+  onConfig?: (name: string) => void;
   removing?: boolean;
   reconnecting?: boolean;
 }
@@ -24,6 +25,8 @@ const statusIcons: Record<string, StatusIcon> = {
   error: { icon: <CircleX className="h-5 w-5" />, color: 'text-red-500', label: 'Error' },
   connecting: { icon: <LoaderCircle className="h-5 w-5 animate-spin" />, color: 'text-yellow-500', label: 'Connecting...' },
   disconnected: { icon: <Circle className="h-5 w-5" />, color: 'text-gray-400', label: 'Disconnected' },
+  testing: { icon: <LoaderCircle className="h-5 w-5 animate-spin" />, color: 'text-yellow-500', label: 'Testing...' },
+  unknown: { icon: <Circle className="h-5 w-5" />, color: 'text-gray-400', label: 'Unknown' },
 };
 
 const transportVariant: Record<string, string> = {
@@ -32,7 +35,7 @@ const transportVariant: Record<string, string> = {
   sse: 'default',
 };
 
-export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removing, reconnecting }: MCPCardProps) {
+export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, onConfig, removing, reconnecting }: MCPCardProps) {
   const status = client.status || 'disconnected';
   const si = statusIcons[status] || statusIcons.disconnected;
   const variant = transportVariant[client.transport] || 'outline';
@@ -60,7 +63,7 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removin
               className="rounded-full bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-300"
               title={client.toolCount === 0 ? 'No tools available' : `${client.toolCount} tools`}
             >
-              {client.toolCount === 0 && status !== 'connected' ? '?' : client.toolCount}
+              {client.toolCount === 0 && (status === 'unknown' || status === 'testing') ? '?' : client.toolCount}
             </span>
           )}
         </div>
@@ -81,6 +84,14 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removin
         </p>
       )}
       <div className="mt-3 flex justify-end gap-2 border-t border-theme-border pt-2">
+        <button
+          onClick={() => onReconnect?.(client)}
+          disabled={reconnecting}
+          aria-label="Reconnect MCP"
+          className="rounded p-1.5 text-gray-400 hover:bg-green-600/20 hover:text-green-400 disabled:opacity-50"
+        >
+          {reconnecting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+        </button>
         {client.needsAuth && client.authUrl && (
           <button
             onClick={() => onAuth?.(client)}
@@ -92,19 +103,19 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, removin
           </button>
         )}
         <button
+          onClick={() => onConfig?.(client.name)}
+          aria-label="Connection info"
+          title="Show connection details for this MCP"
+          className="rounded p-1.5 text-gray-400 hover:bg-purple-600/20 hover:text-purple-400"
+        >
+          <Plug className="h-4 w-4" />
+        </button>
+        <button
           onClick={() => onEdit?.(client)}
           aria-label="Edit MCP"
           className="rounded p-1.5 text-gray-400 hover:bg-blue-600/20 hover:text-blue-400"
         >
           <Pencil className="h-4 w-4" />
-        </button>
-        <button
-          onClick={() => onReconnect?.(client)}
-          disabled={reconnecting}
-          aria-label="Reconnect MCP"
-          className="rounded p-1.5 text-gray-400 hover:bg-green-600/20 hover:text-green-400 disabled:opacity-50"
-        >
-          {reconnecting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
         </button>
         <button
           onClick={() => onRemove?.(client.name)}
