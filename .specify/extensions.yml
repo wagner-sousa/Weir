@@ -98,9 +98,8 @@ hooks:
   - extension: verify
     command: speckit.verify.run
     enabled: true
-    optional: true
+    optional: false
     priority: 10
-    prompt: Verify implementation against spec?
     description: Validate code against specification artifacts
     condition: null
   - extension: docguard

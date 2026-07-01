@@ -10,8 +10,6 @@ description: "Task list for MCP Gateway Web (Weir)"
 
 **Prerequisites**: plan.md (required), spec.md (required), research.md, data-model.md, contracts/api.md
 
-**Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
-
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
 ## Format: `[ID] [P?] [Story] Description`
@@ -59,11 +57,11 @@ description: "Task list for MCP Gateway Web (Weir)"
 
 ---
 
-## Phase 3: User Story 1 - Visualizar lista de MCPs em modo web (Priority: P1) MVP
+## Phase 3: User Story 1 - View MCP list in web mode (Priority: P1) MVP
 
-**Goal**: Usuario acessa o Weir no navegador e ve os MCPs configurados em cartoes (3 por linha)
+**Goal**: User accesses Weir in the browser and sees configured MCPs displayed as cards (3 per row)
 
-**Independent Test**: Iniciar o Weir, acessar http://localhost:3000, verificar cartoes exibidos com nome e tipo
+**Independent Test**: Start Weir, access http://localhost:3000, verify cards displayed with name and type
 
 ### Tests for User Story 1
 
@@ -71,6 +69,7 @@ description: "Task list for MCP Gateway Web (Weir)"
 - [x] T015 [P] [US1] Write integration test for API + loader in backend/tests/integration/api.test.ts
 - [x] T016 [P] [US1] Write component test for MCPCard in frontend/tests/components/MCPCard.test.tsx
 - [x] T017 [P] [US1] Write component test for CardGrid in frontend/tests/components/CardGrid.test.tsx
+- [x] T058 [P] [US1] Write test for unknown transport type displaying "Unknown" badge in frontend/tests/components/MCPCard.test.tsx
 
 ### Implementation for User Story 1
 
@@ -101,20 +100,20 @@ description: "Task list for MCP Gateway Web (Weir)"
 - [x] T053 [P] [US5] Create notification service wrapper in frontend/src/services/notifications.ts (success/green, error/red, info/blue)
 - [x] T054 [US5] Wire error notifications into API client service (show toast on HTTP failures)
 
-**Checkpoint**: User Story 1 should be fully functional -- acessar http://localhost:3000 mostra cartoes
+**Checkpoint**: User Story 1 should be fully functional -- accessing http://localhost:3000 shows cards
 
 ---
 
-## Phase 4: User Story 2 - Visualizar lista de MCPs em modo Docker (Priority: P1)
+## Phase 4: User Story 2 - View MCP list in Docker mode (Priority: P1)
 
-**Goal**: Usuario executa container Docker com .mcp.json montado como volume e ve a lista
+**Goal**: User runs Docker container with .mcp.json mounted as a volume and sees the list
 
-**Independent Test**: `docker run -v $(pwd)/.mcp.json:/app/.mcp.json -p 3000:3000 weir` e acessar navegador
+**Independent Test**: `docker run -v $(pwd)/.mcp.json:/app/.mcp.json -p 3000:3000 weir` and access browser
 
 ### Tests for User Story 2
 
 - [x] T031 [P] [US2] Write Docker startup test via docker compose run --rm test in backend/tests/integration/docker.test.ts
-  Nota: docker-compose.dev.yml precisa de servico docker-test com /var/run/docker.sock montado (requer acesso ao daemon Docker no CI)
+  Note: docker-compose.dev.yml needs a docker-test service with /var/run/docker.sock mounted (requires access to Docker daemon in CI)
 
 ### Implementation for User Story 2
 
@@ -122,15 +121,15 @@ description: "Task list for MCP Gateway Web (Weir)"
 - [x] T033 [US2] Update docker-compose.yml (producao) with volume mount for .mcp.json
 - [x] T034 [US2] Update docker-compose.dev.yml with production-like service for validation
 
-**Checkpoint**: User Story 2 should work -- container inicia e exibe MCPs sem configuracao extra
+**Checkpoint**: User Story 2 should work -- container starts and displays MCPs without extra configuration
 
 ---
 
-## Phase 5: User Story 3 - Atualizacao automatica da listagem (Priority: P2)
+## Phase 5: User Story 3 - Automatic listing update (Priority: P2)
 
-**Goal**: Modificar .mcp.json e ver alteracoes refletidas em <5s sem recarregar a pagina
+**Goal**: Modify .mcp.json and see changes reflected in <5s without reloading the page
 
-**Independent Test**: Editar .mcp.json (adicionar/remover servidor) e ver cartao aparecer/sumir em <5s
+**Independent Test**: Edit .mcp.json (add/remove server) and see card appear/disappear within <5s
 
 ### Tests for User Story 3
 
@@ -144,9 +143,9 @@ description: "Task list for MCP Gateway Web (Weir)"
 - [x] T039 [US3] Wire watcher + WebSocket into Fastify server in backend/src/index.ts
 - [x] T040 [P] [US3] Add WebSocket client logic to frontend/src/services/api.ts
 - [x] T041 [US3] Add auto-refetch logic to useMCPs hook on config:changed event
-- [x] T042 [US3] Add loading state "Atualizando..." during refresh
+- [x] T042 [US3] Add loading state "Updating..." during refresh
 
-**Checkpoint**: User Story 3 should work -- editar .mcp.json atualiza a tela sem recarregar
+**Checkpoint**: User Story 3 should work -- editing .mcp.json updates the screen without reloading
 
 ---
 
@@ -154,12 +153,21 @@ description: "Task list for MCP Gateway Web (Weir)"
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [x] T043 [P] Add error handling for JSON parse failures in .mcp.json loader (implementado em loader.ts)
-- [x] T044 [P] Add logging (pino) for file changes, API requests, and errors (implementado em index.ts via Fastify logger + watcher log)
-- [x] T045 Run quickstart.md validation scenarios (cenarios 1-6) — requer ambiente Docker funcional
-- [x] T055 [P] [US3] Handle .mcp.json deletion during runtime in watcher - broadcast deletion event and show "arquivo nao encontrado" in UI
+- [x] T043 [P] Add error handling for JSON parse failures in .mcp.json loader (implemented in loader.ts)
+- [x] T044 [P] Add logging (pino) for file changes, API requests, and errors (implemented in index.ts via Fastify logger + watcher log)
+- [x] T045 Run quickstart.md validation scenarios (scenarios 1-6) — requires functional Docker environment
+- [x] T055 [P] [US3] Handle .mcp.json deletion during runtime in watcher - broadcast deletion event and show "file not found" in UI
 - [x] T056 [P] Add descriptive startup error messages in backend/src/index.ts (port occupied, permission denied, file not found)
 - [x] T057 [P] Add responsive design test for minimum viewport width (320px)
+- [x] T059 [P] Verify that web mode and Docker mode share the same .mcp.json parsing logic (RF-010) — confirm both paths call the same loader module
+- [x] T060 [P] Add load/performance test for large .mcp.json (dozens of MCPs) to verify rendering and responsiveness
+
+---
+
+## Phase 7: Convergence
+
+- [x] T061 Update contracts/api.md GET /api/mcps response key from `mcps` to `clients` and add missing fields (`error`, `timestamp`, `mcpPort`) to match actual API implementation (contracts/api.md:11, contradicts)
+- [x] T062 Implement T060 — create load/performance test for large .mcp.json in frontend/tests/components/ (missing)
 
 ---
 

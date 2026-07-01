@@ -1,99 +1,75 @@
 # Data Model: MCP Gateway Web
 
-## Entidades
+## Entities
 
-### MCPClient (Entidade principal)
+### MCPClient (Primary Entity)
 
-Representa um servidor MCP configurado no .mcp.json.
+Represents an MCP server configured in .mcp.json.
 
-**Atributos:**
+**Attributes:**
 
-| Campo | Tipo | Origem | Descricao |
-|-------|------|--------|-----------|
-| name | string | Chave no mcpServers | Nome unico do MCP |
-| transport | TransportType | .transport.type | Tipo de transporte |
-| command | string? | .transport.command | Comando stdio (so stdio) |
-| args | string[]? | .transport.args | Argumentos (so stdio) |
-| url | string? | .transport.url | URL HTTP/SSE (so http/sse) |
+| Field | Type | Source | Description |
+|-------|------|--------|-------------|
+| name | string | mcpServers key | Unique MCP name |
+| transport | TransportType | .transport.type | Transport type |
+| command | string? | .transport.command | Stdio command (stdio only) |
+| args | string[]? | .transport.args | Arguments (stdio only) |
+| url | string? | .transport.url | HTTP/SSE URL (http/sse only) |
 
 **TransportType** (enum):
-- `stdio` — processo filho (command + args)
-- `http` — requisicao REST
+- `stdio` — child process (command + args)
+- `http` — REST request
 - `sse` — Server-Sent Events (streaming)
-- `unknown` — qualquer outro tipo nao reconhecido
+- `unknown` — any other unrecognized type
 
-### MCPConfig (Agregador)
+### MCPConfig (Aggregator)
 
-Representa o arquivo .mcp.json completo.
+Represents the complete .mcp.json file.
 
-**Atributos:**
+**Attributes:**
 
-| Campo | Tipo | Descricao |
-|-------|------|-----------|
-| mcpServers | Record<string, MCPServerEntry> | Mapa nome → configuracao |
+| Field | Type | Description |
+|-------|------|-------------|
+| mcpServers | Record<string, MCPServerEntry> | Name → config map |
 
 ### MCPServerEntry
 
-Estrutura de cada entrada no mcpServers.
+Structure of each entry in mcpServers.
 
-| Campo | Tipo | Descricao |
-|-------|------|-----------|
-| transport | TransportConfig | Configuracao de transporte |
+| Field | Type | Description |
+|-------|------|-------------|
+| transport | TransportConfig | Transport configuration |
 
 ### TransportConfig
 
-| Campo | Tipo | Descricao |
-|-------|------|-----------|
-| type | "stdio" \| "http" \| "sse" | Tipo de transporte |
-| command | string? | Comando (stdio) |
-| args | string[]? | Argumentos (stdio) |
+| Field | Type | Description |
+|-------|------|-------------|
+| type | "stdio" \| "http" \| "sse" | Transport type |
+| command | string? | Command (stdio) |
+| args | string[]? | Arguments (stdio) |
 | url | string? | URL (http/sse) |
 
-## Schema Zod (Fonte da Verdade)
+## Zod Schema (Source of Truth)
 
-```typescript
-import { z } from "zod";
+See `backend/src/config/schema.ts` for the definitive Zod schema.
+The schema defines `TransportType`, `TransportConfig`, `MCPServerEntry`,
+and `MCPConfig` using `z.enum`, `z.object`, and `z.record`.
 
-const TransportType = z.enum(["stdio", "http", "sse"]);
+## Validation Rules
 
-const TransportConfig = z.object({
-  type: TransportType,
-  command: z.string().optional(),
-  args: z.array(z.string()).optional(),
-  url: z.string().url().optional(),
-}).refine(
-  (data) => {
-    if (data.type === "stdio") return !!data.command;
-    if (data.type === "http" || data.type === "sse") return !!data.url;
-    return true;
-  },
-  { message: "Transport config missing required fields for type" }
-);
+- The `mcpServers` field is required and MUST be a non-empty object
+- Each key in mcpServers MUST be a unique (non-empty) name
+- `stdio` requires `command` (required string)
+- `http`/`sse` requires `url` (valid URL required)
+- Unknown transport types are accepted as `unknown` and displayed as "Unknown"
 
-const MCPServerEntry = z.object({
-  transport: TransportConfig,
-});
+## States
 
-const MCPConfig = z.object({
-  mcpServers: z.record(z.string(), MCPServerEntry),
-});
-```
+The system does not manage MCP state — it only reads the file.
+Presentation states:
 
-## Regras de Validacao
-
-- O campo `mcpServers` e obrigatorio e deve ser um objeto nao-vazio
-- Cada chave em mcpServers deve ser um nome unico (nao vazio)
-- `stdio` requer `command` (string obrigatoria)
-- `http`/`sse` requer `url` (URL valida obrigatoria)
-- Tipos de transporte desconhecidos sao aceitos como `unknown` mas exibidos como "Desconhecido"
-
-## Estados
-
-O sistema nao gerencia estado de MCPs — apenas leitura do arquivo.
-Estados de apresentacao:
-
-- **Carregando**: Aguardando leitura inicial do .mcp.json
-- **Vazio**: .mcp.json nao encontrado ou sem servidores configurados
-- **Exibindo**: Lista de cartoes com MCPs validos
-- **Erro**: .mcp.json invalido ou mal formatado
-- **Atualizando**: Alteracao detectada, recarregando dados
+- **Loading**: Waiting for initial .mcp.json read
+- **Empty**: .mcp.json not found or no servers configured
+- **Displaying**: List of cards with valid MCPs
+- **Error**: Invalid or malformed .mcp.json
+- **Updating**: Change detected, reloading data

@@ -5,6 +5,9 @@ const variantClasses: Record<string, string> = {
   success: 'bg-green-900 text-green-200',
   warning: 'bg-yellow-900 text-yellow-200',
   outline: 'border border-theme-border text-theme-muted',
+  http: 'bg-blue-800 text-blue-200',
+  stdio: 'bg-purple-800 text-purple-200',
+  sse: 'bg-cyan-800 text-cyan-200',
 };
 
 interface BadgeProps {
