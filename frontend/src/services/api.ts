@@ -11,7 +11,7 @@ export interface MCPClient {
   args?: string[];
   url?: string;
   env?: Record<string, string>;
-  status?: 'connecting' | 'connected' | 'error' | 'disconnected' | 'testing' | 'unknown';
+  status?: 'connecting' | 'connected' | 'error' | 'disconnected' | 'testing' | 'unknown' | 'needsAuth';
   error?: string | null;
   toolCount?: number;
   needsAuth?: boolean;
@@ -35,7 +35,7 @@ export interface TransportConfig {
 
 export interface StatusEvent {
   name: string;
-  status: 'connecting' | 'connected' | 'error' | 'disconnected' | 'testing' | 'unknown';
+  status: 'connecting' | 'connected' | 'error' | 'disconnected' | 'testing' | 'unknown' | 'needsAuth';
   toolCount: number | null;
   error: string | null;
 }

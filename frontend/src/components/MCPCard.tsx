@@ -23,6 +23,7 @@ interface StatusIcon {
 const statusIcons: Record<string, StatusIcon> = {
   connected: { icon: <CircleCheck className="h-5 w-5" />, color: 'text-green-500', label: 'Connected' },
   error: { icon: <CircleX className="h-5 w-5" />, color: 'text-red-500', label: 'Error' },
+  needsAuth: { icon: <ShieldAlert className="h-5 w-5" />, color: 'text-amber-500', label: 'Authentication required' },
   connecting: { icon: <LoaderCircle className="h-5 w-5 animate-spin" />, color: 'text-yellow-500', label: 'Connecting...' },
   disconnected: { icon: <Circle className="h-5 w-5" />, color: 'text-gray-400', label: 'Disconnected' },
   testing: { icon: <LoaderCircle className="h-5 w-5 animate-spin" />, color: 'text-yellow-500', label: 'Testing...' },
@@ -30,9 +31,9 @@ const statusIcons: Record<string, StatusIcon> = {
 };
 
 const transportVariant: Record<string, string> = {
-  stdio: 'secondary',
-  http: 'success',
-  sse: 'default',
+  stdio: 'stdio',
+  http: 'http',
+  sse: 'sse',
 };
 
 export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, onConfig, removing, reconnecting }: MCPCardProps) {
@@ -47,12 +48,13 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, onConfi
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span
-            className={si.color}
-            aria-label={si.label}
-            title={client.error ? `${si.label}: ${client.error}` : si.label}
-          >
-            {si.icon}
+          <span className="relative group">
+            <span className={si.color} aria-label={si.label}>
+              {si.icon}
+            </span>
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+              {client.error ? `${si.label}: ${client.error}` : si.label}
+            </span>
           </span>
           <h3 className="text-lg font-semibold text-theme-text">{client.name}</h3>
         </div>
@@ -78,20 +80,17 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, onConfi
           <span className="font-medium text-theme-text">URL:</span> {client.url}
         </p>
       )}
-      {client.error && (
-        <p className="mt-2 text-xs text-red-500" title={client.error}>
-          {client.error}
-        </p>
-      )}
       <div className="mt-3 flex justify-end gap-2 border-t border-theme-border pt-2">
-        <button
-          onClick={() => onReconnect?.(client)}
-          disabled={reconnecting}
-          aria-label="Reconnect MCP"
-          className="rounded p-1.5 text-gray-400 hover:bg-green-600/20 hover:text-green-400 disabled:opacity-50"
-        >
-          {reconnecting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-        </button>
+        {client.status !== 'needsAuth' && (
+          <button
+            onClick={() => onReconnect?.(client)}
+            disabled={reconnecting}
+            aria-label="Reconnect MCP"
+            className="rounded p-1.5 text-gray-400 hover:bg-green-600/20 hover:text-green-400 disabled:opacity-50"
+          >
+            {reconnecting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+          </button>
+        )}
         {client.needsAuth && client.authUrl && (
           <button
             onClick={() => onAuth?.(client)}

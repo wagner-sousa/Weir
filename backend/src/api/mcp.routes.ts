@@ -16,10 +16,9 @@ function getConfigPath(): string {
 }
 
 function broadcastStatusUpdate(name: string, status: CachedStatus): void {
-  const mappedStatus: StatusUpdate['status'] = status.status === 'needsAuth' ? 'error' : status.status as StatusUpdate['status'];
   const update: StatusUpdate = {
     name,
-    status: mappedStatus,
+    status: status.status as StatusUpdate['status'],
     error: status.error,
     toolCount: status.toolCount,
   };
@@ -164,7 +163,7 @@ export async function mcpRoutes(app: FastifyInstance) {
       // Broadcast status via WebSocket so frontend card updates immediately
       broadcast('status', {
         name: parsed.data.name,
-        status: st === 'needsAuth' ? 'error' as const : st,
+        status: st,
         error: cachedStatus.error,
         toolCount,
       });
@@ -409,10 +408,9 @@ export async function mcpRoutes(app: FastifyInstance) {
         reply.raw.write(`event: testing\ndata: ${JSON.stringify({ name: client.name })}\n\n`);
 
         const status = await testSingleMCP(client.name);
-        const sseStatus: StatusUpdate['status'] = status.status === 'needsAuth' ? 'error' : status.status as StatusUpdate['status'];
         const update: StatusUpdate = {
           name: client.name,
-          status: sseStatus,
+          status: status.status as StatusUpdate['status'],
           error: status.error,
           toolCount: status.toolCount,
         };
