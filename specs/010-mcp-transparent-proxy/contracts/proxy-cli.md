@@ -3,14 +3,14 @@
 ## Usage
 
 ```bash
-weir --proxy <name> [options]
+weir --mcp <name> [options]
 ```
 
 ## Arguments
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `--proxy <name>` | Yes | MCP server name from `.mcp.json` |
+| `--mcp <name>` | Yes | MCP server name from `.mcp.json` |
 
 ## Environment Variables
 

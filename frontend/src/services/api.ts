@@ -22,6 +22,7 @@ export interface MCPResponse {
   clients: MCPClient[];
   error: string | null;
   timestamp: string;
+  mcpPort?: number;
 }
 
 export interface TransportConfig {

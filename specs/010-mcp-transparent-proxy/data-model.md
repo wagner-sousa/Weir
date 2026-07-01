@@ -17,7 +17,7 @@ Read from `.mcp.json` entry for the given `<name>`.
 
 ### ProxySession
 
-Managed per `weir --proxy <name>` invocation.
+Managed per `weir --mcp <name>` invocation or per SSE session on the dedicated MCP port.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -95,6 +95,28 @@ Standard JSON-RPC 2.0 message shape (forwarded unmodified).
 | maxRetries | number | Max attempts (0 = infinite) |
 | nextDelay() | number | Calculate and return next delay with jitter |
 | reset() | void | Reset to attempt 0 |
+
+### SSESession
+
+Represents one active SSE connection on the dedicated MCP port.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | Unique session identifier |
+| mcpName | string | MCP server name from `.mcp.json` |
+| proxySession | ProxySession | Underlying proxy session with backend |
+| connectedAt | timestamp | Session creation time |
+| lastActivity | timestamp | Last message received/sent |
+
+### MCPPortServer
+
+Configuration for the dedicated MCP port server.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| port | number | Listen port (default 4000, 0 = disabled) |
+| enabled | boolean | Whether the server should start |
+| sessions | Map<string, SSESession> | Active SSE sessions |
 
 ### StatusEvent
 

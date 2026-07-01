@@ -51,7 +51,7 @@ class StdioTransport implements TransportAdapter {
             const msg = JSON.parse(trimmed) as JsonRpcMessage;
             this.messageHandler?.(msg);
           } catch {
-            /* ignore malformed */
+            process.stderr.write(`[transport] Malformed JSON-RPC from backend: ${trimmed}\n`);
           }
         });
       }
@@ -138,11 +138,12 @@ class SSETransport implements TransportAdapter {
                   const msg = JSON.parse(data) as JsonRpcMessage;
                   this.messageHandler?.(msg);
                 } catch {
-                  /* ignore malformed */
+                  process.stderr.write(`[transport] Malformed JSON-RPC from SSE backend: ${data}\n`);
                 }
               }
             }
           }
+
         } catch {
           /* stream ended */
         }
@@ -233,7 +234,7 @@ class HttpTransport implements TransportAdapter {
           const msg = JSON.parse(text) as JsonRpcMessage;
           this.messageHandler?.(msg);
         } catch {
-          /* ignore malformed */
+          process.stderr.write(`[transport] Malformed JSON-RPC from HTTP backend: ${text}\n`);
         }
       }
     } catch (err) {

@@ -6,7 +6,7 @@ const ENTRY = resolve(process.cwd(), 'src/index.ts');
 const FIXTURE_CONFIG = resolve(process.cwd(), 'tests/integration/fixtures/.mcp.test.json');
 
 function startProxy(name: string): ChildProcess {
-  return spawn('npx', ['tsx', ENTRY, '--proxy', name], {
+  return spawn('npx', ['tsx', ENTRY, '--mcp', name], {
     stdio: ['pipe', 'pipe', 'pipe'],
     env: { ...process.env, MCP_CONFIG_PATH: FIXTURE_CONFIG },
   });

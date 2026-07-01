@@ -7,7 +7,6 @@ import {
   type JsonRpcMessage,
   type MessageBuffer,
   type BackoffState,
-  type ProxySession,
 } from './types.js';
 
 export function createMessageBuffer(limit: number): MessageBuffer {

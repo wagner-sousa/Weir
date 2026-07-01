@@ -103,10 +103,13 @@ export async function mcpRoutes(app: FastifyInstance) {
       };
     });
 
+    const mcpPort = parseInt(process.env['WEIR_MCP_PORT'] || '4000', 10);
+
     return {
       clients: clientsWithStatus,
       error: result.error,
       timestamp: new Date().toISOString(),
+      mcpPort,
     };
   });
 

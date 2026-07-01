@@ -88,6 +88,16 @@ export interface ProxySession {
   startedAt: Date;
 }
 
+export interface ProxySessionHandle {
+  connect(): Promise<void>;
+  disconnect(): void;
+  send(message: JsonRpcMessage): Promise<void>;
+  onMessage(handler: (msg: JsonRpcMessage) => void): void;
+  onDisconnect(handler: () => void): void;
+  onError(handler: (err: Error) => void): void;
+  getState(): ProxyState;
+}
+
 export interface StatusEvent {
   name: string;
   status: 'connected' | 'reconnecting' | 'error' | 'closed';

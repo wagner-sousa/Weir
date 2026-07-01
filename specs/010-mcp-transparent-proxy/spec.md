@@ -8,19 +8,25 @@
 
 **Input**: User description from speckit.specify.args.md
 
+## Clarifications
+
+### Session 2026-06-30
+
+- Q: CLI flag e remocao do endpoint antigo → A: CLI muda de `--proxy` para `--mcp` com argumento obrigatorio. Remove `POST /api/proxy/:name`. Porta 4000 com `GET /mcp/<name>` (SSE) e `POST /mcp/<name>/message`.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Agent Connects to MCP Through Proxy (Priority: P1)
 
-An AI agent (e.g., Claude, Cline) needs to interact with an MCP backend (e.g., a database, a file system). Instead of configuring a direct connection, the agent's `.mcp.json` points to `weir --proxy <name>`. The agent sends a `tools/list` request and receives the backend's tool list as if connected directly.
+An AI agent (e.g., Claude, Cline) needs to interact with an MCP backend (e.g., a database, a file system). Instead of configuring a direct connection, the agent's `.mcp.json` points to `weir --mcp <name>`. The agent sends a `tools/list` request and receives the backend's tool list as if connected directly.
 
 **Why this priority**: This is the core value proposition — if the agent cannot connect transparently through Weir, the feature has no purpose.
 
-**Independent Test**: A test agent configured with `weir --proxy test-db` can list tools and call a tool, receiving the same results as a direct connection to the same backend.
+**Independent Test**: A test agent configured with `weir --mcp test-db` can list tools and call a tool, receiving the same results as a direct connection to the same backend.
 
 **Acceptance Scenarios**:
 
-1. **Given** a running MCP backend, **When** an agent connects via `weir --proxy <name>`, **Then** the agent receives the backend's tool list
+1. **Given** a running MCP backend, **When** an agent connects via `weir --mcp <name>`, **Then** the agent receives the backend's tool list
 2. **Given** an agent connected via Weir proxy, **When** it calls a tool with valid arguments, **Then** the tool executes on the backend and returns the result to the agent
 3. **Given** an agent connected via Weir proxy, **When** it calls a tool with invalid arguments, **Then** the error response from the backend is returned to the agent unchanged
 
@@ -45,11 +51,11 @@ The MCP backend crashes unexpectedly. The agent sends a tool call but does not r
 
 ### User Story 3 - Multiple Agents Connect to Same Backend (Priority: P3)
 
-Two different AI agents (e.g., Claude and Cline) both need to access the same PostgreSQL MCP backend. Each agent runs its own `weir --proxy postgres-db` session. Both agents can list tools and call tools independently without interfering with each other.
+Two different AI agents (e.g., Claude and Cline) both need to access the same PostgreSQL MCP backend. Each agent runs its own `weir --mcp postgres-db` session. Both agents can list tools and call tools independently without interfering with each other.
 
 **Why this priority**: Multi-agent concurrency is important for team workflows but is a refinement on the basic proxy capability.
 
-**Independent Test**: Two processes run `weir --proxy postgres-db` simultaneously. Each lists tools and calls a tool. Both receive correct results.
+**Independent Test**: Two processes run `weir --mcp postgres-db` simultaneously. Each lists tools and calls a tool. Both receive correct results.
 
 **Acceptance Scenarios**:
 
@@ -58,28 +64,21 @@ Two different AI agents (e.g., Claude and Cline) both need to access the same Po
 
 ---
 
-### User Story 4 - Application Connects to MCP via HTTP Endpoint (Priority: P1)
+### User Story 4 - Agent Connects via SSE on Dedicated MCP Port (Priority: P1)
 
-An external application (e.g., a web service, a script, another microservice) needs to interact with an MCP backend without spawning a child process. Instead of using `weir --proxy <name>` via CLI, the application sends HTTP POST requests to `http://<weir-host>/api/proxy/<name>`, where `<name>` is the MCP server key defined in `.mcp.json`. The request body is a JSON-RPC 2.0 message, and the response contains the JSON-RPC result.
+An AI agent (e.g., Cline, Claude Desktop) connects to an MCP backend via HTTP/SSE instead of spawning a subprocess. The agent opens an SSE stream at `http://<weir-host>:4000/mcp/<name>` and sends JSON-RPC messages via `POST /mcp/<name>/message`. Weir runs a dedicated HTTP server on port 4000, isolated from the main API (port 3000), solely for MCP proxy connections.
 
-The proxy endpoint:
-- Reads the MCP backend config from `.mcp.json` using the `<name>` path segment
-- Establishes a connection to the backend (stdio, SSE, or HTTP)
-- Forwards the JSON-RPC message
-- Returns the backend's JSON-RPC response as the HTTP response
-- Closes the connection after responding (stateless per request)
+**Why this priority**: Many agent tools support URL-based MCP connections natively but cannot run custom CLI commands. A dedicated port at `/mcp/<name>` enables these tools without interfering with the main API. This replaces the old `POST /api/proxy/<name>` stateless endpoint.
 
-**Why this priority**: This enables non-CLI integrations — web apps, REST clients, and external services to use MCP tools via standard HTTP without being tied to Node.js child process model.
-
-**Independent Test**: A `curl POST http://localhost:3000/api/proxy/test-db` with a valid JSON-RPC body returns the same result as a direct connection to the backend via `weir --proxy test-db`.
+**Independent Test**: An agent configured with `http://localhost:4000/mcp/Bitbucket` as its MCP server URL can list tools and call a tool, receiving the same results as `weir --mcp Bitbucket`.
 
 **Acceptance Scenarios**:
 
-1. **Given** a running Weir server, **When** a client sends `POST /api/proxy/<name>` with a valid JSON-RPC body, **Then** the response contains the backend's JSON-RPC response
-2. **Given** a running Weir server, **When** a client sends `POST /api/proxy/<name>` with an invalid JSON-RPC body, **Then** the server returns HTTP 400 with an error description
-3. **Given** a running Weir server, **When** a client sends `POST /api/proxy/<nonexistent>`, **Then** the server returns HTTP 404 with message "MCP '<name>' not found"
-4. **Given** a running Weir server with an unreachable backend, **When** a client sends `POST /api/proxy/<name>`, **Then** the server returns HTTP 502 with a connection error message
-5. **Given** a running Weir server, **When** a client sends `GET /api/proxy` or any non-POST method, **Then** the server returns HTTP 405 Method Not Allowed
+1. **Given** a running Weir server with MCP port enabled, **When** an agent opens `GET /mcp/<name>` on port 4000 as an SSE stream, **Then** Weir sends an `endpoint` event with the message POST URL
+2. **Given** an open SSE stream on `/mcp/<name>`, **When** the agent sends a JSON-RPC message via `POST /mcp/<name>/message`, **Then** the response is delivered through the SSE stream
+3. **Given** an open SSE stream on `/mcp/<name>`, **When** the agent sends `tools/list`, **Then** the response contains the backend's tool list
+4. **Given** an open SSE stream with an unreachable backend, **When** the agent connects, **Then** Weir sends an error event and closes the stream
+5. **Given** a running Weir server, **When** a client sends `GET /mcp/<nonexistent>` on port 4000, **Then** the server returns HTTP 404
 
 ---
 
@@ -90,41 +89,43 @@ The proxy endpoint:
 - What happens when the message buffer exceeds its limit? Oldest buffered messages are dropped with a warning.
 - How does the proxy behave when the backend URL is unreachable from the start? It should report a clear connection error immediately.
 - What happens during simultaneous shutdown of agent and backend? Weir should handle partial shutdown without hanging.
-- How does the HTTP endpoint behave under concurrent requests to the same backend? Each request opens an independent connection — no shared state.
-- What happens when the HTTP request body exceeds a reasonable size (e.g., > 1MB)? Server should return HTTP 413 Payload Too Large.
-- How does the HTTP endpoint handle backends that take longer than the HTTP timeout? The endpoint should use a configurable timeout consistent with backend expectations.
+- How does the dedicated MCP port interact with the main API port? They run on separate ports independently — no shared routes or state.
+- What happens when the agent closes the SSE connection? The proxy session should clean up the backend transport.
+- How does the SSE endpoint handle backpressure from slow consumers? The proxy should buffer responses up to a configurable limit.
+- What happens if the MCP port is not configured (disabled)? The main API should still work normally, and `weir --mcp` CLI should still function.
 
 ## Requirements
 
 ### Functional Requirements
 
-- **FR-001**: Agent MUST be able to establish a transparent proxy session via `weir --proxy <name>`, where `<name>` is an MCP defined in `.mcp.json`
+- **FR-001**: Agent MUST be able to establish a transparent proxy session via `weir --mcp <name>`, where `<name>` is an MCP defined in `.mcp.json`
 - **FR-002**: All JSON-RPC messages from agent to backend MUST be forwarded bidirectionally through the proxy without modification to message content
 - **FR-003**: Proxy MUST detect when the backend disconnects (process exit, socket close, SSE stream end)
 - **FR-004**: Proxy MUST attempt reconnection with exponential backoff: first attempt within 1-2 seconds, doubling each attempt, capped at 30 seconds maximum interval
 - **FR-005**: Messages received from the agent during a disconnection MUST be buffered in FIFO order up to a configurable limit
 - **FR-006**: Multiple concurrent proxy instances MUST be able to connect to the same MCP backend simultaneously
 - **FR-007**: Proxy MUST support three backend transport types: stdio (child process), SSE (Server-Sent Events), and HTTP (REST-like requests)
-- **FR-008**: When running in server mode (integrated with Fastify), the proxy SHOULD report periodic health status (connected, reconnecting, error, closed) via the Weir WebSocket interface. In standalone `--proxy` mode, health status is reported via stderr logs.
+- **FR-008**: When running in server mode (integrated with Fastify), the proxy SHOULD report periodic health status (connected, reconnecting, error, closed) via the Weir WebSocket interface. In standalone `--mcp` mode, health status is reported via stderr logs.
 - **FR-009**: Proxy MUST perform graceful shutdown on SIGTERM/SIGINT: drain in-flight messages, close backend connection, notify agent
 - **FR-010**: Agent MUST NOT be able to detect that Weir is proxying the connection — the transport interface to the agent MUST appear identical to a direct connection
-- **FR-011**: The Weir web server MUST expose an HTTP endpoint `POST /api/proxy/<name>` where `<name>` is an MCP server key defined in `.mcp.json`
-- **FR-012**: The HTTP endpoint MUST accept a JSON-RPC 2.0 request body and return the backend's JSON-RPC response in the HTTP response body
-- **FR-013**: The HTTP endpoint MUST return HTTP 404 with descriptive message when `<name>` does not exist in `.mcp.json`
-- **FR-014**: The HTTP endpoint MUST return HTTP 400 when the request body is not valid JSON-RPC 2.0
-- **FR-015**: The HTTP endpoint MUST return HTTP 502 when the backend connection fails or returns an error
-- **FR-016**: The HTTP endpoint MUST return HTTP 405 for any HTTP method other than POST
-- **FR-017**: *(Coberto por FR-007 e FR-011 — o HTTP endpoint usa o mesmo core de transportes do proxy CLI)*
-- **FR-018**: The HTTP endpoint MUST reject request bodies larger than 1 MB with HTTP 413 Payload Too Large
-- **FR-019**: The HTTP endpoint MUST enforce a configurable timeout for backend requests (default 30s), returning HTTP 504 Gateway Timeout on expiry
+- **FR-011**: Weir MUST expose a dedicated HTTP server on port 4000 for MCP proxy connections via SSE, isolated from the main API server on port 3000
+- **FR-012**: The dedicated server MUST expose `GET /mcp/<name>` as an SSE (Server-Sent Events) endpoint that maintains a persistent connection for JSON-RPC streaming
+- **FR-013**: The SSE endpoint MUST immediately send an `endpoint` event containing the message POST URL on successful connection
+- **FR-014**: The dedicated server MUST expose `POST /mcp/<name>/message` for agents to send JSON-RPC messages to the active session
+- **FR-015**: Each SSE session MUST create an independent proxy session with its own backend transport, message buffer, and reconnection state
+- **FR-016**: `GET /mcp/<name>` for a non-existent MCP MUST return HTTP 404
+- **FR-017**: The SSE stream MUST send status events (`connected`, `reconnecting`, `error`, `closed`) as the proxy session state changes
+- **FR-018**: The SSE stream MUST clean up the proxy session when the agent disconnects (socket close)
+- **FR-019**: The dedicated MCP port MUST be configurable via `WEIR_MCP_PORT` environment variable (default 4000); setting it to `0` or leaving it unset MUST start the main API only, without the dedicated server
 
 ### Key Entities
 
 - **Proxy Session**: A single agent-to-backend connection managed by Weir. Has state (CONNECTING, CONNECTED, RECONNECTING, BUFFERING, DRAINING, CLOSED).
 - **MCP Backend**: The real MCP server (database, filesystem, etc.) that the agent needs to interact with. Can be stdio, SSE, or HTTP.
 - **Message Buffer**: FIFO queue of JSON-RPC messages accumulated during backend disconnection. Configurable maximum size.
-- **Transport Adapter**: Interface that translates between the agent's stdio transport and the backend's native transport (stdio, SSE, or HTTP).
-- **HTTP Proxy Route**: A REST endpoint at `/api/proxy/<name>` that bridges HTTP requests to MCP backend connections. Each request is independent and stateless.
+- **Transport Adapter**: Interface that translates between the agent's transport (stdio or SSE) and the backend's native transport (stdio, SSE, or HTTP).
+- **MCP Port Server**: A separate HTTP server instance listening on port 4000 (configurable), serving only `/mcp/<name>` SSE endpoints, isolated from the main API.
+- **SSE Session**: A persistent HTTP connection between an agent and Weir over Server-Sent Events, representing one MCP proxy session.
 
 ## Success Criteria
 
@@ -136,14 +137,15 @@ The proxy endpoint:
 - **SC-004**: Proxy works with all three backend transport types (stdio, SSE, HTTP)
 - **SC-005**: Agent connection setup through proxy completes in under 2 seconds of wall-clock time
 - **SC-006**: Buffered messages (up to 100) are delivered in order after backend reconnection
-- **SC-007**: A client can send a JSON-RPC request via `POST /api/proxy/<name>` and receive the correct response in under 5 seconds (including backend connection time)
-- **SC-008**: The HTTP endpoint correctly returns HTTP 404, 400, 502, and 405 for their respective error conditions
-- **SC-009**: The HTTP endpoint works with all three backend transport types (stdio, SSE, HTTP)
+- **SC-007**: An agent can connect to any configured MCP backend via `http://localhost:4000/mcp/<name>` and receive tool lists and call results
+- **SC-008**: Multiple SSE sessions (up to 10) can run concurrently on port 4000 without failures
+- **SC-009**: The main API continues to serve all existing routes on port 3000 without interference from the MCP port server
 
 ## Assumptions
 
-- The agent communicates with Weir via stdio transport (`weir --proxy <name>`) OR via HTTP (`POST /api/proxy/<name>`) depending on the integration method
-- HTTP proxy requests are stateless — each request creates a fresh connection to the backend, forwards one message, and returns the response
+- The agent communicates with Weir via stdio transport (`weir --mcp <name>`) OR via HTTP SSE (`GET /mcp/<name>` on port 4000) depending on the integration method
+- SSE proxy sessions are stateful — each session maintains a persistent connection to the backend with its own transport, buffer, and state machine
+- The dedicated MCP port does not need TLS/HTTPS in the first iteration (can be added later or handled by a reverse proxy)
 - The `.mcp.json` configuration for MCPs already exists and contains the necessary connection parameters (command, args, URL, etc.)
 - Backend disconnection is detectable via process exit code, socket close event, or SSE stream end — no out-of-band health check protocol is needed
 - The backend is expected to eventually recover within a reasonable timeframe (hours, not days) — infinite reconnection attempts are allowed with user-configurable cap
