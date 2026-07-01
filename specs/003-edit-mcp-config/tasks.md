@@ -170,3 +170,16 @@ Task: "Add Edit button to MCPCard.tsx"
 - Stop at any checkpoint to validate story independently
 - All user-facing text (toasts, labels, buttons) in English per Constitution III
 - All icons from lucide-react per Constitution VI (Pencil for edit button)
+
+---
+
+## Phase 5: Convergence
+
+**Purpose**: Close gaps between spec/plan/tasks and implementation.
+
+- [x] T014 Fix error message and modal behavior for externally deleted MCP per FR-006 (`partial`) — change 404 message in `backend/src/api/mcp.routes.ts` to `"MCP not found. It may have been removed."`; close modal via `onClose()` in `frontend/src/components/AddMCPModal.tsx` after error toast on 404
+- [x] T015 Add intermediate "disconnected" status on name/transport change per FR-002 (`partial`) — after save in `backend/src/api/mcp.routes.ts`, if name or transport changed, broadcast status `disconnected` before testing connection
+- [x] T016 Add dirty-form detection with discard confirmation dialog per US2/AC1-AC2 (`missing`) — track form dirtiness in `frontend/src/components/AddMCPModal.tsx`; show confirmation `"Unsaved changes will be lost. Continue?"` on Cancel / Esc; second Esc dismisses confirmation (modal stays open)
+- [x] T017 Add 403 response for file permission errors per contracts/api.md (`missing`) — detect `EACCES`/`EPERM` in `backend/src/config/writer.ts`; return 403 with `"File could not be written: permission denied."` in `backend/src/api/mcp.routes.ts`
+- [x] T018 Refactor PUT route to use `updateEntry()` from writer.ts (`partial`) — make `updateEntry()` in `backend/src/config/writer.ts` support field merging (preserve non-transport fields like `fieldSelection`); call it from `backend/src/api/mcp.routes.ts` instead of duplicating inline logic
+- [x] T019 Add integration tests for 403 and 503 error paths per contracts/api.md (`missing`) — add tests in `backend/tests/integration/mcp-api.test.ts` covering permission-error (403) and write-error (503) responses for PUT

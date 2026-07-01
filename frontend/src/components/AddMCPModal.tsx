@@ -45,6 +45,32 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
   const originalName = existingMCP?.name ?? '';
   const savePending = addMutation.isPending || updateMutation.isPending;
 
+  const initialSnapshotRef = useRef('');
+
+  function buildSnapshot(n: string, t: string, c: string, a: string, u: string, ev: EnvVar[]): string {
+    return JSON.stringify({
+      name: n.trim(),
+      type: t,
+      command: c.trim(),
+      argsStr: a.trim(),
+      url: u.trim(),
+      envVars: ev.map((e) => ({ key: e.key.trim(), value: e.value })),
+    });
+  }
+
+  function getCurrentSnapshot(): string {
+    return buildSnapshot(name, type, command, argsStr, url, envVars);
+  }
+
+  const isDirty = open && initialSnapshotRef.current !== '' && getCurrentSnapshot() !== initialSnapshotRef.current;
+
+  function attemptClose() {
+    if (isDirty && !window.confirm('Unsaved changes will be lost. Continue?')) {
+      return;
+    }
+    onClose();
+  }
+
   useEffect(() => {
     if (!open) {
       setType('stdio');
@@ -60,6 +86,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
       setTesting(false);
       setDirty(false);
       prevTypeRef.current = 'stdio';
+      initialSnapshotRef.current = '';
     } else if (existingMCP) {
       const transportType = existingMCP.transport === 'http' || existingMCP.transport === 'sse'
         ? (existingMCP.transport as 'http' | 'sse')
@@ -81,6 +108,19 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
       setTesting(false);
       setDirty(false);
       prevTypeRef.current = transportType;
+      initialSnapshotRef.current = buildSnapshot(
+        existingMCP.name ?? '',
+        transportType,
+        existingMCP.command ?? '',
+        existingMCP.args?.join(' ') ?? '',
+        existingMCP.url ?? '',
+        existingMCP.env
+          ? Object.entries(existingMCP.env).map(([k, v]) => ({ key: k, value: v }))
+          : [],
+      );
+    } else {
+      // Add mode: capture empty initial snapshot
+      initialSnapshotRef.current = buildSnapshot('', 'stdio', '', '', '', []);
     }
   }, [open, existingMCP]);
 
@@ -200,7 +240,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
 
   async function doSave(transport: TransportConfig, triggerAuth = false) {
     const trimmedName = name.trim();
-    let result: { success: boolean; name?: string; error?: string; testResult?: TestConnectionResult };
+    let result: { success: boolean; name?: string; error?: string; status?: number; testResult?: TestConnectionResult };
 
     if (isEditing) {
       result = await updateMutation.mutateAsync({
@@ -214,6 +254,9 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
 
     if (!result.success) {
       toast.error(result.error || 'Error saving MCP.');
+      if (result.status === 404) {
+        onClose();
+      }
       return;
     }
 
@@ -290,20 +333,20 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
     (type === 'stdio' ? command.trim() : url.trim());
 
   return (
-    <Dialog.Root open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50" />
-        <Dialog.Content className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-full items-start justify-center py-8">
-            <div className="w-full max-w-lg rounded-lg bg-theme-panel p-6 shadow-xl">
-              <div className="mb-4 flex items-center justify-between">
-                <Dialog.Title className="text-lg font-bold text-theme-text">
-                  {isEditing ? 'Edit MCP' : 'Add MCP'}
-                </Dialog.Title>
-                <Dialog.Close className="rounded p-3 text-theme-muted hover:bg-theme-border hover:text-theme-text">
-                  <X className="h-4 w-4" />
-                </Dialog.Close>
-              </div>
+      <Dialog.Root open={open} onOpenChange={(o) => { if (!o) attemptClose(); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50" />
+          <Dialog.Content className="fixed inset-0 z-50 overflow-y-auto" onEscapeKeyDown={(e) => { e.preventDefault(); attemptClose(); }}>
+            <div className="flex min-h-full items-start justify-center py-8">
+              <div className="w-full max-w-lg rounded-lg bg-theme-panel p-6 shadow-xl">
+                <div className="mb-4 flex items-center justify-between">
+                  <Dialog.Title className="text-lg font-bold text-theme-text">
+                    {isEditing ? 'Edit MCP' : 'Add MCP'}
+                  </Dialog.Title>
+                  <button type="button" onClick={attemptClose} className="rounded p-3 text-theme-muted hover:bg-theme-border hover:text-theme-text">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
 
               <form onSubmit={handleSave} className="flex flex-col gap-4">
                 <div>
