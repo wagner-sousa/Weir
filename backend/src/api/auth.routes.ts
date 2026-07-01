@@ -115,7 +115,7 @@ async function testSingleMCPAndBroadcast(name: string): Promise<void> {
 
     const update: StatusUpdate = {
       name,
-      status: cached.status === 'needsAuth' ? 'error' : cached.status,
+      status: cached.status,
       error: cached.error,
       toolCount: cached.toolCount,
     };
