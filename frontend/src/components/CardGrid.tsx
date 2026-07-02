@@ -84,6 +84,11 @@ export function CardGrid({ clients, onRemove, removePending, mcpPort }: CardGrid
 
     // For HTTP MCPs with needsAuth, open OAuth popup instead of testing
     if (client.needsAuth && client.transport === 'http') {
+      if (!client.authUrl) {
+        toast.error('OAuth2 authorization URL not available.');
+        setReconnectingName(null);
+        return;
+      }
       await handleAuth(client);
       setReconnectingName(null);
       return;
@@ -100,6 +105,11 @@ export function CardGrid({ clients, onRemove, removePending, mcpPort }: CardGrid
 
     // If test returns needsAuth for HTTP MCP, redirect to OAuth popup
     if (result.needsAuth && client.transport === 'http') {
+      if (!result.authUrl) {
+        toast.error('OAuth2 authorization URL not available.');
+        setReconnectingName(null);
+        return;
+      }
       await handleAuth(client);
       setReconnectingName(null);
       return;

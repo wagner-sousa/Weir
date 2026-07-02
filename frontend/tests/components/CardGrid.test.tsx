@@ -8,13 +8,14 @@ vi.mock('../../src/hooks/useMCPs', async (importOriginal) => {
   return {
     ...actual,
     useTestConnection: () => ({
-      mutateAsync: vi.fn().mockResolvedValue({ success: true }),
+      mutateAsync: mockMutateAsync,
     }),
   };
 });
 
-const { mockToast } = vi.hoisted(() => ({
+const { mockToast, mockMutateAsync } = vi.hoisted(() => ({
   mockToast: { success: vi.fn(), error: vi.fn() },
+  mockMutateAsync: vi.fn().mockResolvedValue({ success: true }),
 }));
 
 vi.mock('sonner', () => ({
@@ -164,17 +165,91 @@ describe('CardGrid', () => {
       });
     });
 
-    it('runs testConnection when reconnect clicked on HTTP without needsAuth', async () => {
-      const onClose = vi.fn();
+    it('shows loading spinner on reconnect button during auth and returns to normal after', async () => {
+      let fetchResolve!: () => void;
+      const fetchBlocker = new Promise<void>(r => { fetchResolve = r; });
+
+      vi.mocked(fetch).mockReturnValue(
+        fetchBlocker.then(() => ({
+          ok: true,
+          json: () => Promise.resolve({ success: true, url: 'https://example.com/oauth/authorize?client_id=test' }),
+        })) as Promise<Response>,
+      );
+
+      const mockPopup = { closed: false, location: { href: '' } };
+      vi.mocked(window.open).mockReturnValue(mockPopup as unknown as Window);
+
+      renderWithQuery(<CardGrid clients={[httpAuthClient]} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /reconnect mcp/i }));
+
+      // Button should be disabled (spinner) while auth flow is in progress
+      const reconnectBtn = screen.getByRole('button', { name: /reconnect mcp/i });
+      await waitFor(() => {
+        expect(reconnectBtn).toBeDisabled();
+      });
+
+      // Release the fetch blocker to complete the auth flow
+      fetchResolve();
+
+      // Button returns to normal after flow completes
+      await waitFor(() => {
+        expect(reconnectBtn).not.toBeDisabled();
+      });
+    });
+
+    it('shows toast and no popup when reconnect clicked on HTTP without needsAuth', async () => {
       renderWithQuery(<CardGrid clients={[httpNoAuthClient]} />);
 
       fireEvent.click(screen.getByRole('button', { name: /reconnect mcp/i }));
+
+      await waitFor(() => {
+        expect(mockToast.success).toHaveBeenCalledWith(
+          expect.stringContaining('connected successfully'),
+        );
+      });
+      expect(window.open).not.toHaveBeenCalled();
     });
 
-    it('runs testConnection when reconnect clicked on stdio MCP', async () => {
+    it('shows toast and no popup when reconnect clicked on stdio MCP', async () => {
       renderWithQuery(<CardGrid clients={[stdioClient]} />);
 
       fireEvent.click(screen.getByRole('button', { name: /reconnect mcp/i }));
+
+      await waitFor(() => {
+        expect(mockToast.success).toHaveBeenCalledWith(
+          expect.stringContaining('connected successfully'),
+        );
+      });
+      expect(window.open).not.toHaveBeenCalled();
+    });
+
+    it('shows error toast when reconnect clicked on HTTP without needsAuth and testConnection fails', async () => {
+      mockMutateAsync.mockResolvedValueOnce({ success: false, error: 'Connection refused' });
+      renderWithQuery(<CardGrid clients={[httpNoAuthClient]} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /reconnect mcp/i }));
+
+      await waitFor(() => {
+        expect(mockToast.error).toHaveBeenCalledWith(
+          expect.stringContaining('connection failed'),
+        );
+      });
+      expect(window.open).not.toHaveBeenCalled();
+    });
+
+    it('shows error toast when reconnect clicked on stdio MCP and testConnection fails', async () => {
+      mockMutateAsync.mockResolvedValueOnce({ success: false, error: 'Command not found' });
+      renderWithQuery(<CardGrid clients={[stdioClient]} />);
+
+      fireEvent.click(screen.getByRole('button', { name: /reconnect mcp/i }));
+
+      await waitFor(() => {
+        expect(mockToast.error).toHaveBeenCalledWith(
+          expect.stringContaining('connection failed'),
+        );
+      });
+      expect(window.open).not.toHaveBeenCalled();
     });
   });
 });
