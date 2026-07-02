@@ -4,7 +4,7 @@ import { writeMCPConfig, addMCPEntry, removeMCPEntry } from '../config/writer.js
 import { TestConnectionRequest } from '../config/schema.js';
 import { testConnection, queryTools } from '../services/mcp-client.js';
 import { getCachedStatus, setCachedStatus, deleteCachedStatus } from '../services/status-cache.js';
-import { getAuthConfig } from '../services/auth-storage.js';
+import { getAuthConfig, deleteAuthConfig } from '../services/auth-storage.js';
 import { refreshTokenIfExpired } from '../services/token-refresh.js';
 import { resolve, dirname } from 'node:path';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
@@ -418,6 +418,7 @@ export async function mcpRoutes(app: FastifyInstance) {
         });
       }
       deleteCachedStatus(name);
+      deleteAuthConfig(name);
       broadcast('config:changed', { path: configPath });
       return { success: true };
     } catch {
