@@ -21,6 +21,8 @@ function broadcastStatusUpdate(name: string, status: CachedStatus): void {
     status: status.status as StatusUpdate['status'],
     error: status.error,
     toolCount: status.toolCount,
+    needsAuth: status.needsAuth,
+    authUrl: status.authUrl,
   };
   broadcast('status', update);
 }
@@ -174,6 +176,8 @@ export async function mcpRoutes(app: FastifyInstance) {
         status: st,
         error: cachedStatus.error,
         toolCount,
+        needsAuth: cachedStatus.needsAuth,
+        authUrl: cachedStatus.authUrl,
       });
     }
 
@@ -471,6 +475,8 @@ export async function mcpRoutes(app: FastifyInstance) {
           status: status.status as StatusUpdate['status'],
           error: status.error,
           toolCount: status.toolCount,
+          needsAuth: status.needsAuth,
+          authUrl: status.authUrl,
         };
         reply.raw.write(`event: status\ndata: ${JSON.stringify(update)}\n\n`);
       });

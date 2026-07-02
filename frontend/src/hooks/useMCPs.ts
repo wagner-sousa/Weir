@@ -30,7 +30,7 @@ export function useMCPs() {
         ...old,
         clients: old.clients.map((c: MCPClient) =>
           c.name === event.name
-            ? { ...c, status: event.status, error: event.error, toolCount: event.toolCount ?? c.toolCount }
+            ? { ...c, status: event.status, error: event.error, toolCount: event.toolCount ?? c.toolCount, needsAuth: event.needsAuth ?? c.needsAuth, authUrl: event.authUrl ?? c.authUrl }
             : c,
         ),
       };

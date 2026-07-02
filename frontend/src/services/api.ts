@@ -38,6 +38,8 @@ export interface StatusEvent {
   status: 'connecting' | 'connected' | 'error' | 'disconnected' | 'testing' | 'unknown' | 'needsAuth';
   toolCount: number | null;
   error: string | null;
+  needsAuth?: boolean;
+  authUrl?: string;
 }
 
 export interface ToolsResponse {

@@ -68,17 +68,29 @@ export function resolveAccessToken(name: string): string | undefined {
   const entry = (raw['mcpServers'] as Record<string, unknown>)?.[name] as Record<string, unknown> | undefined;
   const entryToken = entry?.accessToken as string | undefined;
 
-  const authPath = process.env['MCP_AUTH_CONFIG_PATH'] || resolve(dirname(resolveMcpConfigPath()), '.mcp-auth.json');
-  let authToken: string | undefined;
-  try {
-    if (existsSync(authPath)) {
-      const authFile = JSON.parse(readFileSync(authPath, 'utf-8')) as Record<string, { accessToken?: string }>;
-      authToken = authFile[name]?.accessToken;
+  // conf writes to mcp-auth.json (no dot prefix) — read from that path
+  const authDir = dirname(resolveMcpConfigPath());
+  const authPaths = [
+    process.env['MCP_AUTH_CONFIG_PATH'],
+    resolve(authDir, 'mcp-auth.json'),
+    // Backward compatible: also check dotted path
+    resolve(authDir, '.mcp-auth.json'),
+  ].filter(Boolean) as string[];
+
+  for (const authPath of authPaths) {
+    try {
+      if (existsSync(authPath)) {
+        const authFile = JSON.parse(readFileSync(authPath, 'utf-8')) as Record<string, { accessToken?: string }>;
+        // conf stores flat keys like "mcpServers.Postman" when accessPropertiesByDotNotation=false
+        const found = authFile[`mcpServers.${name}`]?.accessToken || authFile[name]?.accessToken;
+        if (found) return found;
+      }
+    } catch {
+      // ignore malformed auth file, try next path
     }
-  } catch {
-    // ignore malformed auth file
   }
-  return entryToken || authToken;
+
+  return entryToken;
 }
 
 export function createProxySession(name: string): ProxySessionHandle {

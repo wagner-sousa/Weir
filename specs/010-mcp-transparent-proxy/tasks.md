@@ -336,3 +336,22 @@ Task: "T012 Implement buffer drain on reconnect in backend/src/proxy/proxy.ts"
 **Purpose**: Close remaining gaps between spec/plan/tasks and actual codebase state.
 
 - [X] T071 Fix quickstart.md Scenarios 6 and 7 curl endpoints: `/api/mcps/test` → `/api/mcps/test-connection` per actual route defined in `backend/src/api/mcp.routes.ts:123` (documentation — partial)
+
+---
+
+## Phase 13: Convergence
+
+**Purpose**: Close gaps between spec/plan/tasks and actual codebase state identified by `/speckit.converge`.
+
+- [X] T072 Propagate `needsAuth`/`authUrl` through real-time status broadcasts: add `needsAuth?: boolean` and `authUrl?: string | null` to backend `StatusUpdate` in `backend/src/config/types.ts`; update `broadcastStatusUpdate()` in `backend/src/api/mcp.routes.ts:18` and `testSingleMCPAndBroadcast()` in `backend/src/api/auth.routes.ts:116` to include them; add matching fields to frontend `StatusEvent` in `frontend/src/services/api.ts:36`; merge `needsAuth`/`authUrl` in `handleStatusEvent` at `frontend/src/hooks/useMCPs.ts:31` (FR-023 — partial)
+
+---
+
+## Phase 14: Convergence
+
+**Purpose**: Close gaps between spec/plan/tasks and actual codebase state identified by `/speckit.converge`.
+
+- [X] T073 CRITICAL Update `TestConnectionResponse` Zod schema in `backend/src/config/schema.ts:53` to include `needsAuth`, `authUrl`, and `authConfig` fields matching the actual `ConnectionResult` shape returned by `testConnection()` in `backend/src/services/mcp-client.ts` (Constitution I — contradicts)
+- [X] T074 Add `needsAuth` and `authUrl` to the WebSocket broadcast payload in `backend/src/api/mcp.routes.ts:174-179` (`POST /api/mcps/test-connection` handler) to match the `broadcastStatusUpdate()` pattern used elsewhere (FR-024 — partial)
+- [X] T075 Add `needsAuth` and `authUrl` to the `StatusUpdate` object in `backend/src/api/mcp.routes.ts:471-476` (SSE `/api/mcps/events` polling) so periodic status refreshes propagate auth state (FR-024, FR-025 — partial)
+- [X] T076 Add `needsAuth: false` and `authUrl: null` to the WebSocket broadcast payload in `backend/src/api/auth.routes.ts:335` (OAuth callback success) so the frontend clears the stale `needsAuth` flag after authorization completes (FR-023 — partial)

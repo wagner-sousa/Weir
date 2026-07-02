@@ -20,7 +20,8 @@ interface AuthStorageSchema {
 
 function getConfigPath(): string {
   const mcpPath = process.env.MCP_CONFIG_PATH || resolve(process.cwd(), '.mcp.json');
-  return process.env.MCP_AUTH_CONFIG_PATH || resolve(dirname(mcpPath), '.mcp-auth.json');
+  // conf v15 writes to {cwd}/{configName}.{fileExtension} without dot prefix
+  return process.env.MCP_AUTH_CONFIG_PATH || resolve(dirname(mcpPath), 'mcp-auth.json');
 }
 
 let _store: Conf<AuthStorageSchema> | null = null;

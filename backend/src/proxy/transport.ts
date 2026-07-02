@@ -6,6 +6,46 @@ import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { JSONRPCMessageSchema } from '@modelcontextprotocol/sdk/types.js';
 
+async function readBodyText(response: Response, signal: AbortSignal): Promise<string> {
+  if (!response.body) {
+    return response.text();
+  }
+
+  const isSse = (response.headers.get('content-type') || '').includes('text/event-stream');
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const readResult = reader.read();
+      const abortSignal = new Promise<never>((_, reject) => {
+        function onAbort() {
+          reject(new DOMException('Response body read aborted', 'AbortError'));
+        }
+        if (signal.aborted) {
+          onAbort();
+          return;
+        }
+        signal.addEventListener('abort', onAbort, { once: true });
+      });
+
+      const { done, value } = await Promise.race([readResult, abortSignal]);
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      if (isSse && buffer.includes('\n\n')) {
+        reader.cancel().catch(() => {});
+        return buffer;
+      }
+    }
+    return buffer;
+  } finally {
+    reader.cancel().catch(() => {});
+  }
+}
+
 class StdioTransport implements TransportAdapter {
   private proc: ChildProcess | null = null;
   private messageHandler: ((msg: JsonRpcMessage) => void) | null = null;
@@ -300,19 +340,24 @@ class HttpTransport implements TransportAdapter {
       throw new Error('Transport is disconnected');
     }
 
+    const timeout = parseInt(process.env['WEIR_PROXY_BACKEND_TIMEOUT'] || '5000', 10);
+
     if (!this.initialized && message.method !== 'initialize') {
+      const initBody = {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          capabilities: {},
+          clientInfo: { name: 'weir-proxy', version: '0.1.0' },
+        },
+      };
+      const initAbort = new AbortController();
+      const initTimeout = setTimeout(() => initAbort.abort(), timeout);
       try {
-        const initBody = {
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'initialize',
-          params: {
-            protocolVersion: '2024-11-05',
-            capabilities: {},
-            clientInfo: { name: 'weir-proxy', version: '0.1.0' },
-          },
-        };
         const initRes = await fetch(this.url, {
+          signal: initAbort.signal,
           method: 'POST',
           headers: this.headers,
           body: JSON.stringify(initBody),
@@ -320,10 +365,11 @@ class HttpTransport implements TransportAdapter {
         if (initRes.ok) {
           this.sessionId = initRes.headers.get('mcp-session-id') || null;
         }
-        // Discard init response body — not forwarded to messageHandler
-        await initRes.text().catch(() => {});
+        initRes.body?.cancel();
       } catch {
         // If initialize fails, continue anyway
+      } finally {
+        clearTimeout(initTimeout);
       }
       this.initialized = true;
     }
@@ -334,8 +380,11 @@ class HttpTransport implements TransportAdapter {
       reqHeaders['MCP-Session-ID'] = this.sessionId;
     }
 
+    const msgAbort = new AbortController();
+    const msgTimeout = setTimeout(() => msgAbort.abort(), timeout);
     try {
       const response = await fetch(this.url, {
+        signal: msgAbort.signal,
         method: 'POST',
         headers: reqHeaders,
         body: JSON.stringify(message),
@@ -349,7 +398,7 @@ class HttpTransport implements TransportAdapter {
         throw new Error(`HTTP ${response.status}`);
       }
 
-      const text = await response.text();
+      const text = await readBodyText(response, msgAbort.signal);
       if (text) {
         // Handle SSE-formatted responses (event: message\ndata: {json})
         let jsonStr = text;
@@ -369,6 +418,8 @@ class HttpTransport implements TransportAdapter {
       const error = err instanceof Error ? err : new Error(String(err));
       this.errorHandler?.(error);
       throw error;
+    } finally {
+      clearTimeout(msgTimeout);
     }
   }
 

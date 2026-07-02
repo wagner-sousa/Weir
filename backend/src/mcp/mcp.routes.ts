@@ -15,26 +15,31 @@ function generateSessionId(): string {
   return randomBytes(16).toString('hex');
 }
 
+async function checkMcpAuth(name: string, reply: FastifyReply): Promise<boolean> {
+  const accessToken = resolveAccessToken(name);
+  if (!accessToken) {
+    try {
+      const config = resolveBackendConfig(name);
+      const needsAuth = await detectAuthRequired({ type: config.transport, url: config.url });
+      if (needsAuth) {
+        reply.status(401).send({
+          error: `MCP '${name}' requires authentication`,
+          needsAuth: true,
+        });
+        return true;
+      }
+    } catch {
+      // If we can't determine auth status, proceed anyway
+    }
+  }
+  return false;
+}
+
 export async function mcpPortRoutes(app: FastifyInstance) {
   app.get('/mcp/:name', async (request: FastifyRequest, reply: FastifyReply) => {
     const { name } = request.params as { name: string };
 
-    // Auth check: if backend requires auth and no token is available, reject
-    const accessToken = resolveAccessToken(name);
-    if (!accessToken) {
-      try {
-        const config = resolveBackendConfig(name);
-        const needsAuth = await detectAuthRequired({ type: config.transport, url: config.url });
-        if (needsAuth) {
-          return reply.status(401).send({
-            error: `MCP '${name}' requires authentication`,
-            needsAuth: true,
-          });
-        }
-      } catch {
-        // If we can't determine auth status, proceed anyway
-      }
-    }
+    if (await checkMcpAuth(name, reply)) return;
 
     let session: ProxySessionHandle;
     try {
@@ -94,13 +99,39 @@ export async function mcpPortRoutes(app: FastifyInstance) {
     });
   });
 
+  function handleInitializeLocal(body: JsonRpcMessage, reply: FastifyReply) {
+    const params = body.params as { protocolVersion?: string } | undefined;
+    const requestedVersion = typeof params?.protocolVersion === 'string' ? params.protocolVersion : '';
+    const supportedVersions = ['2025-11-25', '2025-03-26', '2024-11-05'];
+    const protocolVersion = supportedVersions.includes(requestedVersion) ? requestedVersion : '2024-11-05';
+    return reply.send({
+      jsonrpc: '2.0',
+      id: body.id,
+      result: {
+        protocolVersion,
+        capabilities: { tools: {} },
+        serverInfo: { name: 'weir-proxy', version: '0.1.0' },
+      },
+    });
+  }
+
   async function handleMcpPost(name: string, body: JsonRpcMessage, reply: FastifyReply) {
+    if (await checkMcpAuth(name, reply)) return;
+
     if (!body || typeof body.jsonrpc !== 'string') {
       return reply.status(400).send({
         jsonrpc: '2.0',
         id: null,
         error: { code: -32600, message: 'Invalid Request: body must be a valid JSON-RPC 2.0 message' },
       });
+    }
+
+    if (body.method === 'initialize') {
+      return handleInitializeLocal(body, reply);
+    }
+
+    if (body.method?.startsWith('notifications/')) {
+      return reply.status(202).send({});
     }
 
     try {
@@ -149,6 +180,10 @@ export async function mcpPortRoutes(app: FastifyInstance) {
     }
 
     if (sessionEntry) {
+      if (body.method?.startsWith('notifications/')) {
+        return reply.status(202).send({ ok: true });
+      }
+
       try {
         await sessionEntry.session.send(body);
         return reply.status(202).send({ ok: true });
