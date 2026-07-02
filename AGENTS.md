@@ -1,6 +1,6 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan at specs/007-fix-tools-counter/plan.md
+shell commands, and other important information, read the current plan at specs/010-mcp-transparent-proxy/plan.md
 <!-- SPECKIT END -->
 
 ## Conhecidos Pitfalls (Docker & ESM)
@@ -40,3 +40,9 @@ Arquivos `backend/tests/debug-*.test.ts` sao apanhados pelo `vitest run` e inclu
 
 ### Cache persistente em disco (mcp-cache.json)
 O cache de status dos MCPs agora persiste em disco via `conf` (npm), criando `<dirname-do-MCP_CONFIG_PATH>/mcp-cache.json`. Isso impede que contadores zerem ao reiniciar o servidor (ex: tsx watch). O cache expirado pelo TTL nao e carregado do disco. O arquivo e recriado automaticamente. Incluir no `.gitignore`.
+
+### Initialize local no MCP port (Streamable HTTP)
+O MCP port (`POST /mcp/:name`) trata `initialize` **localmente** em `backend/src/mcp/mcp.routes.ts:102-116`, sem forward para o backend. Isso evita double-initialize por request e matches o pattern do MORPH (`createPerMcpDirectHandler`). SSE sessions ainda forwardam initialize via transport.
+
+### AbortSignal timeout nos fetch do HttpTransport
+`backend/src/proxy/transport.ts:HttpTransport.send` agora usa `AbortController` com `WEIR_PROXY_BACKEND_TIMEOUT` (default 5s) em ambos os `fetch` calls (auto-init em linha 319 e mensagem principal em linha 346). Timeout evita que `response.text()` (linha 361) trave se o backend manda resposta SSE chunked que nunca fecha.

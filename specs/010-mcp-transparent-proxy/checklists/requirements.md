@@ -34,3 +34,4 @@
 - All items passed validation on first iteration.
 - Some domain-level terminology (JSON-RPC, stdio, SSE, HTTP) is appropriate for the MCP ecosystem audience.
 - No [NEEDS CLARIFICATION] markers needed — the feature description was sufficiently detailed.
+- **2026-07-01**: Added User Story 5 (Auth-Gated MCP status detection), FR-020–FR-025, SC-010–SC-013, new edge cases, and new assumptions. All quality items pass.

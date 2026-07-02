@@ -99,7 +99,7 @@ describe('migration from .mcp.json on startup', () => {
     await app.close();
   });
 
-  it('creates .mcp-auth.json with 0600 permissions', async () => {
+  it('creates mcp-auth.json with 0600 permissions', async () => {
     const app = await migrateAndGetApp({
       mcpServers: {
         TestMCP: {
@@ -110,7 +110,7 @@ describe('migration from .mcp.json on startup', () => {
       },
     });
 
-    const authPath = join(tmpDir, '.mcp-auth.json');
+    const authPath = join(tmpDir, 'mcp-auth.json');
     if (existsSync(authPath)) {
       const stat = await import('node:fs').then(fs => fs.promises.stat(authPath));
       const mode = stat.mode & 0o777;

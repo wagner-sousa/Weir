@@ -38,4 +38,6 @@ export interface StatusUpdate {
   status: 'connected' | 'error' | 'needsAuth' | 'testing' | 'unknown' | 'disconnected';
   error: string | null;
   toolCount: number | null;
+  needsAuth?: boolean;
+  authUrl?: string | null;
 }

@@ -118,6 +118,8 @@ async function testSingleMCPAndBroadcast(name: string): Promise<void> {
       status: cached.status,
       error: cached.error,
       toolCount: cached.toolCount,
+      needsAuth: cached.needsAuth,
+      authUrl: cached.authUrl,
     };
       broadcast('status', update);
       broadcast('config:changed', { path: getConfigPath() });
@@ -330,7 +332,7 @@ export async function authRoutes(app: FastifyInstance) {
         needsAuth: false,
         authUrl: null,
       });
-      broadcast('status', { name, status: 'connected', error: null, toolCount });
+      broadcast('status', { name, status: 'connected', error: null, toolCount, needsAuth: false, authUrl: null });
       broadcast('config:changed', { path: getConfigPath() });
 
       // If the first tools query returned nothing, retry once in the

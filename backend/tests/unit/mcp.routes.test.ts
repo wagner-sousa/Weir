@@ -35,6 +35,94 @@ describe('GET /api/health', () => {
   });
 });
 
+describe('POST /api/mcps/test-connection needsAuth', () => {
+  let tmpDir: string;
+  let origConfigPath: string | undefined;
+
+  beforeEach(() => {
+    origConfigPath = process.env.MCP_CONFIG_PATH;
+    tmpDir = join(tmpdir(), `weir-mcp-test-${Date.now()}`);
+    mkdirSync(tmpDir, { recursive: true });
+    process.env.MCP_CONFIG_PATH = join(tmpDir, '.mcp.json');
+    writeFileSync(process.env.MCP_CONFIG_PATH!, JSON.stringify({
+      mcpServers: {
+        'auth-mcp': { type: 'http', url: 'https://example.com/mcp' },
+      },
+    }));
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    process.env.MCP_CONFIG_PATH = origConfigPath;
+    vi.unstubAllGlobals();
+  });
+
+  it('returns needsAuth: true when testConnection detects 401 on tools/list', async () => {
+    vi.mocked(fetch)
+      // First call: initialize succeeds (200)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ jsonrpc: '2.0', id: 1, result: {} }),
+      } as Response)
+      // Second call: detectAuthRequired (tools/list) returns 401
+      .mockResolvedValueOnce({ ok: false, status: 401 } as Response)
+      // Third call: discoverOAuth2 fails (no mock, will be caught)
+      .mockRejectedValueOnce(new Error('discovery failed'));
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/mcps/test-connection',
+      payload: {
+        name: 'auth-mcp',
+        transport: { type: 'http', url: 'https://example.com/mcp' },
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.needsAuth).toBe(true);
+    expect(body.success).toBe(false);
+  });
+
+  it('returns connected for non-auth HTTP MCP regardless of token', async () => {
+    vi.mocked(fetch)
+      // First call: initialize succeeds
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ jsonrpc: '2.0', id: 1, result: {} }),
+      } as Response)
+      // Second call: detectAuthRequired (tools/list) returns 200 with tools
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ jsonrpc: '2.0', id: 1, result: { tools: [{ name: 'tool1' }] } }),
+      } as Response)
+      // Third call: queryTools returns tools
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ jsonrpc: '2.0', id: 2, result: { tools: [{ name: 'tool1' }] } }),
+      } as Response);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/mcps/test-connection',
+      payload: {
+        name: 'auth-mcp',
+        transport: { type: 'http', url: 'https://example.com/mcp' },
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.needsAuth).toBeUndefined();
+    expect(body.success).toBe(true);
+  });
+});
+
 describe('T011: testSingleMCP error message detail', () => {
   let tmpDir: string;
   let origConfigPath: string | undefined;

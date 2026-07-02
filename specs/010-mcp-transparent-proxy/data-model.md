@@ -125,6 +125,33 @@ Emitted via WebSocket `broadcast('status', ...)`:
 | Field | Type | Description |
 |-------|------|-------------|
 | name | string | MCP server name |
-| status | 'connected' | 'reconnecting' | 'error' | 'closed' |
+| status | 'connected' | 'reconnecting' | 'error' | 'closed' | 'needsAuth' |
 | error | string? | Error message if applicable |
 | toolCount | number | Current tool count (if connected) |
+| needsAuth | boolean | Whether auth is required but not configured |
+| authUrl | string? | OAuth authorization URL to initiate auth flow |
+
+### ConnectionResult
+
+Returned by `testConnection()`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| success | boolean | Whether the connection succeeded |
+| error | string? | Error message on failure |
+| needsAuth | boolean | Whether auth is required (401 detected) |
+| authUrl | string? | OAuth authorization endpoint URL |
+| authConfig | object? | Full OAuth discovery response (authorizationEndpoint, tokenEndpoint, scopesSupported) |
+
+### CachedStatus
+
+Persisted per-MCP status cache (in-memory + optional disk persistence):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| status | `'connected'` | `'error'` | `'needsAuth'` | `'testing'` | `'unknown'` |
+| error | string? | Error message |
+| toolCount | number | Last known tool count |
+| needsAuth | boolean | Auth required flag |
+| authUrl | string? | OAuth authorization URL |
+| lastTestedAt | number | Unix timestamp of last test |

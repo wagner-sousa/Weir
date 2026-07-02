@@ -50,7 +50,17 @@ export const TestConnectionRequest = z.preprocess(
   }),
 );
 
+const AuthConfig = z.object({
+  authorizationEndpoint: z.string(),
+  tokenEndpoint: z.string(),
+  registrationEndpoint: z.string().optional(),
+  scopesSupported: z.array(z.string()).optional(),
+});
+
 export const TestConnectionResponse = z.object({
   success: z.boolean(),
   error: z.string().optional(),
+  needsAuth: z.boolean().optional(),
+  authUrl: z.string().nullable().optional(),
+  authConfig: AuthConfig.optional(),
 });

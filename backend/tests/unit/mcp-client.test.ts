@@ -6,6 +6,7 @@ import {
   testConnection,
   queryTools,
   discoverOAuth2,
+  detectAuthRequired,
 } from '../../src/services/mcp-client.js';
 import type { TransportConfig, TransportConfigWithToken } from '../../src/services/mcp-client.js';
 
@@ -232,6 +233,70 @@ describe('testConnection with Bearer token', () => {
     expect(result.success).toBe(false);
     expect(result.needsAuth).toBe(true);
     expect(result.authUrl).toBe('https://example.com/oauth/authorize');
+  });
+});
+
+describe('detectAuthRequired', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('returns true when tools/list returns HTTP 401', async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: false, status: 401 } as Response);
+
+    const result = await detectAuthRequired({ type: 'http', url: 'https://example.com/mcp' });
+
+    expect(result).toBe(true);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const body = JSON.parse((vi.mocked(fetch).mock.calls[0][1] as RequestInit).body as string);
+    expect(body.method).toBe('tools/list');
+  });
+
+  it('returns false when tools/list returns valid tool list', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ jsonrpc: '2.0', id: 1, result: { tools: [{ name: 'test-tool' }] } }),
+    } as Response);
+
+    const result = await detectAuthRequired({ type: 'http', url: 'https://example.com/mcp' });
+
+    expect(result).toBe(false);
+  });
+
+  it('returns false when accessToken is already provided', async () => {
+    const result = await detectAuthRequired({
+      type: 'http',
+      url: 'https://example.com/mcp',
+      accessToken: 'valid-token',
+    });
+
+    expect(result).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('returns false for non-HTTP transports (stdio)', async () => {
+    const result = await detectAuthRequired({
+      type: 'stdio',
+      command: 'echo',
+    });
+
+    expect(result).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('returns false for non-HTTP transports (sse)', async () => {
+    const result = await detectAuthRequired({
+      type: 'sse',
+      url: 'https://example.com/sse',
+    });
+
+    expect(result).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
 

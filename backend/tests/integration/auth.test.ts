@@ -369,11 +369,15 @@ describe('GET /api/auth/:name/callback', () => {
       url: '/api/auth/TestOAuthMCP/callback?code=test-auth-code-123',
     });
 
-    const authPath = process.env.MCP_AUTH_CONFIG_PATH || join(dirname(process.env.MCP_CONFIG_PATH!), '.mcp-auth.json');
+    // conf writes to mcp-auth.json (no dot prefix) in the config directory
+    // with accessPropertiesByDotNotation: false, keys are flat (e.g. "mcpServers.TestOAuthMCP")
+    const configDir = dirname(process.env.MCP_CONFIG_PATH!);
+    const authPath = join(configDir, 'mcp-auth.json');
     if (existsSync(authPath)) {
       const raw = JSON.parse(readFileSync(authPath, 'utf-8'));
-      const servers = raw.mcpServers || raw;
-      expect(servers.TestOAuthMCP.accessToken).toBe('persisted-token-789');
+      const entry = raw['mcpServers.TestOAuthMCP'];
+      expect(entry).toBeDefined();
+      expect(entry.accessToken).toBe('test-access-token');
     }
   });
 

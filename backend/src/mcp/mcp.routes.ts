@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { createProxySession } from '../proxy/index.js';
+import { createProxySession, sendOneMessage, resolveAccessToken, resolveBackendConfig } from '../proxy/index.js';
+import { detectAuthRequired } from '../services/mcp-client.js';
 import type { JsonRpcMessage, ProxySessionHandle } from '../proxy/types.js';
 import { randomBytes } from 'node:crypto';
 
@@ -14,9 +15,31 @@ function generateSessionId(): string {
   return randomBytes(16).toString('hex');
 }
 
+async function checkMcpAuth(name: string, reply: FastifyReply): Promise<boolean> {
+  const accessToken = resolveAccessToken(name);
+  if (!accessToken) {
+    try {
+      const config = resolveBackendConfig(name);
+      const needsAuth = await detectAuthRequired({ type: config.transport, url: config.url });
+      if (needsAuth) {
+        reply.status(401).send({
+          error: `MCP '${name}' requires authentication`,
+          needsAuth: true,
+        });
+        return true;
+      }
+    } catch {
+      // If we can't determine auth status, proceed anyway
+    }
+  }
+  return false;
+}
+
 export async function mcpPortRoutes(app: FastifyInstance) {
   app.get('/mcp/:name', async (request: FastifyRequest, reply: FastifyReply) => {
     const { name } = request.params as { name: string };
+
+    if (await checkMcpAuth(name, reply)) return;
 
     let session: ProxySessionHandle;
     try {
@@ -29,6 +52,7 @@ export async function mcpPortRoutes(app: FastifyInstance) {
     }
 
     const sessionId = generateSessionId();
+    const postUrl = `/mcp/${name}/message?sessionId=${sessionId}`;
 
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
@@ -39,7 +63,7 @@ export async function mcpPortRoutes(app: FastifyInstance) {
 
     sessions.set(sessionId, { session, reply });
 
-    reply.raw.write(`event: endpoint\ndata: /mcp/${name}/message?sessionId=${sessionId}\n\n`);
+    reply.raw.write(`event: endpoint\ndata: ${postUrl}\n\n`);
 
     try {
       await session.connect();
@@ -75,6 +99,63 @@ export async function mcpPortRoutes(app: FastifyInstance) {
     });
   });
 
+  function handleInitializeLocal(body: JsonRpcMessage, reply: FastifyReply) {
+    const params = body.params as { protocolVersion?: string } | undefined;
+    const requestedVersion = typeof params?.protocolVersion === 'string' ? params.protocolVersion : '';
+    const supportedVersions = ['2025-11-25', '2025-03-26', '2024-11-05'];
+    const protocolVersion = supportedVersions.includes(requestedVersion) ? requestedVersion : '2024-11-05';
+    return reply.send({
+      jsonrpc: '2.0',
+      id: body.id,
+      result: {
+        protocolVersion,
+        capabilities: { tools: {} },
+        serverInfo: { name: 'weir-proxy', version: '0.1.0' },
+      },
+    });
+  }
+
+  async function handleMcpPost(name: string, body: JsonRpcMessage, reply: FastifyReply) {
+    if (await checkMcpAuth(name, reply)) return;
+
+    if (!body || typeof body.jsonrpc !== 'string') {
+      return reply.status(400).send({
+        jsonrpc: '2.0',
+        id: null,
+        error: { code: -32600, message: 'Invalid Request: body must be a valid JSON-RPC 2.0 message' },
+      });
+    }
+
+    if (body.method === 'initialize') {
+      return handleInitializeLocal(body, reply);
+    }
+
+    if (body.method?.startsWith('notifications/')) {
+      return reply.status(202).send({});
+    }
+
+    try {
+      const result = await sendOneMessage(name, body);
+      return reply.send(result);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+
+      if (message.includes('not found in .mcp.json')) {
+        return reply.status(404).send({
+          jsonrpc: '2.0',
+          id: null,
+          error: { code: -32000, message: `MCP '${name}' not found` },
+        });
+      }
+
+      return reply.status(502).send({
+        jsonrpc: '2.0',
+        id: null,
+        error: { code: -32002, message: `Bad Gateway: ${message}` },
+      });
+    }
+  }
+
   app.post('/mcp/:name/message', async (request: FastifyRequest, reply: FastifyReply) => {
     const { name } = request.params as { name: string };
     const query = request.query as { sessionId?: string };
@@ -98,18 +179,28 @@ export async function mcpPortRoutes(app: FastifyInstance) {
       }
     }
 
-    if (!sessionEntry) {
-      return reply.status(404).send({
-        error: `No active SSE session for '${name}'`,
-      });
+    if (sessionEntry) {
+      if (body.method?.startsWith('notifications/')) {
+        return reply.status(202).send({ ok: true });
+      }
+
+      try {
+        await sessionEntry.session.send(body);
+        return reply.status(202).send({ ok: true });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return reply.status(502).send({ error: `Bad Gateway: ${msg}` });
+      }
     }
 
-    try {
-      await sessionEntry.session.send(body);
-      return reply.status(202).send({ ok: true });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return reply.status(502).send({ error: `Bad Gateway: ${msg}` });
-    }
+    return handleMcpPost(name, body, reply);
+  });
+
+  app.post('/mcp/:name', async (request: FastifyRequest, reply: FastifyReply) => {
+    return handleMcpPost(
+      (request.params as { name: string }).name,
+      request.body as JsonRpcMessage,
+      reply,
+    );
   });
 }

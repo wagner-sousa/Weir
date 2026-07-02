@@ -165,6 +165,38 @@
 
 ---
 
+## Phase 10: User Story 5 - Auth-Gated MCP Shows Correct Status (Priority: P1)
+
+**Goal**: Auth-gated HTTP MCPs (e.g., Postman) that accept `initialize` without a token but require one for `tools/list` show `needsAuth` status instead of `connected` in the dashboard. Non-auth MCPs remain unaffected.
+
+**Independent Test**: Configure an auth-gated HTTP MCP with no `accessToken`. Run test-connection via `POST /api/mcps/test`. Verify response contains `{"status":"needsAuth","needsAuth":true}` and the dashboard card shows the warning icon.
+
+### Implementation for User Story 5
+
+**TDD**: Write test → see fail → implement → see pass (per component)
+
+#### Tests ⚠️
+
+- [ ] T052 [P] [US5] Unit test: `detectAuthRequired()` returns `true` when `tools/list` returns HTTP 401 in `backend/tests/unit/mcp-client.test.ts`
+- [ ] T053 [P] [US5] Unit test: `detectAuthRequired()` returns `false` when `tools/list` returns valid tool list (no auth needed) in `backend/tests/unit/mcp-client.test.ts`
+- [ ] T054 [P] [US5] Unit test: `detectAuthRequired()` returns `false` when `accessToken` is already provided in `backend/tests/unit/mcp-client.test.ts`
+- [ ] T055 [P] [US5] Unit test: `detectAuthRequired()` returns `false` for non-HTTP transports (stdio, SSE) in `backend/tests/unit/mcp-client.test.ts`
+- [ ] T056 [US5] Unit test: `POST /api/mcps/test` returns `needsAuth: true` when `queryTools` fails with 401 in `backend/tests/unit/mcp.routes.test.ts`
+- [ ] T057 [US5] Integration test: auth-gated HTTP MCP without token shows `needsAuth` status in `backend/tests/integration/mcp-routes.test.ts`
+- [ ] T058 [P] [US5] Integration test: non-auth HTTP MCP shows `connected` regardless of token presence in `backend/tests/integration/mcp-routes.test.ts`
+
+#### Implementation
+
+- [ ] T059 [US5] Implement `detectAuthRequired(transport, accessToken)` that calls `tools/list` and returns `true` on 401 in `backend/src/services/mcp-client.ts`
+- [ ] T060 [US5] Call `detectAuthRequired()` from `testHttpConnection` after `initialize` succeeds when no `accessToken` is configured — if it returns true, result is `needsAuth: true, success: false` in `backend/src/services/mcp-client.ts`
+- [ ] T061 [US5] Update error handling in `testMCPConnection()` at `backend/src/api/mcp.routes.ts`: when `queryTools` throws a 401 error and no `accessToken` is present, set `needsAuth: true` on cached status instead of leaving it as `connected`
+- [ ] T062 [US5] Verify that the MCP port server (`backend/src/mcp/mcp.routes.ts`) checks auth before establishing SSE sessions for auth-gated backends — if no token and auth required, reject with HTTP 401
+- [ ] T063 [US5] Add auth validation scenario to quickstart.md (`specs/010-mcp-transparent-proxy/quickstart.md`)
+
+**Checkpoint**: Auth-gated MCPs without tokens correctly show `needsAuth` in the dashboard. Non-auth MCPs unaffected.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -184,6 +216,7 @@
 - **User Story 2 (P2)**: Can start after US1 is complete (needs proxy connect/forward loop)
 - **User Story 3 (P3)**: Naturally supported by independent process model — verification tests in T026, T027
 - **User Story 4 (P1)**: Depends on US1 (needs transport adapters and proxy core) — adds SSE session management on dedicated port. Moved to Phase 4 (before US2) due to P1 priority.
+- **User Story 5 (P1)**: Can start after Foundational (Phase 2) — adds auth detection to existing test-connection flow. No dependency on US1-US4 (auth is separate from proxy core).
 
 ### Within Each Phase
 
@@ -200,6 +233,9 @@
 - All TDD pairs (T017+T005, T019+T010, T018+T011) are sequential per component
 - US3 verification tests (T026, T027) can run in parallel
 - All polish tasks (T023, T024, T025) can run in parallel
+- All US5 unit tests (T052-T056) can run in parallel
+- T057 and T058 (integration tests) can run after detectAuthRequired implementation (T059)
+- T059 (detectAuthRequired) and T060 (testHttpConnection integration) are sequential
 
 ---
 
@@ -210,6 +246,24 @@
 Task: "T006 Implement stdio transport adapter in backend/src/proxy/transport.ts"
 Task: "T007 Implement SSE transport adapter in backend/src/proxy/transport.ts"
 Task: "T008 Implement HTTP transport adapter in backend/src/proxy/transport.ts"
+```
+
+## Parallel Example: User Story 5
+
+```bash
+# Launch all unit tests for detectAuthRequired together:
+Task: "T052 Unit test: detectAuthRequired returns true on 401"
+Task: "T053 Unit test: detectAuthRequired returns false without auth"
+Task: "T054 Unit test: detectAuthRequired returns false with token"
+Task: "T055 Unit test: detectAuthRequired returns false for non-HTTP"
+
+# Then implement (sequential):
+Task: "T059 Implement detectAuthRequired in backend/src/services/mcp-client.ts"
+Task: "T060 Integrate detectAuthRequired into testHttpConnection"
+
+# Then integration tests:
+Task: "T057 Integration test: auth-gated MCP shows needsAuth"
+Task: "T058 Integration test: non-auth MCP unaffected"
 ```
 
 ## Parallel Example: User Story 2
@@ -242,7 +296,8 @@ Task: "T012 Implement buffer drain on reconnect in backend/src/proxy/proxy.ts"
 3. Add User Story 4 → Dedicated MCP port operational
 4. Add User Story 2 → Test independently → Resilience demo
 5. Add Observability → Health monitoring operational
-6. Run full test suite → Feature complete
+6. Add User Story 5 → Auth detection for connection test
+7. Run full test suite → Feature complete
 
 ---
 
@@ -256,4 +311,47 @@ Task: "T012 Implement buffer drain on reconnect in backend/src/proxy/proxy.ts"
 - No `@modelcontextprotocol/sdk` or `mcp-tool-router` dependencies
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
-- Constitution Principle VII (Dependency First) has a justified violation — proxy uses built-ins because no suitable npm package exists
+- Constitution Principle VII (Dependency First) has two justified violations: (1) proxy core uses Node built-ins because no suitable npm package provides transparent MCP proxy + multi-transport + auto-reconnect; (2) `@modelcontextprotocol/sdk` added for the official `StreamableHTTPClientTransport`
+
+---
+
+## Phase 11: Convergence
+
+**Purpose**: Close gaps between spec/plan/tasks and actual codebase state identified by `/speckit.converge`.
+
+**CRITICAL**: Constitution violations first. HIGH gaps ordered by impact on US5 completeness.
+
+- [X] T064 CRITICAL Follow TDD order per Constitution II: finalize T052-T058 tests (write → see fail) before completing T059-T062 implementation (Constitution II — contradicts)
+- [X] T065 Document justified violation for `@modelcontextprotocol/sdk` in plan.md per Principle VII — dependency is required for `StreamableHTTPClientTransport` (plan.md constraint — contradicts)
+- [X] T066 Extract `detectAuthRequired(transport, accessToken)` as standalone function in `backend/src/services/mcp-client.ts` per plan.md design decision (plan.md + T059 — partial)
+- [X] T067 Add auth validation in `backend/src/mcp/mcp.routes.ts` before establishing SSE sessions for auth-gated backends without token — reject with HTTP 401 (T062 — missing)
+- [X] T068 Write unit tests for standalone `detectAuthRequired()` in `backend/tests/unit/mcp-client.test.ts`: returns true on 401, false on valid list, false with token, false for non-HTTP (T052-T055 — missing)
+- [X] T069 Write unit test for `POST /api/mcps/test` returning `needsAuth: true` when `queryTools` fails with 401 in `backend/tests/unit/mcp.routes.test.ts` (T056 — missing)
+- [X] T070 Create `backend/tests/integration/mcp-routes.test.ts` with integration tests: auth-gated MCP without token shows `needsAuth`, non-auth MCP shows `connected` regardless of token (T057-T058 — missing)
+
+---
+
+## Phase 12: Convergence
+
+**Purpose**: Close remaining gaps between spec/plan/tasks and actual codebase state.
+
+- [X] T071 Fix quickstart.md Scenarios 6 and 7 curl endpoints: `/api/mcps/test` → `/api/mcps/test-connection` per actual route defined in `backend/src/api/mcp.routes.ts:123` (documentation — partial)
+
+---
+
+## Phase 13: Convergence
+
+**Purpose**: Close gaps between spec/plan/tasks and actual codebase state identified by `/speckit.converge`.
+
+- [X] T072 Propagate `needsAuth`/`authUrl` through real-time status broadcasts: add `needsAuth?: boolean` and `authUrl?: string | null` to backend `StatusUpdate` in `backend/src/config/types.ts`; update `broadcastStatusUpdate()` in `backend/src/api/mcp.routes.ts:18` and `testSingleMCPAndBroadcast()` in `backend/src/api/auth.routes.ts:116` to include them; add matching fields to frontend `StatusEvent` in `frontend/src/services/api.ts:36`; merge `needsAuth`/`authUrl` in `handleStatusEvent` at `frontend/src/hooks/useMCPs.ts:31` (FR-023 — partial)
+
+---
+
+## Phase 14: Convergence
+
+**Purpose**: Close gaps between spec/plan/tasks and actual codebase state identified by `/speckit.converge`.
+
+- [X] T073 CRITICAL Update `TestConnectionResponse` Zod schema in `backend/src/config/schema.ts:53` to include `needsAuth`, `authUrl`, and `authConfig` fields matching the actual `ConnectionResult` shape returned by `testConnection()` in `backend/src/services/mcp-client.ts` (Constitution I — contradicts)
+- [X] T074 Add `needsAuth` and `authUrl` to the WebSocket broadcast payload in `backend/src/api/mcp.routes.ts:174-179` (`POST /api/mcps/test-connection` handler) to match the `broadcastStatusUpdate()` pattern used elsewhere (FR-024 — partial)
+- [X] T075 Add `needsAuth` and `authUrl` to the `StatusUpdate` object in `backend/src/api/mcp.routes.ts:471-476` (SSE `/api/mcps/events` polling) so periodic status refreshes propagate auth state (FR-024, FR-025 — partial)
+- [X] T076 Add `needsAuth: false` and `authUrl: null` to the WebSocket broadcast payload in `backend/src/api/auth.routes.ts:335` (OAuth callback success) so the frontend clears the stale `needsAuth` flag after authorization completes (FR-023 — partial)
