@@ -123,6 +123,16 @@ No tasks in this phase.
 
 ---
 
+---
+
+## Phase 7: Convergence
+
+**Purpose**: Close gaps identified during convergence assessment.
+
+- [X] T008 Add `authUrl` guard before `handleAuth` call in `CardGrid.tsx`'s `handleReconnect` — when `testConnection` returns `needsAuth: true` but no `authUrl`, show toast `"OAuth2 authorization URL not available."` instead of calling `handleAuth` per FR-003 (partial)
+- [X] T009 Add assertions to non-auth reconnect tests in `CardGrid.test.tsx` — verify `testConnection` is called, no popup opens, and error toast is shown for HTTP without `needsAuth` and stdio MCPs per US2/AC1, US2/AC2 (partial)
+- [X] T010 Add test verifying MCPCard receives `reconnecting=true` while reconnect flow is in progress, and returns to normal state after completion per US3/AC1, US3/AC2 (partial)
+
 ## Notes
 
 - Only `CardGrid.tsx` changes — small frontend-only feature
