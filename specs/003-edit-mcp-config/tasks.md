@@ -183,3 +183,11 @@ Task: "Add Edit button to MCPCard.tsx"
 - [x] T017 Add 403 response for file permission errors per contracts/api.md (`missing`) — detect `EACCES`/`EPERM` in `backend/src/config/writer.ts`; return 403 with `"File could not be written: permission denied."` in `backend/src/api/mcp.routes.ts`
 - [x] T018 Refactor PUT route to use `updateEntry()` from writer.ts (`partial`) — make `updateEntry()` in `backend/src/config/writer.ts` support field merging (preserve non-transport fields like `fieldSelection`); call it from `backend/src/api/mcp.routes.ts` instead of duplicating inline logic
 - [x] T019 Add integration tests for 403 and 503 error paths per contracts/api.md (`missing`) — add tests in `backend/tests/integration/mcp-api.test.ts` covering permission-error (403) and write-error (503) responses for PUT
+
+---
+
+## Phase 6: Convergence
+
+**Purpose**: Close remaining gaps between spec/plan/tasks and actual codebase state.
+
+- [X] T020 Fix `ReferenceError: argsStr is not defined` in `frontend/src/components/AddMCPModal.tsx:62` — replace undefined variable `argsStr` with `args.join(' ')` in `getCurrentSnapshot()` (`partial` — dirty-form detection crashes on edit, causing blank screen)
