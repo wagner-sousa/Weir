@@ -59,7 +59,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
   }
 
   function getCurrentSnapshot(): string {
-    return buildSnapshot(name, type, command, argsStr, url, envVars);
+    return buildSnapshot(name, type, command, args.join(' '), url, envVars);
   }
 
   const isDirty = open && initialSnapshotRef.current !== '' && getCurrentSnapshot() !== initialSnapshotRef.current;
