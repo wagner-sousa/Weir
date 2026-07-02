@@ -5,7 +5,7 @@ import { AddMCPModal } from '../../src/components/AddMCPModal';
 
 const { mockMutateAsync, mockToast } = vi.hoisted(() => ({
   mockMutateAsync: vi.fn(),
-  mockToast: { success: vi.fn(), error: vi.fn() },
+  mockToast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
 }));
 
 vi.mock('../../src/hooks/useMCPs', async (importOriginal) => {
@@ -234,6 +234,16 @@ describe('AddMCPModal — User Story 2: Save Triggers Auto-Test', () => {
   });
 
   it('shows warning toast when needsAuth but no clientId', async () => {
+    vi.stubGlobal('fetch', vi.fn());
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        success: false,
+        url: null,
+        error: 'No client_id configured for MCP \'test-mcp\' and no registration endpoint available.',
+      }),
+    } as Response);
+
     mockMutateAsync
       .mockResolvedValueOnce({ success: false, needsAuth: true })
       .mockResolvedValueOnce({ success: true });
@@ -257,5 +267,10 @@ describe('AddMCPModal — User Story 2: Save Triggers Auto-Test', () => {
     await waitFor(() => {
       expect(onClose).toHaveBeenCalled();
     });
+    expect(mockToast.warning).toHaveBeenCalledWith(
+      'OAuth2 client_id not configured. See card for details.',
+    );
+
+    vi.unstubAllGlobals();
   });
 });
