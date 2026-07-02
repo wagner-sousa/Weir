@@ -53,7 +53,7 @@ After successful OAuth2 authorization, the access token is stored in the MCP con
 
 **Acceptance Scenarios**:
 
-1. **Given** the OAuth2 flow completed successfully, **When** the token is received, **Then** it is stored in the `.mcp.json` file as an `accessToken` field on the MCP entry.
+1. **Given** the OAuth2 flow completed successfully, **When** the token is received, **Then** it is stored in a dedicated auth storage file (`.mcp-auth.json`) as an `accessToken` associated with the MCP entry.
 2. **Given** an MCP entry has an `accessToken` field, **When** the backend performs a connection test or tools query, **Then** the token is included in the `Authorization: Bearer <token>` header.
 3. **Given** the token expires (server returns 401 again), **When** the connection test detects the 401, **Then** the shield button reappears for re-authentication.
 
@@ -76,7 +76,7 @@ After successful OAuth2 authorization, the access token is stored in the MCP con
 - **FR-002**: If OAuth2 discovery succeeds, the backend MUST return `needsAuth: true` and the discovered `authorizationEndpoint` as `authUrl` in the connection result.
 - **FR-003**: The MCP card component MUST display a shield icon button (ShieldAlert from lucide-react) when `needsAuth` is true. The button MUST have `aria-label="Authorize MCP"`.
 - **FR-004**: Clicking the shield button MUST open a popup window (`window.open`) to the `authUrl` with a target of `_blank` and popup dimensions of 600x700.
-- **FR-005**: The backend MUST provide a callback endpoint that receives the OAuth2 authorization code, exchanges it for an access token at the MCP's token endpoint, and stores the token in the corresponding MCP entry within `.mcp.json`.
+- **FR-005**: The backend MUST provide a callback endpoint that receives the OAuth2 authorization code, exchanges it for an access token at the MCP's token endpoint, and stores the token in a dedicated auth storage file (`.mcp-auth.json`), keeping the OAuth2 runtime state separate from the user-editable `.mcp.json` configuration.
 - **FR-006**: The stored access token MUST be included as a Bearer token in the `Authorization` header of all subsequent connection tests and tool queries for that MCP.
 - **FR-007**: If the popup is blocked by the browser, the system MUST show a toast: "Popup blocked. Please allow popups for this site."
 - **FR-008**: All OAuth2-related UI elements (shield icon, popup, toasts) MUST use English for user-facing text (Constitution III).
@@ -88,9 +88,10 @@ After successful OAuth2 authorization, the access token is stored in the MCP con
 ### Key Entities *(include if feature involves data)*
 
 - **MCP Connection**: Existing entity extended with `needsAuth` (boolean) and `authUrl` (string) fields for runtime state.
-- **MCP Configuration (.mcp.json)**: Existing file extended with optional `accessToken` field per MCP entry for token persistence.
+- **MCP Configuration (.mcp.json)**: Existing file for user-editable MCP entries. OAuth2 tokens are NOT stored here to avoid conflicts with config edits.
+- **Auth Storage (.mcp-auth.json)**: Separate file for OAuth2 runtime state (`accessToken`, `refreshToken`, `expiresAt`, `pendingCodeVerifier`). Managed automatically by the backend — not user-editable.
 - **OAuth2 Auth Config**: The discovered well-known metadata (authorization endpoint, token endpoint, scopes, registration endpoint). Not persisted — discovered at runtime.
-- **OAuth2 Token**: The access token obtained from the OAuth2 flow. Stored in `.mcp.json` as `accessToken`. Can expire or be revoked, requiring re-authentication.
+- **OAuth2 Token**: The access token obtained from the OAuth2 flow. Stored in `.mcp-auth.json` as `accessToken` (separate from `.mcp.json`). Can expire or be revoked, requiring re-authentication.
 
 ## Success Criteria *(mandatory)*
 
