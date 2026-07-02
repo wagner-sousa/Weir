@@ -97,6 +97,16 @@
 
 ---
 
+## Phase 6: Convergence
+
+**Purpose**: Close gaps between implementation and spec/plan/tasks discovered during convergence assessment.
+
+- [X] T015 Modify `migrateFromMcpJson` in `backend/src/services/auth-storage.ts` to also rewrite `.mcp.json` via `writeMCPConfig` after copying OAuth data, so OAuth fields are stripped from `.mcp.json` per FR-004 (`partial`)
+- [X] T016 Add `deleteAuthConfig(name)` call to the DELETE handler in `backend/src/api/mcp.routes.ts` so orphaned auth entries are cleaned up per T008 (`missing`)
+- [X] T017 Add error handling in `AuthStorage` (`backend/src/services/auth-storage.ts`) — wrap `getStore`/`getAuthConfig` so that a corrupted `.mcp-auth.json` logs a warning and returns undefined instead of throwing, per FR-007 (`partial`)
+- [X] T018 Pass `configFileMode: 0o600` to the `Conf` constructor in `backend/src/services/auth-storage.ts` to enforce restricted permissions per FR-006 (`missing`)
+- [X] T019 Add integration tests for migration in `backend/tests/integration/auth-storage.test.ts` covering: migration with full backend, migration strips `.mcp.json`, migration doesn't overwrite existing `.mcp-auth.json`, per T009 (`missing`)
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

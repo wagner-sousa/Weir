@@ -1,6 +1,7 @@
 import Conf from 'conf';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
+import { stripOAuthFields } from '../config/writer.js';
 
 interface AuthData {
   accessToken?: string;
@@ -24,38 +25,48 @@ function getConfigPath(): string {
 
 let _store: Conf<AuthStorageSchema> | null = null;
 
-function getStore(): Conf<AuthStorageSchema> {
+function getStore(): Conf<AuthStorageSchema> | null {
   if (!_store) {
-    const dir = dirname(getConfigPath());
-    _store = new Conf<AuthStorageSchema>({
-      cwd: dir,
-      configName: 'mcp-auth',
-      fileExtension: 'json',
-      defaults: { mcpServers: {} },
-      accessPropertiesByDotNotation: false,
-    });
+    try {
+      const dir = dirname(getConfigPath());
+      _store = new Conf<AuthStorageSchema>({
+        cwd: dir,
+        configName: 'mcp-auth',
+        fileExtension: 'json',
+        defaults: { mcpServers: {} },
+        accessPropertiesByDotNotation: false,
+        configFileMode: 0o600,
+      });
+    } catch (err) {
+      console.warn(`[auth-storage] Failed to load .mcp-auth.json: ${err instanceof Error ? err.message : String(err)}`);
+      return null;
+    }
   }
   return _store;
 }
 
 export function getAuthConfig(name: string): AuthData | undefined {
   const store = getStore();
+  if (!store) return undefined;
   return store.get(`mcpServers.${name}`);
 }
 
 export function setAuthConfig(name: string, data: AuthData): void {
   const store = getStore();
+  if (!store) return;
   const existing = store.get(`mcpServers.${name}`) as AuthData | undefined;
   store.set(`mcpServers.${name}`, { ...existing, ...data });
 }
 
 export function deleteAuthConfig(name: string): void {
   const store = getStore();
+  if (!store) return;
   store.delete(`mcpServers.${name}`);
 }
 
 export function getAllAuthNames(): string[] {
   const store = getStore();
+  if (!store) return [];
   const servers = store.get('mcpServers') as Record<string, AuthData> | undefined;
   return servers ? Object.keys(servers) : [];
 }
@@ -73,6 +84,7 @@ export function migrateFromMcpJson(mcpJsonPath: string): void {
   if (!servers) return;
 
   const store = getStore();
+  if (!store) return;
   let changed = false;
 
   for (const [name, entry] of Object.entries(servers)) {
@@ -98,7 +110,9 @@ export function migrateFromMcpJson(mcpJsonPath: string): void {
   }
 
   if (changed) {
-    console.log(`[auth-storage] Migrated OAuth data to ${getConfigPath()}`);
+    const cleaned = stripOAuthFields(raw);
+    writeFileSync(mcpJsonPath, JSON.stringify(cleaned, null, 2) + '\n', 'utf-8');
+    console.log(`[auth-storage] Migrated OAuth data to ${getConfigPath()} and stripped from ${mcpJsonPath}`);
   }
 }
 
