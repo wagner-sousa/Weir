@@ -421,13 +421,31 @@ async function queryStdioTools(transport: TransportConfig): Promise<ToolResult[]
       resolve([]);
     }, parseInt(process.env.MCP_CONNECTION_TIMEOUT ?? '5000', 10));
 
-    let output = '';
+    let buffer = '';
+    let initialized = false;
 
-    child.stdout?.on('data', (data: Buffer) => {
-      output += data.toString();
+    function processLine(line: string): boolean {
       try {
-        const parsed = JSON.parse(output);
-        if (parsed.result?.tools) {
+        const parsed = JSON.parse(line);
+        if (!initialized) {
+          if (parsed.id === 1 && parsed.result) {
+            initialized = true;
+            // Send tools/list after initialize succeeds
+            try {
+              const request = JSON.stringify({
+                jsonrpc: '2.0',
+                id: 2,
+                method: 'tools/list',
+              });
+              if (child.stdin) {
+                child.stdin.write(request + '\n');
+                child.stdin.end();
+              }
+            } catch {
+              // stdin may already be closed
+            }
+          }
+        } else if (parsed.id === 2 && parsed.result?.tools) {
           clearTimeout(timeout);
           child.kill();
           resolve(
@@ -439,9 +457,21 @@ async function queryStdioTools(transport: TransportConfig): Promise<ToolResult[]
               }),
             ),
           );
+          return true;
         }
       } catch {
-        // not complete JSON yet, keep buffering
+        // ignore malformed lines
+      }
+      return false;
+    }
+
+    child.stdout?.on('data', (data: Buffer) => {
+      buffer += data.toString();
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        if (processLine(line)) return;
       }
     });
 
@@ -459,16 +489,21 @@ async function queryStdioTools(transport: TransportConfig): Promise<ToolResult[]
       resolve([]);
     });
 
+    // Send MCP initialize request first (FR-002)
     try {
       const request = JSON.stringify({
         jsonrpc: '2.0',
         id: 1,
-        method: 'tools/list',
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          capabilities: {},
+          clientInfo: { name: 'weir', version: '0.1.0' },
+        },
       });
       if (child.stdin) {
         child.stdin.on('error', () => {});
         child.stdin.write(request + '\n');
-        child.stdin.end();
       }
     } catch {
       // stdin may already be closed (e.g., echo command)

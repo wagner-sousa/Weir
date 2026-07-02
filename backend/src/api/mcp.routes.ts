@@ -66,7 +66,9 @@ async function testSingleMCP(name: string): Promise<CachedStatus> {
       });
       toolCount = tools.length;
     } catch {
-      // tools query failed, leave count as 0
+      // tools query failed — preserve last-known count instead of resetting to 0
+      const existing = getCachedStatus(name);
+      toolCount = existing?.toolCount ?? 0;
     }
   }
 
