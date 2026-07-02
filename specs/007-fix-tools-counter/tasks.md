@@ -88,6 +88,14 @@ No tasks in this phase.
 
 ---
 
+## Phase 6: Convergence
+
+**Purpose**: Close gaps between spec/plan requirements and implementation.
+
+- [X] T012 Add missing integration tests for toolCount in `backend/tests/integration/performance.test.ts`: SSE status event includes toolCount, toolCount persists across SSE cycles, and toolCount on card after create returns cached count > 0 (T001, T005, T006 — missing)
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

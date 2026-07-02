@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { buildApp } from '../../src/index.js';
 import type { FastifyInstance } from 'fastify';
-import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { writeFileSync, mkdirSync, rmSync, chmodSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { clearCacheForTesting } from '../../src/services/status-cache.js';
@@ -312,5 +312,60 @@ describe('PUT /api/mcps/:name', () => {
     expect(res.statusCode).toBe(400);
     const body = JSON.parse(res.body);
     expect(body.success).toBe(false);
+  });
+
+  it('returns 403 for file permission error', async () => {
+    const configPath = process.env.MCP_CONFIG_PATH!;
+    chmodSync(configPath, 0o444);
+
+    try {
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/mcps/existing',
+        payload: {
+          name: 'existing',
+          transport: { type: 'http', url: 'https://updated.com/mcp' },
+        },
+      });
+      expect(res.statusCode).toBe(403);
+      const body = JSON.parse(res.body);
+      expect(body.success).toBe(false);
+      expect(body.error).toBe('File could not be written: permission denied.');
+    } finally {
+      chmodSync(configPath, 0o644);
+    }
+  });
+
+  it('returns 503 for write error', async () => {
+    const configPath = process.env.MCP_CONFIG_PATH!;
+    // Spy on writeFileSync to throw a non-permission error
+    const spy = vi.spyOn(await import('node:fs'), 'writeFileSync');
+
+    // Before each test, beforeEach runs and sets up the file.
+    // We need to mock writeFileSync for the writeMCPConfig call inside PUT.
+    // Make writeFileSync fail after the first successful call (for beforeEach)
+    // We'll use mockImplementationOnce to let the initial setup pass
+    spy.mockImplementation(() => {
+      const err = new Error('Disk full') as NodeJS.ErrnoException;
+      err.code = 'ENOSPC';
+      throw err;
+    });
+
+    try {
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/mcps/existing',
+        payload: {
+          name: 'existing',
+          transport: { type: 'http', url: 'https://updated.com/mcp' },
+        },
+      });
+      expect(res.statusCode).toBe(503);
+      const body = JSON.parse(res.body);
+      expect(body.success).toBe(false);
+      expect(body.error).toBe('Error saving: backend unavailable.');
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
