@@ -82,6 +82,25 @@ An AI agent (e.g., Cline, Claude Desktop) connects to an MCP backend via HTTP/SS
 
 ---
 
+### User Story 5 - Auth-Gated MCP Shows Correct Status on Connection Test (Priority: P1)
+
+An administrator configures an auth-gated HTTP MCP (requiring OAuth2/Bearer token) via the dashboard. The system tests the connection but, because no access token is configured, the test returns `success` (green check) from the `initialize` handshake, even though the MCP is not usable. The administrator is misled into thinking the MCP is fully operational.
+
+Instead, the test-connection flow MUST first detect whether the MCP requires authentication. If auth is required and no valid token is present, the test MUST return `status: "needsAuth"` (warning icon) instead of `status: "connected"` (green check). The card must display the needs-auth state and provide a path to authenticate (OAuth button).
+
+**Why this priority**: This is a correctness bug — the dashboard shows a green check for an inoperative MCP, misleading the user. It undermines trust in the system.
+
+**Independent Test**: Configure an auth-gated HTTP MCP (e.g., Postman) without providing an access token. Run test-connection. Verify the card shows "needs-authentication" status (warning icon), not green check.
+
+**Acceptance Scenarios**:
+
+1. **Given** an auth-gated HTTP MCP with no access token configured, **When** the user clicks "Test Connection", **Then** the result status is `needsAuth` (not `connected`) and the card displays the warning icon
+2. **Given** the same MCP, **When** the card shows `needsAuth` status, **Then** it also shows the OAuth authenticate button/link so the user can authorize
+3. **Given** the same MCP, **When** the user completes OAuth authorization and re-tests, **Then** the status becomes `connected` with a green check
+4. **Given** an HTTP MCP that does NOT require authentication, **When** the user tests connection, **Then** the status is `connected` (green check) regardless of whether a token is present
+
+---
+
 ### Edge Cases
 
 - What happens when the agent disconnects while the backend is reconnecting? Weir should clean up the proxy session gracefully.
@@ -93,6 +112,10 @@ An AI agent (e.g., Cline, Claude Desktop) connects to an MCP backend via HTTP/SS
 - What happens when the agent closes the SSE connection? The proxy session should clean up the backend transport.
 - How does the SSE endpoint handle backpressure from slow consumers? The proxy should buffer responses up to a configurable limit.
 - What happens if the MCP port is not configured (disabled)? The main API should still work normally, and `weir --mcp` CLI should still function.
+- What happens when an auth-gated HTTP MCP responds with 401 to `initialize` (not just `tools/list`)? The system should treat this as `needsAuth` regardless of when the 401 occurs.
+- How does the system handle an OAuth token that has expired? Token expiration should be detected and the status should revert to `needsAuth`.
+- What happens if `testConnection` is called via the API (`POST /api/mcps/test`) for an auth-gated MCP without a token? The API route must also return `needsAuth`, not `connected`.
+- How does the MCP port (4000) respond when an agent connects to an auth-gated MCP with no token? The SSE stream should send a `needsAuth` event or return an appropriate error.
 
 ## Requirements
 
@@ -117,6 +140,12 @@ An AI agent (e.g., Cline, Claude Desktop) connects to an MCP backend via HTTP/SS
 - **FR-017**: The SSE stream MUST send status events (`connected`, `reconnecting`, `error`, `closed`) as the proxy session state changes
 - **FR-018**: The SSE stream MUST clean up the proxy session when the agent disconnects (socket close)
 - **FR-019**: The dedicated MCP port MUST be configurable via `WEIR_MCP_PORT` environment variable (default 4000); setting it to `0` or leaving it unset MUST start the main API only, without the dedicated server
+- **FR-020**: The connection test flow MUST first determine whether the MCP requires authentication (OAuth2/Bearer token); if `initialize` responds with a 401 or an auth challenge, the flow MUST NOT report `connected`
+- **FR-021**: When an auth-gated HTTP MCP has no valid access token, `testConnection` MUST return `status: "needsAuth"` and `needsAuth: true`, not `status: "connected"`
+- **FR-022**: The dashboard card MUST display the `needsAuth` status with a warning icon (not a green check) when the MCP requires authentication but no token is available
+- **FR-023**: When the card shows `needsAuth` status and an `authUrl` is available, the card MUST display an authenticate button/link to initiate OAuth
+- **FR-024**: The auth detection logic MUST apply to all test-connection call sites: `POST /api/mcps/test`, `POST /api/mcps` (save-and-test), and the periodic SSE polling refresh
+- **FR-025**: The cached MCP status MUST preserve the `needsAuth` flag so that after a page refresh or server restart, the card still shows the correct state
 
 ### Key Entities
 
@@ -140,6 +169,10 @@ An AI agent (e.g., Cline, Claude Desktop) connects to an MCP backend via HTTP/SS
 - **SC-007**: An agent can connect to any configured MCP backend via `http://localhost:4000/mcp/<name>` and receive tool lists and call results
 - **SC-008**: Multiple SSE sessions (up to 10) can run concurrently on port 4000 without failures
 - **SC-009**: The main API continues to serve all existing routes on port 3000 without interference from the MCP port server
+- **SC-010**: An auth-gated HTTP MCP without a token shows `needsAuth` status (warning icon) in the dashboard instead of a green check — verifiable by running test-connection on Postman (or equivalent) without a token and observing the card status
+- **SC-011**: After OAuth authorization, the same MCP shows `connected` status (green check) — verifiable by completing the OAuth flow and re-testing
+- **SC-012**: A non-auth HTTP MCP continues to show `connected` regardless of whether a token is present — verifiable by testing a local HTTP MCP with and without a dummy token
+- **SC-013**: The `needsAuth` status persists across page refreshes (no flicker to `connected`) — verifiable by refreshing the dashboard after the status is established
 
 ## Assumptions
 
@@ -151,3 +184,6 @@ An AI agent (e.g., Cline, Claude Desktop) connects to an MCP backend via HTTP/SS
 - The backend is expected to eventually recover within a reasonable timeframe (hours, not days) — infinite reconnection attempts are allowed with user-configurable cap
 - Multiple agents connecting to the same backend do not share proxy state — each proxy instance is independent
 - Network latency between agent and Weir is negligible (same machine or same container)
+- The auth detection applies to HTTP transport only (stdio and SSE transports have no auth-token concept in the same way)
+- The MCP server responds to `initialize` with a 401 status when authentication is required; if the server responds with 200 to `initialize` but 401 only to `tools/list`, the initial `tools/list` response will catch the auth requirement
+- The existing OAuth infrastructure (auth.routes.ts, auth-storage.ts) is correct and does not need modification — only the test-connection flow ordering needs adjustment

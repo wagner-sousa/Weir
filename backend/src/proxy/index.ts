@@ -1,5 +1,5 @@
 import { readFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
 import { ProxyState, type ProxyConfig, type ProxyOptions, type JsonRpcMessage, type ProxySessionHandle, defaultProxyOptions } from './types.js';
 import { createTransport } from './transport.js';
 import { startProxy } from './proxy.js';
@@ -52,9 +52,10 @@ export function resolveBackendConfig(name: string): ProxyConfig {
   }
 
   if (entry['url']) {
+    const entryType = (entry['type'] as string) || 'sse';
     return {
       name,
-      transport: 'sse',
+      transport: entryType as 'stdio' | 'sse' | 'http',
       url: entry['url'] as string,
     };
   }
@@ -62,8 +63,27 @@ export function resolveBackendConfig(name: string): ProxyConfig {
   throw new Error(`Unable to determine transport for MCP "${name}"`);
 }
 
+export function resolveAccessToken(name: string): string | undefined {
+  const raw = readMcpConfig();
+  const entry = (raw['mcpServers'] as Record<string, unknown>)?.[name] as Record<string, unknown> | undefined;
+  const entryToken = entry?.accessToken as string | undefined;
+
+  const authPath = process.env['MCP_AUTH_CONFIG_PATH'] || resolve(dirname(resolveMcpConfigPath()), '.mcp-auth.json');
+  let authToken: string | undefined;
+  try {
+    if (existsSync(authPath)) {
+      const authFile = JSON.parse(readFileSync(authPath, 'utf-8')) as Record<string, { accessToken?: string }>;
+      authToken = authFile[name]?.accessToken;
+    }
+  } catch {
+    // ignore malformed auth file
+  }
+  return entryToken || authToken;
+}
+
 export function createProxySession(name: string): ProxySessionHandle {
   const config = resolveBackendConfig(name);
+  config.accessToken = resolveAccessToken(name);
   const transport = createTransport(config);
   let state = ProxyState.CONNECTING;
   let messageHandler: ((msg: JsonRpcMessage) => void) | null = null;
@@ -106,6 +126,7 @@ export async function sendOneMessage(
   signal?: AbortSignal,
 ): Promise<JsonRpcMessage> {
   const config = resolveBackendConfig(name);
+  config.accessToken = resolveAccessToken(name);
   const transport = createTransport(config);
 
   return new Promise((resolve, reject) => {

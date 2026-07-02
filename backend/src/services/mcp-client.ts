@@ -157,18 +157,33 @@ async function testHttpConnection(transport: TransportConfigWithToken): Promise<
     clearTimeout(timeout);
 
     if (response.status === 401) {
-      const authConfig = await discoverOAuth2(url);
       return {
         success: false,
         error: `HTTP 401`,
         needsAuth: true,
-        authUrl: authConfig?.authorizationEndpoint,
-        authConfig,
+        authUrl: (await discoverOAuth2(url))?.authorizationEndpoint,
       };
     }
 
     if (!response.ok) {
       return { success: false, error: `HTTP ${response.status}` };
+    }
+
+    // Initialize succeeded — now check if tools/list requires auth
+    if (!transport.accessToken) {
+      const needsAuth = await detectAuthRequired({
+        type: 'http',
+        url: transport.url,
+        accessToken: transport.accessToken,
+      });
+      if (needsAuth) {
+        return {
+          success: false,
+          error: `HTTP 401`,
+          needsAuth: true,
+          authUrl: (await discoverOAuth2(url))?.authorizationEndpoint,
+        };
+      }
     }
 
     // Try to parse the response as JSON-RPC
@@ -266,6 +281,43 @@ async function testSseConnection(transport: TransportConfigWithToken): Promise<C
     }
   } catch (err) {
     return { success: false, error: parseFetchError(err, url) };
+  }
+}
+
+export async function detectAuthRequired(
+  config: { type: string; url?: string; accessToken?: string; command?: string },
+): Promise<boolean> {
+  if (config.type !== 'http') {
+    return false;
+  }
+  if (config.accessToken) {
+    return false;
+  }
+  const url = replaceLocalhost(config.url!);
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json, text/event-stream',
+  };
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(
+      () => controller.abort(),
+      parseInt(process.env.MCP_CONNECTION_TIMEOUT ?? '5000', 10),
+    );
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/list',
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    return response.status === 401;
+  } catch {
+    return false;
   }
 }
 

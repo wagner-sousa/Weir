@@ -88,6 +88,41 @@ curl -X POST http://localhost:4000/mcp/Bitbucket/message \
 
 **Expected**: SSE stream from first curl receives `event: endpoint` with the message URL, and after POST, the tool list response appears in the SSE stream.
 
+### Scenario 6: Auth Detection — Auth-Gated MCP Without Token Shows NeedsAuth
+
+Given an auth-gated HTTP MCP (e.g., Postman) configured in `.mcp.json` with no `accessToken`:
+
+```bash
+# Test connection via API
+curl -X POST http://localhost:3000/api/mcps/test-connection \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Postman","transport":{"type":"http","url":"https://postman.example.com/mcp"}}'
+```
+
+**Expected**: Response contains `{"status":"needsAuth","needsAuth":true}` — not `"connected"`. The dashboard card shows the warning icon.
+
+Then complete OAuth for this MCP and re-test:
+
+```bash
+curl -X POST http://localhost:3000/api/mcps/test-connection \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Postman","transport":{"type":"http","url":"https://postman.example.com/mcp"}}'
+```
+
+**Expected**: Response contains `{"status":"connected","needsAuth":false}` — green check restored.
+
+### Scenario 7: Auth Detection — Non-Auth MCP Unaffected
+
+Given a local HTTP MCP with no authentication (e.g., a simple tool server):
+
+```bash
+curl -X POST http://localhost:3000/api/mcps/test-connection \
+  -H "Content-Type: application/json" \
+  -d '{"name":"local-tool-server","transport":{"type":"http","url":"http://localhost:8080/mcp"}}'
+```
+
+**Expected**: Response contains `{"status":"connected"}` — green check, regardless of whether an `accessToken` is passed. Non-auth MCPs are not affected by auth detection logic.
+
 ## Full Test Suite
 
 ```bash

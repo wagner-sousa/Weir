@@ -10,27 +10,29 @@ interface MCPConnectionModalProps {
   mcpPort?: number;
 }
 
-type ConnectionMode = 'stdio' | 'http';
+type ConnectionMode = 'stdio' | 'sse' | 'http';
 
 export function MCPConnectionModal({ open, names, onClose, mcpPort = 0 }: MCPConnectionModalProps) {
   const mcpAvailable = mcpPort > 0;
   const [mode, setMode] = useState<ConnectionMode>('stdio');
 
   useEffect(() => {
-    if (!mcpAvailable && mode === 'http') {
+    if (!mcpAvailable && (mode === 'sse' || mode === 'http')) {
       setMode('stdio');
     }
   }, [mcpAvailable, mode]);
   const [copied, setCopied] = useState(false);
 
   const configContent = useCallback((m: ConnectionMode): string => {
-    const servers: Record<string, { command?: string; args?: string[]; url?: string }> = {};
+    const servers: Record<string, { command?: string; args?: string[]; type?: string; url?: string }> = {};
+    const hostname = window.location.hostname;
     for (const n of names) {
       if (m === 'stdio') {
-        servers[n] = { command: 'weir', args: ['--mcp', n] };
+        servers[n] = { type: 'stdio', command: 'weir', args: ['--mcp', n] };
+      } else if (m === 'sse') {
+        servers[n] = { type: 'sse', url: `http://${hostname}:${mcpPort}/mcp/${n}` };
       } else {
-        const hostname = window.location.hostname;
-        servers[n] = { url: `http://${hostname}:${mcpPort}/mcp/${n}` };
+        servers[n] = { type: 'http', url: `http://${hostname}:${mcpPort}/mcp/${n}` };
       }
     }
     return JSON.stringify({ mcpServers: servers }, null, 2);
@@ -86,6 +88,19 @@ export function MCPConnectionModal({ open, names, onClose, mcpPort = 0 }: MCPCon
                     }`}
                   >
                     STDIO
+                  </button>
+                  <button
+                    onClick={() => mcpAvailable && setMode('sse')}
+                    className={`flex-1 px-3 py-1.5 text-sm font-medium transition-colors ${
+                      mode === 'sse'
+                        ? 'bg-theme-accent text-gray-900'
+                        : !mcpAvailable
+                          ? 'bg-theme-bg text-theme-muted opacity-40 cursor-not-allowed'
+                          : 'bg-theme-bg text-theme-muted hover:text-theme-text'
+                    }`}
+                    title={!mcpAvailable ? 'SSE mode requires WEIR_MCP_PORT to be set' : undefined}
+                  >
+                    SSE
                   </button>
                   <button
                     onClick={() => mcpAvailable && setMode('http')}

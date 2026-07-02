@@ -60,9 +60,41 @@
 - **Rationale**: Clear separation of concerns — port 3000 serves API routes and frontend, port 4000 serves only MCP SSE connections. If `WEIR_MCP_PORT=0`, no server starts; main API unaffected.
 - **Alternatives considered**: Same Fastify instance on a different route prefix (risk of route conflicts, couples concerns)
 
+## Decisions (Auth Validation)
+
+### Auth Detection Strategy
+
+- **Decision**: After `initialize` succeeds in `testHttpConnection`, the test flow MUST also attempt `tools/list`. If `tools/list` returns HTTP 401 and no `accessToken` is configured, the connection result is `needsAuth: true`.
+- **Rationale**: Some MCP servers (e.g., Postman) accept `initialize` without authentication but require a Bearer token for `tools/list`. Testing only `initialize` gives a false `success` for these servers. Calling `tools/list` after `initialize` detects the auth requirement regardless of when the 401 occurs (on initialize or on tools/list).
+- **Alternatives considered**:
+  - Check `auth` config in `.mcp.json` entry (not all MCPs declare auth upfront — some discover it only on 401)
+  - Rely solely on `initialize` 401 detection (misses servers like Postman that allow unauthenticated initialize)
+  - Use `.well-known/oauth-authorization-server` discovery during test (already done for 401 handling, but may not exist for servers that allow unauthenticated initialize)
+
+### NeedsAuth Propagation
+
+- **Decision**: When `queryTools` returns a 401 error (caught as exception), the calling code in `mcp.routes.ts` MUST catch the error, inspect it, and if it's an auth error with no `accessToken` available, set `needsAuth: true` on the cached status instead of leaving it as `connected`.
+- **Rationale**: The existing code in `mcp.routes.ts` line 57-71 tries `queryTools` but only catches errors generically (line 68-70), leaving `needsAuth: false`. The error handler needs to distinguish auth errors from other failures.
+- **Alternatives considered**: Modify `queryTools` to return structured errors (breaking change to its signature). The current try/catch approach is minimal and contained.
+
+### Auth Detection Function Reuse
+
+- **Decision**: Extract the `tools/list` auth check into a shared function `detectAuthRequired(transport, accessToken): Promise<boolean>` that can be called from both `testHttpConnection` and the SSE proxy session initialization.
+- **Rationale**: The MCP port (4000) also needs to detect missing auth before establishing a proxy session. A shared function prevents duplication.
+- **Alternatives considered**: Inline auth detection in each caller (duplication risk), modify `testConnection` to accept an optional flag (more complex API).
+
 ## Open Questions
 
-- None — all technical decisions resolved in speckit.plan.args.md
+- None resolved.
+- **QUESTION**: Should the MCP port (4000) SSE endpoint reject connections for auth-gated MCPs without tokens, or allow them but send a `needsAuth` event?
+  - **Resolution**: Reject with HTTP 401 (consistent with how the backend itself signals auth required). The agent receives a clear error and can retry with a token.
+
+## Integration Points (Auth Validation)
+
+- **`backend/src/services/mcp-client.ts`**: Add `detectAuthRequired()` function called from `testHttpConnection` after `initialize` succeeds. Also add auth detection to `testSseConnection`.
+- **`backend/src/api/mcp.routes.ts`**: Update the error handling in `testMCPConnection` (line 57-71) to detect 401 from `queryTools` and set `needsAuth: true`.
+- **`backend/src/mcp/mcp.routes.ts` (MCP port)**: Add auth check when an SSE session initializes — reject with HTTP 401 if auth required but no token available.
+- **Frontend (`MCPCard.tsx`, `CardGrid.tsx`)**: No changes needed — the existing `needsAuth` status handling already shows warning icon, tooltip, and OAuth button.
 
 ## Integration Points
 
