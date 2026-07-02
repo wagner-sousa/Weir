@@ -96,6 +96,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
   }, [testing, testMutation.isPending]);
 
   function handleClose() {
+    if (testing || savePending) return;
     if (dirty) {
       const confirmed = window.confirm('Unsaved changes will be lost. Continue?');
       if (!confirmed) return;
@@ -221,38 +222,17 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
     setDirty(false);
     onClose();
 
-    if (triggerAuth && onAuth) {
-      onAuth(trimmedName);
-    }
-
-    if (result.testResult?.needsAuth && result.testResult?.authUrl) {
+    if (triggerAuth) {
       try {
         const authRes = await fetch(`/api/auth/${encodeURIComponent(trimmedName)}/start`, {
           method: 'POST',
         });
         const authData = await authRes.json();
-
-        if (authData.error) {
-          toast.error(authData.error);
-          return;
+        if (authData.error?.includes('client_id')) {
+          toast.warning('OAuth2 client_id not configured. See card for details.');
+        } else if (authData.url && onAuth) {
+          onAuth(trimmedName);
         }
-
-        if (!authData.url) return;
-
-        const popup = window.open('', '_blank', 'width=600,height=700');
-        if (!popup) {
-          toast.error('Popup blocked. Please allow popups for this site.');
-          return;
-        }
-
-        popup.location.href = authData.url;
-
-        const timer = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(timer);
-            queryClient.invalidateQueries({ queryKey: ['mcps'] });
-          }
-        }, 500);
       } catch {
         toast.error('Failed to start OAuth2 authorization.');
       }
@@ -514,7 +494,7 @@ export function AddMCPModal({ open, existingNames, existingMCP, onClose, onAuth 
                         : 'bg-theme-accent text-gray-900 hover:bg-theme-accent-dark'
                     }`}
                   >
-                    {savePending ? 'Saving...' : 'Save'}
+                    {testing ? 'Testing...' : savePending ? 'Saving...' : 'Save'}
                   </button>
                 </div>
               </form>

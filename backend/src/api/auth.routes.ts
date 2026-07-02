@@ -306,7 +306,8 @@ export async function authRoutes(app: FastifyInstance) {
       if (expiresIn) authData.expiresAt = Date.now() + expiresIn * 1000;
       setAuthConfig(name, authData);
 
-      // Query tools immediately with the access token before broadcasting
+      // Query tools once synchronously, then broadcast immediately.
+      // If the first attempt returns 0, retry in background (no user-facing delay).
       let toolCount = 0;
       try {
         const tools = await queryTools(name, {
@@ -319,24 +320,7 @@ export async function authRoutes(app: FastifyInstance) {
         });
         toolCount = tools.length;
       } catch {
-        // first query attempt failed
-      }
-
-      if (toolCount === 0) {
-        try {
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-          const tools = await queryTools(name, {
-            type: client.transport as 'stdio' | 'http' | 'sse',
-            command: client.command,
-            args: client.args,
-            url: client.url,
-            env: client.env,
-            accessToken,
-          });
-          toolCount = tools.length;
-        } catch {
-          // retry also failed, leave as 0
-        }
+        // first attempt failed — background retry will handle it
       }
 
       setCachedStatus(name, {
@@ -349,26 +333,11 @@ export async function authRoutes(app: FastifyInstance) {
       broadcast('status', { name, status: 'connected', error: null, toolCount });
       broadcast('config:changed', { path: getConfigPath() });
 
-      // Try to create a token object for potential refresh
-      try {
-        const token = oauth2.createToken(tokenData);
-        if (token.expired() && token.token.refresh_token) {
-          const refreshed = await token.refresh();
-          const refreshedData = refreshed.token;
-          setAuthConfig(name, {
-            accessToken: refreshedData.access_token as string,
-            refreshToken: refreshedData.refresh_token as string | undefined,
-            expiresAt: refreshedData.expires_in
-              ? Date.now() + (refreshedData.expires_in as number) * 1000
-              : undefined,
-          });
-        }
-      } catch {
-        // Refresh not available or not needed — stored data is sufficient
+      // If the first tools query returned nothing, retry once in the
+      // background (the user already got the status broadcast).
+      if (toolCount === 0) {
+        testSingleMCPAndBroadcast(name);
       }
-
-      // Test the MCP now that it has a token, cache result, and broadcast (background)
-      testSingleMCPAndBroadcast(name);
 
       return reply.type('text/html').send(
         `<html><body><script>window.close()</script><p>Authorization successful. You may close this window.</p></body></html>`,

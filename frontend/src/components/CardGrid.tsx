@@ -71,9 +71,9 @@ export function CardGrid({ clients, onRemove, removePending, mcpPort }: CardGrid
       const timer = setInterval(() => {
         if (popup.closed) {
           clearInterval(timer);
-          queryClient.invalidateQueries({ queryKey: ['mcps'] });
+          queryClient.refetchQueries({ queryKey: ['mcps'] });
         }
-      }, 500);
+      }, 200);
     } catch {
       toast.error('Failed to start OAuth2 authorization.');
     }
