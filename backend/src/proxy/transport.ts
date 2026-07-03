@@ -1,10 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { type TransportAdapter, type JsonRpcMessage, type ProxyConfig } from './types.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { JSONRPCMessageSchema } from '@modelcontextprotocol/sdk/types.js';
 
 async function readBodyText(response: Response, signal: AbortSignal): Promise<string> {
   if (!response.body) {
@@ -54,18 +50,24 @@ class StdioTransport implements TransportAdapter {
   private command: string;
   private args: string[];
   private accessToken?: string;
+  private env?: Record<string, string>;
 
-  constructor(command: string, args: string[] = [], accessToken?: string) {
+  constructor(command: string, args: string[] = [], accessToken?: string, env?: Record<string, string>) {
     this.command = command;
     this.args = args;
     this.accessToken = accessToken;
+    this.env = env;
   }
 
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       this.proc = spawn(this.command, this.args, {
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: { ...process.env, ...(this.accessToken ? { WEIR_MCP_ACCESS_TOKEN: this.accessToken } : {}) },
+        env: {
+          ...process.env,
+          ...this.env,
+          ...(this.accessToken ? { WEIR_MCP_ACCESS_TOKEN: this.accessToken } : {}),
+        },
       });
 
       const timeout = setTimeout(() => {
@@ -247,62 +249,6 @@ class SSETransport implements TransportAdapter {
   }
 }
 
-class SdkHttpTransport implements TransportAdapter {
-  private transport: StreamableHTTPClientTransport | null = null;
-  private messageHandler: ((msg: JsonRpcMessage) => void) | null = null;
-  private disconnectHandler: (() => void) | null = null;
-  private errorHandler: ((err: Error) => void) | null = null;
-  private url: string;
-  private accessToken?: string;
-
-  constructor(url: string, accessToken?: string) {
-    this.url = url.replace(/\/+$/, '');
-    this.accessToken = accessToken;
-  }
-
-  async connect(): Promise<void> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (this.accessToken) headers['Authorization'] = `Bearer ${this.accessToken}`;
-
-    this.transport = new StreamableHTTPClientTransport(
-      new URL(this.url),
-      { requestInit: { headers } },
-    );
-
-    this.transport.onmessage = (msg: JSONRPCMessage) => {
-      this.messageHandler?.(msg as unknown as JsonRpcMessage);
-    };
-    this.transport.onerror = (err: Error) => this.errorHandler?.(err);
-    this.transport.onclose = () => this.disconnectHandler?.();
-
-    await this.transport.start();
-  }
-
-  async disconnect(): Promise<void> {
-    if (this.transport) {
-      try { await this.transport.close(); } catch { /* ignore */ }
-    }
-    this.transport = null;
-  }
-
-  async send(message: JsonRpcMessage): Promise<void> {
-    if (!this.transport) throw new Error('Transport is disconnected');
-    await this.transport.send(message as unknown as JSONRPCMessage);
-  }
-
-  onMessage(handler: (msg: JsonRpcMessage) => void): void {
-    this.messageHandler = handler;
-  }
-
-  onDisconnect(handler: () => void): void {
-    this.disconnectHandler = handler;
-  }
-
-  onError(handler: (err: Error) => void): void {
-    this.errorHandler = handler;
-  }
-}
-
 class HttpTransport implements TransportAdapter {
   private messageHandler: ((msg: JsonRpcMessage) => void) | null = null;
   private disconnectHandler: (() => void) | null = null;
@@ -392,6 +338,7 @@ class HttpTransport implements TransportAdapter {
 
       if (message.method === 'initialize' && response.ok) {
         this.sessionId = response.headers.get('mcp-session-id') || null;
+        this.initialized = true;
       }
 
       if (!response.ok) {
@@ -440,7 +387,7 @@ export function createTransport(config: ProxyConfig): TransportAdapter {
   switch (config.transport) {
     case 'stdio': {
       if (!config.command) throw new Error('stdio transport requires command');
-      return new StdioTransport(config.command, config.args || [], config.accessToken);
+      return new StdioTransport(config.command, config.args || [], config.accessToken, config.env);
     }
     case 'sse': {
       if (!config.url) throw new Error('SSE transport requires url');

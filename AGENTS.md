@@ -46,3 +46,12 @@ O MCP port (`POST /mcp/:name`) trata `initialize` **localmente** em `backend/src
 
 ### AbortSignal timeout nos fetch do HttpTransport
 `backend/src/proxy/transport.ts:HttpTransport.send` agora usa `AbortController` com `WEIR_PROXY_BACKEND_TIMEOUT` (default 5s) em ambos os `fetch` calls (auto-init em linha 319 e mensagem principal em linha 346). Timeout evita que `response.text()` (linha 361) trave se o backend manda resposta SSE chunked que nunca fecha.
+
+### Env vars do `.mcp.json` para stdio child process
+`StdioTransport.connect()` em `backend/src/proxy/transport.ts:67-76` agora mergeia `env` do `ProxyConfig` no `spawn()`, alem de `process.env` e `WEIR_MCP_ACCESS_TOKEN`. O campo `env` pode vir do `.mcp.json` no formato `"env": { "KEY": "value" }` tanto no formato flat (`command`+`args`) quanto no formato aninhado (`transport.type`+`transport.command`). O `resolveBackendConfig()` em `backend/src/proxy/index.ts:42,52,62` le e propaga esse campo. Sem isso, servidores MCP que dependem de env vars (ex: `BITBUCKET_USERNAME`) nao funcionam via MCP port.
+
+### Auto-init em sendOneMessage para stdio
+`sendOneMessage()` em `backend/src/proxy/index.ts:175-189` agora envia `initialize` automaticamente antes de qualquer mensagem nao-initialize quando o transporte e `stdio`. O initialize e enviado, a resposta e descartada, e entao a mensagem real e enviada. Isso e necessario porque o caminho Streamable HTTP (`POST /mcp/:name`) trata `initialize` localmente, entao o backend stdio nunca receberia initialize se nao fosse feito explicitamente.
+
+### HttpTransport.initialized apos initialize explicito
+`HttpTransport.send()` em `backend/src/proxy/transport.ts:402` agora seta `this.initialized = true` quando recebe resposta 200 para uma mensagem `initialize`. Isso evita que o auto-init dispare novamente na proxima mensagem, causando duplo initialize para o backend HTTP. Essencial para SSE sessions onde o cliente envia `initialize` explicitamente via `session.send()`.

@@ -79,6 +79,8 @@ An AI agent (e.g., Cline, Claude Desktop) connects to an MCP backend via HTTP/SS
 3. **Given** an open SSE stream on `/mcp/<name>`, **When** the agent sends `tools/list`, **Then** the response contains the backend's tool list
 4. **Given** an open SSE stream with an unreachable backend, **When** the agent connects, **Then** Weir sends an error event and closes the stream
 5. **Given** a running Weir server, **When** a client sends `GET /mcp/<nonexistent>` on port 4000, **Then** the server returns HTTP 404
+6. **Given** a running Weir server, **When** a client sends `initialize` via `POST /mcp/<name>` (Streamable HTTP, no session), **Then** the response contains capabilities from the local handler
+7. **Given** a running Weir server, **When** a client sends `tools/list` via `POST /mcp/<name>` (Streamable HTTP, no session), **Then** the response contains the backend's tool list
 
 ---
 
@@ -146,6 +148,8 @@ Instead, the test-connection flow MUST first detect whether the MCP requires aut
 - **FR-023**: When the card shows `needsAuth` status and an `authUrl` is available, the card MUST display an authenticate button/link to initiate OAuth
 - **FR-024**: The auth detection logic MUST apply to all test-connection call sites: `POST /api/mcps/test`, `POST /api/mcps` (save-and-test), and the periodic SSE polling refresh
 - **FR-025**: The cached MCP status MUST preserve the `needsAuth` flag so that after a page refresh or server restart, the card still shows the correct state
+- **FR-026**: The dedicated MCP port MUST expose `POST /mcp/<name>` as a stateless Streamable HTTP endpoint (no persistent session). The `initialize` handshake MUST be handled locally, returning capabilities without a backend round-trip. Subsequent messages MUST be forwarded to the backend via `sendOneMessage()` with auto-initialization for stdio transports
+- **FR-027**: The `env` field in `.mcp.json` (both flat and nested `transport` formats) MUST be forwarded to the stdio child process via `spawn()` environment merge. The `ProxyConfig` type MUST include an `env: Record<string, string>` field
 
 ### Key Entities
 
@@ -155,6 +159,8 @@ Instead, the test-connection flow MUST first detect whether the MCP requires aut
 - **Transport Adapter**: Interface that translates between the agent's transport (stdio or SSE) and the backend's native transport (stdio, SSE, or HTTP).
 - **MCP Port Server**: A separate HTTP server instance listening on port 4000 (configurable), serving only `/mcp/<name>` SSE endpoints, isolated from the main API.
 - **SSE Session**: A persistent HTTP connection between an agent and Weir over Server-Sent Events, representing one MCP proxy session.
+- **Streamable HTTP**: A stateless JSON-RPC endpoint (`POST /mcp/:name`) where each request creates a one-shot transport, sends the message, and returns the response inline. The `initialize` handshake is handled locally (no backend round-trip). Supports agents that don't maintain persistent SSE sessions.
+- **Backend Env**: Per-server environment variables defined in `.mcp.json` under the `env` key. Merged into the stdio child process's environment by `StdioTransport`.
 
 ## Success Criteria
 
@@ -164,7 +170,7 @@ Instead, the test-connection flow MUST first detect whether the MCP requires aut
 - **SC-002**: After backend crash and recovery, agent resumes normal operation within 35 seconds (30s max backoff + reconnect time)
 - **SC-003**: Two agents simultaneously connected to the same backend can both list tools and call tools without interference
 - **SC-004**: Proxy works with all three backend transport types (stdio, SSE, HTTP)
-- **SC-005**: Agent connection setup through proxy completes in under 2 seconds of wall-clock time
+- **SC-005**: Agent connection setup through proxy completes in under 2 seconds of wall-clock time, measured from when the agent sends the first JSON-RPC message (via CLI or SSE) to when it receives the response. For SSE sessions, this means from `POST /mcp/:name/message` (initialize) to receipt of the initialize result via SSE event; for CLI, from stdin write to stdout read
 - **SC-006**: Buffered messages (up to 100) are delivered in order after backend reconnection
 - **SC-007**: An agent can connect to any configured MCP backend via `http://localhost:4000/mcp/<name>` and receive tool lists and call results
 - **SC-008**: Multiple SSE sessions (up to 10) can run concurrently on port 4000 without failures

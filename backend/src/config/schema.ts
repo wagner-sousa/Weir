@@ -64,3 +64,23 @@ export const TestConnectionResponse = z.object({
   authUrl: z.string().nullable().optional(),
   authConfig: AuthConfig.optional(),
 });
+
+export const EnvConfig = z.object({
+  WEIR_MCP_PORT: z.coerce.number().int().min(0).default(4000),
+  WEIR_PROXY_RECONNECT_BASE_DELAY: z.coerce.number().int().min(100).default(1000),
+  WEIR_PROXY_RECONNECT_MAX_DELAY: z.coerce.number().int().min(100).default(30000),
+  WEIR_PROXY_RECONNECT_MAX_RETRIES: z.coerce.number().int().min(0).default(10),
+  WEIR_PROXY_BUFFER_LIMIT: z.coerce.number().int().min(1).default(100),
+  WEIR_PROXY_BACKEND_TIMEOUT: z.coerce.number().int().min(100).default(5000),
+  WEIR_PROXY_KEEPALIVE_MS: z.coerce.number().int().min(1000).default(15000),
+});
+
+export function parseEnvConfig(): z.infer<typeof EnvConfig> {
+  const result = EnvConfig.safeParse(process.env);
+  if (!result.success) {
+    const fallback = EnvConfig.parse({});
+    process.stderr.write(`[config] Invalid env var(s): ${result.error.errors.map(e => e.path.join('.')).join(', ')}; using defaults\n`);
+    return fallback;
+  }
+  return result.data;
+}
