@@ -16,6 +16,7 @@ export interface ProxyConfig {
   url?: string;
   transport: BackendTransport;
   accessToken?: string;
+  env?: Record<string, string>;
 }
 
 export interface ProxyOptions {

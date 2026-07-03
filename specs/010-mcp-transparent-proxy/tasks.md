@@ -308,10 +308,10 @@ Task: "T012 Implement buffer drain on reconnect in backend/src/proxy/proxy.ts"
 - Each user story should be independently completable and testable
 - All proxy core uses Node.js built-ins only (`child_process`, `readline`, `stream`, `events`). The MCP port server uses Fastify (already a project dependency).
 - MCP port server is a separate Fastify instance — no route conflicts with main API
-- No `@modelcontextprotocol/sdk` or `mcp-tool-router` dependencies
+- `@modelcontextprotocol/sdk` removed (2026-07-03): `SdkHttpTransport` was dead code, deleted. `mcp-tool-router` already absent.
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
-- Constitution Principle VII (Dependency First) has two justified violations: (1) proxy core uses Node built-ins because no suitable npm package provides transparent MCP proxy + multi-transport + auto-reconnect; (2) `@modelcontextprotocol/sdk` added for the official `StreamableHTTPClientTransport`
+- Constitution Principle VII (Dependency First) has one justified violation: proxy core uses Node built-ins because no suitable npm package provides transparent MCP proxy + multi-transport + auto-reconnect
 
 ---
 
@@ -322,7 +322,7 @@ Task: "T012 Implement buffer drain on reconnect in backend/src/proxy/proxy.ts"
 **CRITICAL**: Constitution violations first. HIGH gaps ordered by impact on US5 completeness.
 
 - [X] T064 CRITICAL Follow TDD order per Constitution II: finalize T052-T058 tests (write → see fail) before completing T059-T062 implementation (Constitution II — contradicts)
-- [X] T065 Document justified violation for `@modelcontextprotocol/sdk` in plan.md per Principle VII — dependency is required for `StreamableHTTPClientTransport` (plan.md constraint — contradicts)
+- [X] T065 Document justified violation for `@modelcontextprotocol/sdk` in plan.md per Principle VII — dependency is required for `StreamableHTTPClientTransport` (plan.md constraint — contradicts; later removed 2026-07-03 as dead code SdkHttpTransport deleted)
 - [X] T066 Extract `detectAuthRequired(transport, accessToken)` as standalone function in `backend/src/services/mcp-client.ts` per plan.md design decision (plan.md + T059 — partial)
 - [X] T067 Add auth validation in `backend/src/mcp/mcp.routes.ts` before establishing SSE sessions for auth-gated backends without token — reject with HTTP 401 (T062 — missing)
 - [X] T068 Write unit tests for standalone `detectAuthRequired()` in `backend/tests/unit/mcp-client.test.ts`: returns true on 401, false on valid list, false with token, false for non-HTTP (T052-T055 — missing)
@@ -355,3 +355,22 @@ Task: "T012 Implement buffer drain on reconnect in backend/src/proxy/proxy.ts"
 - [X] T074 Add `needsAuth` and `authUrl` to the WebSocket broadcast payload in `backend/src/api/mcp.routes.ts:174-179` (`POST /api/mcps/test-connection` handler) to match the `broadcastStatusUpdate()` pattern used elsewhere (FR-024 — partial)
 - [X] T075 Add `needsAuth` and `authUrl` to the `StatusUpdate` object in `backend/src/api/mcp.routes.ts:471-476` (SSE `/api/mcps/events` polling) so periodic status refreshes propagate auth state (FR-024, FR-025 — partial)
 - [X] T076 Add `needsAuth: false` and `authUrl: null` to the WebSocket broadcast payload in `backend/src/api/auth.routes.ts:335` (OAuth callback success) so the frontend clears the stale `needsAuth` flag after authorization completes (FR-023 — partial)
+
+## Phase 15: MCP Port Convergence (Hotfix)
+
+**Purpose**: Fix bugs that prevent MCP servers registered in `.mcp.json` (especially stdio-backend ones with custom env vars) from properly registering tools via the MCP port (`http://localhost:4000/mcp/:name`).
+
+**⚠️ Hotfix exemption**: Code was implemented before tasks (T077-T079) due to real-time debugging during `/speckit.converge`. Test-First (Constitution II) justification: the fixes were discovered and applied during exploratory testing of the existing MCP port, not as planned feature work. Verification via existing test suite (27 proxy tests pass). T080 remains the formal verification task.
+
+**Root cause summary**: Three bugs were identified in the proxy transport layer when serving the MCP port:
+
+1. **Missing `env` forwarding** — `ProxyConfig`/`StdioTransport` had no `env` field, so env vars defined in `.mcp.json` (e.g., `BITBUCKET_WORKSPACE`, `BITBUCKET_USERNAME`, `BITBUCKET_PASSWORD`) were never passed to `spawn()`. The child MCP server started without required configuration.
+
+2. **Missing auto-init in `sendOneMessage` for stdio transport** — The Streamable HTTP path (`POST /mcp/:name`) handles `initialize` locally via `handleInitializeLocal()`, then forwards `tools/list` via `sendOneMessage()`. For stdio backends, `sendOneMessage` spawned a fresh process and sent `tools/list` directly without sending `initialize` first, violating the MCP protocol.
+
+3. **Double-initialize in `HttpTransport` SSE session** — When the SSE session path forwarded an explicit `initialize` via `session.send()`, `HttpTransport` did not set `this.initialized = true`. The next message (e.g., `tools/list`) triggered the auto-init path, sending a second `initialize` that could create a conflicting session or be rejected.
+
+- [X] T077 CRITICAL Add `env` support to `StdioTransport`: extend `ProxyConfig` with `env: Record<string, string>`, read it in `resolveBackendConfig()`, pass it through `createTransport()` to `StdioTransport`, and merge into the `spawn()` env object in `connect()`. Files: `backend/src/proxy/types.ts:12-19`, `backend/src/proxy/index.ts:31-63`, `backend/src/proxy/transport.ts:60-75,449-451`
+- [X] T078 HIGH Add auto-init in `sendOneMessage()` for stdio transport: before setting up the `onMessage` handler, if the transport is stdio and the message is not `initialize`, send `initialize` and await its response (discarding it) before sending the real message. File: `backend/src/proxy/index.ts:138-206`
+- [X] T079 MEDIUM Fix `HttpTransport.send()` to set `this.initialized = true` after processing an explicit `initialize` response, preventing double auto-init on subsequent messages. File: `backend/src/proxy/transport.ts:400-402`
+- [ ] T080 MEDIUM Manually test `weir --proxy <name>` still works and verify `POST /mcp/:name/message` tools/list round-trip for both stdio backends (Bitbucket) and HTTP backends (ClickUp, Postman) through the MCP port after restarting the app

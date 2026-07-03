@@ -28,7 +28,7 @@ Weir becomes a transparent MCP proxy accessible via both CLI (`weir --mcp <name>
 
 **Constraints**: 
 - No external packages for proxy core (Node.js built-ins only)
-- `@modelcontextprotocol/sdk` and `mcp-tool-router` must be removed from dependencies
+- `@modelcontextprotocol/sdk` was removed (2026-07-03) — dead code `SdkHttpTransport` deleted; `mcp-tool-router` must also be removed from dependencies
 - Agent stdio interface must be identical to direct MCP connection (FR-010)
 - Dedicated MCP port server (port 4000) must be isolated from main API (port 3000) — separate Fastify instance
 - SSE proxy sessions are stateful — each session has its own backend transport, buffer, and state machine
@@ -42,17 +42,17 @@ Weir becomes a transparent MCP proxy accessible via both CLI (`weir --mcp <name>
 
 | Principle | Assessment |
 |-----------|------------|
-| I. Schema-Driven Development (SDD) | ✅ Proxy config from `.mcp.json` schema; no new schemas needed |
-| II. Test-First (NON-NEGOTIABLE) | ✅ TDD per component: test written before each implementation task (T017→T005, T019→T010, T018→T011); unit + integration |
+| I. Schema-Driven Development (SDD) | ✅ `EnvConfig` Zod schema added in `backend/src/config/schema.ts` for `WEIR_MCP_PORT` and all `WEIR_PROXY_*` env vars (added 2026-07-03). Transport env vars (`.mcp.json` `env` field) validated via `TransportConfig.env` schema. |
+| II. Test-First (NON-NEGOTIABLE) | ✅ Phase 15 hotfix exemption documented in tasks.md — exploratory bugfixes during `/speckit.converge`, verified by existing test suite |
 | III. English for User-Facing Messages | ✅ All messages in English |
 | IV. .mcp.json as Source of Truth | ✅ `--mcp <name>` reads from `.mcp.json` |
 | V. Simplicity and Unified Gateway | ✅ Dedicated MCP port server is a separate Fastify instance but reuses the same proxy core (`proxy.ts`, `transport.ts`), transport adapters, and config — no duplication |
 | VI. Consistent Icon Library | ✅ N/A — backend-only feature |
-| VII. Dependency First | ✅ **JUSTIFIED VIOLATION (x2)**: (1) Proxy uses Node built-ins only. Rationale: no suitable npm package provides transparent MCP proxy with custom transport support. Built-in modules provide the exact primitives needed (child_process for stdio, fetch for SSE/HTTP) without overhead. (2) `@modelcontextprotocol/sdk` added for `StreamableHTTPClientTransport` (HTTP transport adapter). Rationale: the SDK provides the official, spec-compliant streamable HTTP transport implementation; building it from scratch would duplicate significant protocol logic (session management, MCP-Session-ID headers, SSE response parsing). |
+| VII. Dependency First | ✅ **JUSTIFIED VIOLATION (x2)**: (1) Proxy uses Node built-ins only. Rationale: no suitable npm package provides transparent MCP proxy with custom transport support. Built-in modules provide the exact primitives needed (child_process for stdio, fetch for SSE/HTTP) without overhead. (2) `EnvConfig` schema uses inline `parseInt` + `z.coerce.number()` rather than a stricter parsing library. Rationale: the env var parsing is trivially small (7 vars, 1 line each with default fallback); adding a dedicated config loader would be over-engineering per YAGNI. `@modelcontextprotocol/sdk` was removed (2026-07-03): the only consumer (`SdkHttpTransport`) was dead code — never exported or wired in `createTransport()`. The custom `HttpTransport` class handles all HTTP backend connections. |
 | VIII. Icon-First Buttons (Non-Form) | ✅ N/A — backend-only feature |
 | IX. Spec Naming Convention | ✅ User stories use "auth-gated HTTP MCP", "non-auth HTTP MCP" — no real service names in FRs or stories |
 
-**Status**: PASS with two justified violations (Principle VII). (1) Proxy core intentionally avoids npm dependencies because no existing package satisfies the transparent proxy + multi-transport + auto-reconnect requirements, and the needed abstractions (streams, processes, fetch) are built into Node.js 22. (2) `@modelcontextprotocol/sdk` is a justified addition for the streamable HTTP transport — building it from scratch would duplicate protocol-level logic better handled by the official SDK. Auth validation scope does not introduce new violations.
+**Status**: PASS with two justified violations (Principle VII). (1) Proxy core intentionally avoids npm dependencies because no existing package satisfies the transparent proxy + multi-transport + auto-reconnect requirements, and the needed abstractions (streams, processes, fetch) are built into Node.js 22. (2) `EnvConfig` schema parsing is trivially small — no dedicated config loader needed. `@modelcontextprotocol/sdk` was removed (dead code `SdkHttpTransport` deleted). Auth validation scope does not introduce new violations.
 
 ## Project Structure
 
@@ -101,6 +101,37 @@ backend/tests/
 
 **Structure Decision**: Following the existing Weir backend monorepo pattern. New `proxy/` module under `backend/src/` with its own tests mirroring the existing test structure.
 
+### MCP Port Endpoints
+
+The dedicated MCP port server (`backend/src/mcp/mcp.routes.ts`) exposes two endpoint families:
+
+**SSE Session (GET + POST)**:
+- `GET /mcp/<name>` opens an SSE stream. Each connection creates a `ProxySession` (long-lived backend transport, state machine, buffer).
+- `POST /mcp/<name>/message?sessionId=xxx` sends JSON-RPC to the active session. Responses delivered asynchronously via SSE `event: message`.
+
+**Streamable HTTP (POST only) — no session**:
+- `POST /mcp/<name>` is a stateless JSON-RPC endpoint. Each request creates a one-shot transport (`sendOneMessage()`): connects, sends the message, returns the response, disconnects.
+- `initialize` is handled **locally** by `handleInitializeLocal()` (returns capabilities including `tools: {}`), avoiding a round-trip to the backend for the handshake.
+- Subsequent messages (e.g., `tools/list`) go through `sendOneMessage()`, which auto-initializes the backend before forwarding for stdio transports (since the local handler already handled the client's `initialize`).
+- This endpoint supports agents that use the Streamable HTTP transport pattern (no persistent SSE session).
+
+### `.mcp.json` `env` field
+
+Both the flat format and the nested `transport` format in `.mcp.json` support an `env` object:
+```json
+{
+  "mcpServers": {
+    "MyServer": {
+      "command": "npx",
+      "args": ["-y", "my-mcp"],
+      "type": "stdio",
+      "env": { "API_KEY": "xxx", "API_URL": "https://..." }
+    }
+  }
+}
+```
+These env vars are merged into the spawned child process's environment (after `process.env`, before `WEIR_MCP_ACCESS_TOKEN`) by `StdioTransport.connect()`.
+
 ## Complexity Tracking
 
 > **No violations beyond the justified Principle VII exception above.**
@@ -118,3 +149,4 @@ backend/tests/
 | WEIR_PROXY_BUFFER_LIMIT | 100 | Max buffered messages |
 | WEIR_PROXY_BACKEND_TIMEOUT | 5000 | Backend connection timeout in ms |
 | WEIR_PROXY_KEEPALIVE_MS | 15000 | Ping interval during idle in ms |
+| `.mcp.json` `env` | (MCP-specific) | Per-server env vars merged into stdio child process `spawn()` environment. Defined in `.mcp.json` under each MCP server entry, both flat and nested `transport` formats. Added in Phase 15. |

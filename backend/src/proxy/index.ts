@@ -39,6 +39,7 @@ export function resolveBackendConfig(name: string): ProxyConfig {
     } else {
       proxyConfig.url = transportEntry['url'] as string;
     }
+    proxyConfig.env = entry['env'] as Record<string, string> | undefined;
     return proxyConfig;
   }
 
@@ -48,6 +49,7 @@ export function resolveBackendConfig(name: string): ProxyConfig {
       transport: 'stdio',
       command: entry['command'] as string,
       args: entry['args'] as string[] | undefined,
+      env: entry['env'] as Record<string, string> | undefined,
     };
   }
 
@@ -57,6 +59,7 @@ export function resolveBackendConfig(name: string): ProxyConfig {
       name,
       transport: entryType as 'stdio' | 'sse' | 'http',
       url: entry['url'] as string,
+      env: entry['env'] as Record<string, string> | undefined,
     };
   }
 
@@ -160,12 +163,6 @@ export async function sendOneMessage(
       }, { once: true });
     }
 
-    transport.onMessage((msg) => {
-      clearTimeout(timeout);
-      transport.disconnect();
-      resolve(msg);
-    });
-
     transport.onError((err) => {
       clearTimeout(timeout);
       transport.disconnect();
@@ -174,7 +171,32 @@ export async function sendOneMessage(
 
     transport
       .connect()
-      .then(() => transport.send(message))
+      .then(async () => {
+        if (config.transport === 'stdio' && message.method && message.method !== 'initialize') {
+          const initBody: JsonRpcMessage = {
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'initialize',
+            params: {
+              protocolVersion: '2024-11-05',
+              capabilities: {},
+              clientInfo: { name: 'weir-proxy', version: '0.1.0' },
+            },
+          };
+          await new Promise<void>((resolveInit) => {
+            transport.onMessage(() => resolveInit());
+            transport.send(initBody).catch(() => {});
+          });
+        }
+
+        transport.onMessage((msg) => {
+          clearTimeout(timeout);
+          transport.disconnect();
+          resolve(msg);
+        });
+
+        await transport.send(message);
+      })
       .catch((err) => {
         clearTimeout(timeout);
         transport.disconnect();
