@@ -1,8 +1,39 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
+import pino from 'pino';
 import { ProxyState, type ProxyConfig, type ProxyOptions, type JsonRpcMessage, type ProxySessionHandle, defaultProxyOptions } from './types.js';
 import { createTransport } from './transport.js';
 import { startProxy } from './proxy.js';
+import { loadFieldProjections } from '../projection/index.js';
+import { applyFieldSelection } from '../projection/project.js';
+import type { ProjectionMap, FieldSelection } from '../config/types.js';
+
+const logger = pino({ name: 'proxy' });
+
+let _projectionMap: ProjectionMap | null | undefined = undefined;
+
+function getProjectionMap(): ProjectionMap | null {
+  if (_projectionMap === undefined) {
+    try {
+      const configDir = dirname(resolveMcpConfigPath());
+      _projectionMap = loadFieldProjections(configDir);
+      if (_projectionMap) {
+        logger.info('Field projection config loaded');
+      }
+    } catch (err) {
+      logger.warn({ err }, 'Failed to load field-projection.json');
+      _projectionMap = null;
+    }
+  }
+  return _projectionMap;
+}
+
+function getToolName(message: JsonRpcMessage): string | undefined {
+  if (message.method === 'tools/call' && message.params && typeof message.params === 'object' && 'name' in (message.params as Record<string, unknown>)) {
+    return (message.params as Record<string, unknown>).name as string;
+  }
+  return message.method;
+}
 
 export function resolveMcpConfigPath(): string {
   return process.env['MCP_CONFIG_PATH'] || resolve(process.cwd(), '.mcp.json');
@@ -192,6 +223,22 @@ export async function sendOneMessage(
         transport.onMessage((msg) => {
           clearTimeout(timeout);
           transport.disconnect();
+
+          const toolName = getToolName(message);
+          if (msg.result && toolName) {
+            const projectionMap = getProjectionMap();
+            const serverProjections = projectionMap?.[name];
+            const sel: FieldSelection | undefined = serverProjections?.[toolName];
+            if (sel) {
+              try {
+                msg.result = applyFieldSelection(msg.result, sel);
+                logger.info({ tool: toolName, mode: sel.mode, fields: sel.fields.length }, 'Field projection applied');
+              } catch (err) {
+                logger.warn({ err, tool: toolName }, 'Field projection failed, using original result');
+              }
+            }
+          }
+
           resolve(msg);
         });
 

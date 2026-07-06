@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TransportType, TransportConfig, MCPServerEntry, MCPConfig, TestConnectionRequest, TestConnectionResponse } from './schema.js';
+import { TransportType, TransportConfig, MCPServerEntry, MCPConfig, TestConnectionRequest, TestConnectionResponse, FieldSelectionSchema, FieldProjectionConfig } from './schema.js';
 
 export type TransportType = z.infer<typeof TransportType>;
 
@@ -12,6 +12,16 @@ export type MCPConfig = z.infer<typeof MCPConfig>;
 export type TestConnectionRequest = z.infer<typeof TestConnectionRequest>;
 
 export type TestConnectionResponse = z.infer<typeof TestConnectionResponse>;
+
+export type FieldSelection = z.infer<typeof FieldSelectionSchema>;
+
+export type FieldProjectionConfig = z.infer<typeof FieldProjectionConfig>;
+
+export interface ProjectionMap {
+  [serverName: string]: {
+    [toolName: string]: FieldSelection;
+  };
+}
 
 export interface MCPClient {
   name: string;
