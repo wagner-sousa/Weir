@@ -1,6 +1,6 @@
 import type { MCPClient } from '../services/api';
 import { Badge } from './Badge';
-import { ShieldAlert, CircleCheck, CircleX, LoaderCircle, Circle, Pencil, RotateCcw, Trash2, Plug } from 'lucide-react';
+import { ShieldAlert, CircleCheck, CircleX, LoaderCircle, Circle, Pencil, RotateCcw, Trash2, Plug, Wrench } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 interface MCPCardProps {
@@ -10,6 +10,7 @@ interface MCPCardProps {
   onReconnect?: (client: MCPClient) => void;
   onAuth?: (client: MCPClient) => void;
   onConfig?: (name: string) => void;
+  onProjection?: (name: string) => void;
   removing?: boolean;
   reconnecting?: boolean;
 }
@@ -36,7 +37,7 @@ const transportVariant: Record<string, string> = {
   sse: 'sse',
 };
 
-export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, onConfig, removing, reconnecting }: MCPCardProps) {
+export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, onConfig, onProjection, removing, reconnecting }: MCPCardProps) {
   const status = client.status || 'disconnected';
   const si = statusIcons[status] || statusIcons.disconnected;
   const known = transportVariant[client.transport];
@@ -61,14 +62,6 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, onConfi
         </div>
         <div className="flex items-center gap-2">
           <Badge variant={variant} label={known ? client.transport : 'Unknown'} />
-          {client.toolCount !== undefined && (
-            <span
-              className="rounded-full bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-300"
-              title={client.toolCount === 0 ? 'No tools available' : `${client.toolCount} tools`}
-            >
-              {client.toolCount === 0 && (status === 'unknown' || status === 'testing') ? '?' : client.toolCount}
-            </span>
-          )}
         </div>
       </div>
       {client.command && (
@@ -82,6 +75,21 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, onConfi
         </p>
       )}
       <div className="mt-3 flex justify-end gap-2 border-t border-theme-border pt-2">
+        {client.status === 'connected' && (
+          <button
+            onClick={() => onProjection?.(client.name)}
+            aria-label="Field projection"
+            title="Configure field projection"
+            className="relative rounded p-1.5 text-gray-400 hover:bg-teal-600/20 hover:text-teal-400"
+          >
+            <Wrench className="h-4 w-4" />
+            {client.toolCount !== undefined && client.toolCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-teal-600 text-[10px] font-medium text-white">
+                {client.toolCount}
+              </span>
+            )}
+          </button>
+        )}
         {client.status !== 'needsAuth' && (
           <button
             onClick={() => onReconnect?.(client)}

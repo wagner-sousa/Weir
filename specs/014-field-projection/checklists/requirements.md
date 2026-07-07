@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-07-06
-**Feature**: [spec.md](../spec.md)
+**Feature**: [spec.md](spec.md)
 
 ## Content Quality
 
@@ -32,3 +32,4 @@
 ## Notes
 
 - All items pass. Spec is ready for planning phase.
+- Spec updated to include automatic file creation requirement (US3, FR-011 to FR-013, SC-008).

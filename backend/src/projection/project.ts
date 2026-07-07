@@ -1,3 +1,5 @@
+import parse from 'jsonpath-rfc9535/parser';
+
 export interface FieldSelection {
   mode: 'include' | 'exclude';
   fields: string[];
@@ -11,6 +13,17 @@ function isPlainObject(v: Json): v is Record<string, Json> {
 
 export function normalizeJsonPath(path: string): string {
   if (!path) throw new Error('Path must not be empty');
+
+  try {
+    if (path.startsWith('$')) {
+      parse(path);
+    } else {
+      parse(`$.${path}`);
+    }
+  } catch {
+    throw new Error(`Invalid JSONPath syntax: "${path}"`);
+  }
+
   let normalized = path;
 
   if (normalized === '$' || normalized === '$[*]') {
@@ -26,20 +39,10 @@ export function normalizeJsonPath(path: string): string {
   }
 
   normalized = normalized.replace(/\[(\d+)\]/g, '.$1');
+  normalized = normalized.replace(/\[\*\]/g, '');
 
   if (normalized.startsWith('.') || normalized.endsWith('.')) {
     throw new Error(`Malformed path: "${path}"`);
-  }
-
-  const openBrackets = (normalized.match(/\[/g) || []).length;
-  const closeBrackets = (normalized.match(/\]/g) || []).length;
-  if (openBrackets !== closeBrackets) {
-    throw new Error(`Unbalanced brackets in path: "${path}"`);
-  }
-
-  const forbidden = /[@?()!^~]/;
-  if (forbidden.test(normalized)) {
-    throw new Error(`Unsupported JSONPath operator in path: "${path}"`);
   }
 
   return normalized;

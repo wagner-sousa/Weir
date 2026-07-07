@@ -51,6 +51,22 @@ An operator edits `field-projection.json` to define field projection per tool, w
 4. **Given** a `field-projection.json` with `MyServer.getData = {mode: "include", fields: ["invalid[path"]}`, **When** the proxy validates the config, **Then** it rejects the malformed JSONPath.
 5. **Given** a `field-projection.json` with `NonExistent = {getX: {mode: "include", fields: ["id"]}}`, **When** the proxy loads the config, **Then** it silently ignores entries for servers not present in `.mcp.json`.
 
+---
+
+### User Story 3 - Automatic File Creation on First Use (Priority: P3)
+
+An operator configures field projection for a tool via the API or UI, and the system automatically creates `field-projection.json` if it does not yet exist, without requiring manual file creation.
+
+**Why this priority**: Reduces friction for first-time users — they don't need to manually create the file before configuring projections. The file is created on-demand when the first projection is configured.
+
+**Independent Test**: Can be tested by deleting `field-projection.json`, configuring a field projection via API, and verifying the file is created with the correct structure.
+
+**Acceptance Scenarios**:
+
+1. **Given** `field-projection.json` does not exist, **When** the operator configures a projection for `MyServer.getRepository = {mode: "include", fields: ["id"]}` via API, **Then** the system creates `field-projection.json` with the new configuration.
+2. **Given** `field-projection.json` already exists with other projections, **When** the operator adds a new projection, **Then** the system appends to the existing file without overwriting other entries.
+3. **Given** `field-projection.json` does not exist and the operator removes a projection, **When** the removal is processed, **Then** no file is created (file is only created on add/update, not on remove of non-existent entries).
+
 ### Edge Cases
 
 - What happens when mode is `include` and a path does not exist? The path is silently skipped; remaining paths are processed.
@@ -61,6 +77,9 @@ An operator edits `field-projection.json` to define field projection per tool, w
 - What happens when the tool is not configured in fieldProjection? No projection is applied; the response passes unchanged.
 - What happens when `field-projection.json` does not exist? The proxy starts normally — projection is simply skipped for all tools.
 - What happens when `field-projection.json` exists but references servers not in `.mcp.json`? Those entries are silently ignored.
+- What happens when `field-projection.json` does not exist and a projection is configured via API? The file is created automatically with the new projection.
+- What happens when `field-projection.json` exists and a new projection is added? The existing entries are preserved; the new projection is merged into the file.
+- What happens when the directory for `field-projection.json` is read-only? The API returns an error indicating the file could not be created.
 
 ## Requirements *(mandatory)*
 
@@ -76,6 +95,9 @@ An operator edits `field-projection.json` to define field projection per tool, w
 - **FR-008**: System MUST silently skip missing paths — if a path does not exist in the response, it is ignored and remaining paths are still processed. If no paths match: include → `{}`, exclude → original unchanged.
 - **FR-009**: System MUST validate `field-projection.json` against a Zod schema at load time: `z.record(z.string(), z.record(z.string(), z.object({ mode: z.enum(["include", "exclude"]), fields: z.array(z.string()).min(1) })))`, rejecting invalid modes, empty fields, or malformed JSON.
 - **FR-010**: System MUST validate each field path string in `fields` as syntactically valid JSONPath — rejecting paths with invalid characters, malformed dot-notation, unbalanced brackets, or unsupported operators.
+- **FR-011**: System MUST automatically create `field-projection.json` when a field projection is configured via API and the file does not yet exist.
+- **FR-012**: System MUST preserve existing entries in `field-projection.json` when adding or updating a projection — the file is merged, not overwritten.
+- **FR-013**: System MUST NOT create `field-projection.json` on read operations or when no projections are configured — the file is only created on first write.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -94,6 +116,7 @@ An operator edits `field-projection.json` to define field projection per tool, w
 - **SC-005**: Missing paths do not cause projection to fail — they are silently skipped.
 - **SC-006**: Responses from tools without fieldProjection configuration pass through unmodified — zero overhead for unconfigured tools.
 - **SC-007**: `.mcp.json` remains completely untouched — no fieldProjection keys are added to it.
+- **SC-008**: Operators can configure field projection without manually creating `field-projection.json` — the file is created automatically on first use.
 
 ## Assumptions
 
@@ -103,3 +126,4 @@ An operator edits `field-projection.json` to define field projection per tool, w
 - Paths use dot-notation JSONPath: `field` for top-level, `parent.child` for nested, `[*]` prefix for array traversal, `items[0]` for index access. Each path is validated for syntactic correctness at config load time.
 - Server names in `field-projection.json` MUST match server names in `.mcp.json` for projection to apply. Mismatched names are silently ignored.
 - The feature does not introduce any new endpoints or change the MCP port behavior.
+- The `field-projection.json` file is created automatically when the first projection is configured via API. The directory is derived from the `MCP_CONFIG_PATH` environment variable.

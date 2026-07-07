@@ -1,9 +1,9 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
-import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { writeFileSync, mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { applyFieldSelection, normalizeJsonPath } from '../../src/projection/project.js';
-import { loadFieldProjections } from '../../src/projection/index.js';
+import { loadFieldProjections, saveFieldProjection, removeFieldProjection } from '../../src/projection/index.js';
 
 describe('normalizeJsonPath', () => {
   it('strips $. prefix', () => {
@@ -39,7 +39,7 @@ describe('normalizeJsonPath', () => {
   });
 
   it('rejects malformed brackets', () => {
-    expect(() => normalizeJsonPath('invalid[path')).toThrow();
+    expect(() => normalizeJsonPath('invalid[path')).toThrow('Invalid JSONPath syntax');
   });
 });
 
@@ -154,6 +154,39 @@ describe('applyFieldSelection — edge cases', () => {
       applyFieldSelection(input, { mode: 'include', fields: ['$[*].tasks.id'] }),
     ).toEqual({ tasks: [{ id: 1 }] });
   });
+
+  it('applies projection to JSON inside MCP content format', () => {
+    const input = {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify([
+            { id: 1, title: 'PR1', state: 'OPEN', extra: 'x' },
+          ]),
+        },
+      ],
+    };
+    const sel = { mode: 'include', fields: ['$[*].id', '$[*].title'] };
+
+    const parsed = JSON.parse(input.content[0].text);
+    const projected = applyFieldSelection(parsed, sel);
+    const result = {
+      ...input,
+      content: [{ ...input.content[0], text: JSON.stringify(projected) }],
+    };
+
+    expect(JSON.parse(result.content[0].text)).toEqual([
+      { id: 1, title: 'PR1' },
+    ]);
+  });
+
+  it('applyFieldSelection on MCP content wrapper returns {} (old bug)', () => {
+    const input = {
+      content: [{ type: 'text', text: JSON.stringify([{ id: 1 }]) }],
+    };
+    const sel = { mode: 'include', fields: ['id'] };
+    expect(applyFieldSelection(input, sel)).toEqual({});
+  });
 });
 
 describe('loadFieldProjections', () => {
@@ -229,5 +262,140 @@ describe('loadFieldProjections', () => {
     };
     writeFileSync(join(tmpDir, 'field-projection.json'), JSON.stringify(config));
     expect(loadFieldProjections(tmpDir)).toEqual(config);
+  });
+});
+
+describe('saveFieldProjection', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = join(tmpdir(), `weir-fp-save-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    mkdirSync(tmpDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('creates field-projection.json when it does not exist', () => {
+    const fpPath = join(tmpDir, 'field-projection.json');
+    expect(existsSync(fpPath)).toBe(false);
+
+    saveFieldProjection(tmpDir, 'myServer', 'getRepo', { mode: 'include', fields: ['id'] });
+
+    expect(existsSync(fpPath)).toBe(true);
+    const data = JSON.parse(readFileSync(fpPath, 'utf-8'));
+    expect(data).toEqual({
+      myServer: { getRepo: { mode: 'include', fields: ['id'] } },
+    });
+  });
+
+  it('preserves existing entries when adding a new projection', () => {
+    const fpPath = join(tmpDir, 'field-projection.json');
+    writeFileSync(fpPath, JSON.stringify({
+      server1: { tool1: { mode: 'include', fields: ['a'] } },
+    }));
+
+    saveFieldProjection(tmpDir, 'server2', 'tool2', { mode: 'exclude', fields: ['b'] });
+
+    const data = JSON.parse(readFileSync(fpPath, 'utf-8'));
+    expect(data).toEqual({
+      server1: { tool1: { mode: 'include', fields: ['a'] } },
+      server2: { tool2: { mode: 'exclude', fields: ['b'] } },
+    });
+  });
+
+  it('updates existing projection for same server/tool', () => {
+    const fpPath = join(tmpDir, 'field-projection.json');
+    writeFileSync(fpPath, JSON.stringify({
+      myServer: { getRepo: { mode: 'include', fields: ['id'] } },
+    }));
+
+    saveFieldProjection(tmpDir, 'myServer', 'getRepo', { mode: 'exclude', fields: ['secret'] });
+
+    const data = JSON.parse(readFileSync(fpPath, 'utf-8'));
+    expect(data).toEqual({
+      myServer: { getRepo: { mode: 'exclude', fields: ['secret'] } },
+    });
+  });
+
+  it('throws on invalid JSONPath', () => {
+    expect(() => {
+      saveFieldProjection(tmpDir, 'srv', 'tool', { mode: 'include', fields: ['invalid['] });
+    }).toThrow();
+  });
+
+  it('throws on empty fields array', () => {
+    expect(() => {
+      saveFieldProjection(tmpDir, 'srv', 'tool', { mode: 'include', fields: [] });
+    }).toThrow();
+  });
+});
+
+describe('removeFieldProjection', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = join(tmpdir(), `weir-fp-remove-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    mkdirSync(tmpDir, { recursive: true });
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('returns false when file does not exist', () => {
+    const result = removeFieldProjection(tmpDir, 'srv', 'tool');
+    expect(result).toBe(false);
+  });
+
+  it('removes projection and returns true', () => {
+    const fpPath = join(tmpDir, 'field-projection.json');
+    writeFileSync(fpPath, JSON.stringify({
+      myServer: { getRepo: { mode: 'include', fields: ['id'] } },
+    }));
+
+    const result = removeFieldProjection(tmpDir, 'myServer', 'getRepo');
+    expect(result).toBe(true);
+
+    const data = JSON.parse(readFileSync(fpPath, 'utf-8'));
+    expect(data).toEqual({});
+  });
+
+  it('preserves other projections when removing one', () => {
+    const fpPath = join(tmpDir, 'field-projection.json');
+    writeFileSync(fpPath, JSON.stringify({
+      server1: { tool1: { mode: 'include', fields: ['a'] } },
+      server2: { tool2: { mode: 'exclude', fields: ['b'] } },
+    }));
+
+    removeFieldProjection(tmpDir, 'server1', 'tool1');
+
+    const data = JSON.parse(readFileSync(fpPath, 'utf-8'));
+    expect(data).toEqual({
+      server2: { tool2: { mode: 'exclude', fields: ['b'] } },
+    });
+  });
+
+  it('removes empty server entry after removing last tool', () => {
+    const fpPath = join(tmpDir, 'field-projection.json');
+    writeFileSync(fpPath, JSON.stringify({
+      myServer: { getRepo: { mode: 'include', fields: ['id'] } },
+    }));
+
+    removeFieldProjection(tmpDir, 'myServer', 'getRepo');
+
+    const data = JSON.parse(readFileSync(fpPath, 'utf-8'));
+    expect(data.myServer).toBeUndefined();
+  });
+
+  it('returns false when projection does not exist', () => {
+    const fpPath = join(tmpDir, 'field-projection.json');
+    writeFileSync(fpPath, JSON.stringify({
+      myServer: { getRepo: { mode: 'include', fields: ['id'] } },
+    }));
+
+    const result = removeFieldProjection(tmpDir, 'myServer', 'nonexistent');
+    expect(result).toBe(false);
   });
 });

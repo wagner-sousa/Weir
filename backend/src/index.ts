@@ -12,6 +12,7 @@ import { setupWebSocket } from './api/ws.js';
 import { createWatcher } from './config/watcher.js';
 import { migrateFromMcpJson } from './services/auth-storage.js';
 import { startMcpServer } from './mcp/mcp.server.js';
+import { invalidateProjectionMap } from './proxy/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -54,9 +55,25 @@ export async function buildApp() {
     },
   );
 
+  const projectionConfigPath = join(dirname(mcpConfigPath), 'field-projection.json');
+  const fpWatcher = createWatcher(
+    projectionConfigPath,
+    () => {
+      invalidateProjectionMap();
+      ws.broadcast('config:changed', { path: projectionConfigPath });
+      app.log.info('Field-projection changed, cache invalidated');
+    },
+    (deletedPath) => {
+      invalidateProjectionMap();
+      ws.broadcast('config:deleted', { path: deletedPath });
+      app.log.warn(`Field-projection deleted: ${deletedPath}`);
+    },
+  );
+
   await app.register(async (instance) => {
     instance.decorate('ws', ws);
     instance.decorate('watcher', watcher);
+    instance.decorate('fpWatcher', fpWatcher);
   });
 
   await app.register(mcpRoutes);

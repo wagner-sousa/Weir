@@ -167,3 +167,15 @@ Task: "T008 Implement applyFieldSelection, includeNode, removePath"
 - [x] T018 Update `specs/014-field-projection/contracts/project.ts` with actual implementations instead of TODO stubs (partial — documentation)
 - [x] T019 Remove or implement `resolveProjection` in `specs/014-field-projection/data-model.md` (function referenced in docs but doesn't exist in code) (partial — documentation)
 - [x] T020 Fix `specs/014-field-projection/quickstart.md` log message to match actual code: `'Field projection config loaded'` (partial — documentation)
+
+---
+
+## Phase 7: Convergence (US3 — Auto-Creation)
+
+- [x] T021 Implement `saveFieldProjection(serverName, toolName, selection)` in `backend/src/projection/index.ts` — writes to `field-projection.json`, creates file if missing, merges with existing entries per FR-011 and FR-012 (missing — FR-011, FR-012)
+- [x] T022 Implement `removeFieldProjection(serverName, toolName)` in `backend/src/projection/index.ts` — removes projection entry, does NOT create file if it doesn't exist per FR-013 (missing — FR-013)
+- [x] T023 Add API endpoint `GET /api/mcps/:name/projections` in `backend/src/api/mcp.routes.ts` — returns current field projections for a specific MCP server (missing — US3)
+- [x] T024 Add API endpoint `POST /api/mcps/:name/projections` in `backend/src/api/mcp.routes.ts` — creates/updates field projection for a tool, auto-creates `field-projection.json` if missing per FR-011 (missing — US3/AC1)
+- [x] T025 Add API endpoint `DELETE /api/mcps/:name/projections/:toolName` in `backend/src/api/mcp.routes.ts` — removes field projection for a tool per FR-013 (missing — US3/AC3)
+- [x] T026 Write tests for auto-creation behavior in `backend/tests/unit/projection.test.ts` — verify file is created when missing, existing entries are preserved, file is not created on read operations per US3/AC1-3 (missing — US3)
+- [x] T027 Write integration tests for projection API endpoints in `backend/tests/integration/projection-api.test.ts` — verify POST creates file, GET returns projections, DELETE removes entries, merge behavior per US3 (missing — US3)

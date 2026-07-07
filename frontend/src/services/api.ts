@@ -148,6 +148,60 @@ export async function updateMCP(
   return body;
 }
 
+export interface ProjectionSelection {
+  mode: 'include' | 'exclude';
+  fields: string[];
+}
+
+export interface ProjectionsResponse {
+  projections: Record<string, ProjectionSelection>;
+}
+
+export async function fetchProjections(
+  name: string,
+): Promise<ProjectionsResponse> {
+  const res = await fetch(`${API_BASE}/mcps/${encodeURIComponent(name)}/projections`);
+  if (!res.ok) {
+    return { projections: {} };
+  }
+  return res.json();
+}
+
+export async function saveProjection(
+  mcpName: string,
+  toolName: string,
+  selection: ProjectionSelection,
+): Promise<{ success: boolean; error?: string }> {
+  const res = await fetch(
+    `${API_BASE}/mcps/${encodeURIComponent(mcpName)}/projections/${encodeURIComponent(toolName)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(selection),
+    },
+  );
+  const body = await res.json();
+  if (!res.ok) {
+    return { success: false, error: body.error || `HTTP ${res.status}` };
+  }
+  return body;
+}
+
+export async function removeProjection(
+  mcpName: string,
+  toolName: string,
+): Promise<{ success: boolean; error?: string }> {
+  const res = await fetch(
+    `${API_BASE}/mcps/${encodeURIComponent(mcpName)}/projections/${encodeURIComponent(toolName)}`,
+    { method: 'DELETE' },
+  );
+  const body = await res.json();
+  if (!res.ok) {
+    return { success: false, error: body.error || `HTTP ${res.status}` };
+  }
+  return body;
+}
+
 export function connectWebSocket(
   onConfigChanged: () => void,
   onStatusEvent?: (event: StatusEvent) => void,
