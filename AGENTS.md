@@ -1,6 +1,9 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan at specs/010-mcp-transparent-proxy/plan.md
+shell commands, and other important information, read the current plan at specs/013-json-toon-conversion/plan.md
+For research findings, see specs/013-json-toon-conversion/research.md
+For the data model, see specs/013-json-toon-conversion/data-model.md
+For validation scenarios, see specs/013-json-toon-conversion/quickstart.md
 <!-- SPECKIT END -->
 
 ## Conhecidos Pitfalls (Docker & ESM)

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TransportType, TransportConfig, MCPServerEntry, MCPConfig, TestConnectionRequest, TestConnectionResponse } from './schema.js';
+import { TransportType, TransportConfig, MCPServerEntry, MCPConfig, TestConnectionRequest, TestConnectionResponse, OutputMode, ToonOptions } from './schema.js';
 
 export type TransportType = z.infer<typeof TransportType>;
 
@@ -12,6 +12,10 @@ export type MCPConfig = z.infer<typeof MCPConfig>;
 export type TestConnectionRequest = z.infer<typeof TestConnectionRequest>;
 
 export type TestConnectionResponse = z.infer<typeof TestConnectionResponse>;
+
+export type OutputMode = z.infer<typeof OutputMode>;
+
+export type ToonOptions = z.infer<typeof ToonOptions>;
 
 export interface MCPClient {
   name: string;

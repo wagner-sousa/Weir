@@ -1,8 +1,13 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
+import pino from 'pino';
 import { ProxyState, type ProxyConfig, type ProxyOptions, type JsonRpcMessage, type ProxySessionHandle, defaultProxyOptions } from './types.js';
 import { createTransport } from './transport.js';
 import { startProxy } from './proxy.js';
+import { ToonConverter } from '../toon/converter.js';
+import { parseEnvConfig } from '../config/schema.js';
+
+const logger = pino({ name: 'weir-proxy' });
 
 export function resolveMcpConfigPath(): string {
   return process.env['MCP_CONFIG_PATH'] || resolve(process.cwd(), '.mcp.json');
@@ -17,6 +22,17 @@ export function readMcpConfig(): Record<string, unknown> {
   return JSON.parse(raw) as Record<string, unknown>;
 }
 
+export function resolveOutputMode(entry: Record<string, unknown>, envOutputMode?: string): 'dynamic' | 'json' | 'toon' {
+  const perBackend = entry['outputMode'] as string | undefined;
+  if (perBackend && ['dynamic', 'json', 'toon'].includes(perBackend)) {
+    return perBackend as 'dynamic' | 'json' | 'toon';
+  }
+  if (envOutputMode && ['dynamic', 'json', 'toon'].includes(envOutputMode)) {
+    return envOutputMode as 'dynamic' | 'json' | 'toon';
+  }
+  return 'dynamic';
+}
+
 export function resolveBackendConfig(name: string): ProxyConfig {
   const config = readMcpConfig();
   const mcpServers = config['mcpServers'] as Record<string, unknown> | undefined;
@@ -25,6 +41,12 @@ export function resolveBackendConfig(name: string): ProxyConfig {
   }
 
   const entry = mcpServers[name] as Record<string, unknown>;
+  const envConfig = parseEnvConfig();
+  const rawOutputMode = entry['outputMode'];
+  if (rawOutputMode !== undefined && typeof rawOutputMode === 'string' && !['dynamic', 'json', 'toon'].includes(rawOutputMode)) {
+    logger.warn({ outputMode: rawOutputMode }, `TOON: invalid outputMode "${rawOutputMode}" for backend "${name}", falling back to env/default`);
+  }
+  const outputMode = resolveOutputMode(entry, envConfig.WEIR_TOON_OUTPUT_MODE);
 
   const transportEntry = entry['transport'] as Record<string, unknown> | undefined;
   if (transportEntry) {
@@ -32,6 +54,7 @@ export function resolveBackendConfig(name: string): ProxyConfig {
     const proxyConfig: ProxyConfig = {
       name,
       transport: transportType as 'stdio' | 'sse' | 'http',
+      outputMode,
     };
     if (transportType === 'stdio') {
       proxyConfig.command = transportEntry['command'] as string;
@@ -50,6 +73,7 @@ export function resolveBackendConfig(name: string): ProxyConfig {
       command: entry['command'] as string,
       args: entry['args'] as string[] | undefined,
       env: entry['env'] as Record<string, string> | undefined,
+      outputMode,
     };
   }
 
@@ -60,6 +84,7 @@ export function resolveBackendConfig(name: string): ProxyConfig {
       transport: entryType as 'stdio' | 'sse' | 'http',
       url: entry['url'] as string,
       env: entry['env'] as Record<string, string> | undefined,
+      outputMode,
     };
   }
 
@@ -135,6 +160,17 @@ export function createProxySession(name: string): ProxySessionHandle {
   };
 }
 
+function createConverterForConfig(config: ProxyConfig): ToonConverter {
+  const envConfig = parseEnvConfig();
+  return new ToonConverter({
+    indent: envConfig.WEIR_TOON_INDENT,
+    flattenDepth: envConfig.WEIR_TOON_FLATTEN_DEPTH,
+    threshold: envConfig.WEIR_TOON_THRESHOLD,
+    outputMode: config.outputMode || envConfig.WEIR_TOON_OUTPUT_MODE,
+    autoConvert: envConfig.WEIR_TOON_AUTO_CONVERT,
+  });
+}
+
 export async function sendOneMessage(
   name: string,
   message: JsonRpcMessage,
@@ -144,7 +180,7 @@ export async function sendOneMessage(
   config.accessToken = resolveAccessToken(name);
   const transport = createTransport(config);
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolvePromise, reject) => {
     const httpTimeout = parseInt(
       process.env['WEIR_PROXY_HTTP_TIMEOUT'] || '30000',
       10,
@@ -192,7 +228,22 @@ export async function sendOneMessage(
         transport.onMessage((msg) => {
           clearTimeout(timeout);
           transport.disconnect();
-          resolve(msg);
+
+          if (msg.result && message.method === 'tools/call') {
+            try {
+              const converter = createConverterForConfig(config);
+              const converted = converter.convertResult(msg.result);
+              if (converted.converted && converted.savings) {
+                logger.info({ savings: converted.savings }, `TOON: converted ${name}: ${converted.savings.originalTokens}→${converted.savings.toonTokens} tok (${converted.savings.percent}% savings)`);
+              }
+              resolvePromise({ ...msg, result: converted.result } as JsonRpcMessage);
+            } catch (err) {
+              logger.warn({ err }, `TOON: conversion failed for ${name}, returning original JSON`);
+              resolvePromise(msg);
+            }
+          } else {
+            resolvePromise(msg);
+          }
         });
 
         await transport.send(message);
