@@ -179,3 +179,10 @@ Task: "T008 Implement applyFieldSelection, includeNode, removePath"
 - [x] T025 Add API endpoint `DELETE /api/mcps/:name/projections/:toolName` in `backend/src/api/mcp.routes.ts` — removes field projection for a tool per FR-013 (missing — US3/AC3)
 - [x] T026 Write tests for auto-creation behavior in `backend/tests/unit/projection.test.ts` — verify file is created when missing, existing entries are preserved, file is not created on read operations per US3/AC1-3 (missing — US3)
 - [x] T027 Write integration tests for projection API endpoints in `backend/tests/integration/projection-api.test.ts` — verify POST creates file, GET returns projections, DELETE removes entries, merge behavior per US3 (missing — US3)
+
+---
+
+## Phase 8: Convergence
+
+- [ ] T028 Resolve `jsonpath-rfc9535` dependency contradiction: either replace with pure-TS validation to match plan's "zero new external dependencies" mandate, OR update plan.md / contracts to acknowledge the external dep (plan.md: dependency decision — contradicts)
+- [ ] T029 Compile and start the application via docker-compose for manual testing per Constitution Dev Workflow Rule 10 (Constitution Rule 10 — missing)
