@@ -12,11 +12,13 @@ Inject field projection into the Weir proxy pipeline to reduce MCP tool response
 
 **Language/Version**: TypeScript 5.7+ (Node.js 22, ESM)
 
-**Primary Dependencies**: None new — Zod 3.24 (already in project) for config schema; projection logic is pure TS (no suitable npm package exists per research.md — Principle VII exemption documented)
+**Primary Dependencies**: Zod 3.24 (already in project) for config schema; `jsonpath-rfc9535` (NEW — RFC 9535 compliant JSONPath parser for field path validation); core projection logic is pure TS (no suitable npm package exists per research.md — Principle VII exemption documented)
 
 **Storage**: `field-projection.json` on disk, same directory as `.mcp.json` (resolved via `dirname(MCP_CONFIG_PATH)`). No dedicated env var — derives from `MCP_CONFIG_PATH` directory.
 
 **Testing**: Vitest 3 — unit tests in `backend/tests/unit/projection.test.ts`
+
+**Field Path Validation**: Uses `jsonpath-rfc9535/parser` for RFC 9535 compliant syntax validation at config load time (FR-010). Core projection (`includeNode`/`removePath`/`applyFieldSelection`) remains pure TS at ~80 lines.
 
 **Target Platform**: Node.js 22 (backend proxy, both web and proxy modes)
 
@@ -77,4 +79,4 @@ backend/tests/
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
 | IV. .mcp.json SOT — separate config file | `.mcp.json` follows the standard Claude/MCP format; adding Weir-specific keys would break compatibility with upstream tools and confuse operators. Field projection is an orthogonal concern (response transformation) that doesn't belong in connection config. | Inline fieldSelection in `.mcp.json` key rejected because it pollutes the standard MCP format, breaks schema compatibility with Claude Desktop and other MCP hosts, and violates separation of concerns. |
-| VII. Dependency First — no suitable package exists | All npm packages evaluated (jsonpath-rfc9535, deep-pick-omit, jsonpath-object-transform, jsonpath-plus) lack include+exclude+array traversal+object reconstruction in one package. See research.md §6. | Combining packages still needs custom code for array traversal and object reconstruction — more complex than 80-line pure TS implementation. |
+| VII. Dependency First — no suitable package for projection logic | All npm packages evaluated (jsonpath-rfc9535, deep-pick-omit, jsonpath-object-transform, jsonpath-plus) lack include+exclude+array traversal+object reconstruction in one package. The `jsonpath-rfc9535` package IS used for field path validation (FR-010) in `normalizeJsonPath`, where RFC 9535 compliance is essential. The core projection logic remains pure TS at ~80 lines. See research.md §6. | Combining packages still needs custom code for array traversal and object reconstruction — more complex than 80-line pure TS implementation. The parser dependency is justified for standards-compliant path validation. |

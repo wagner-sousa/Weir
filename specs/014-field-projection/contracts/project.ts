@@ -1,8 +1,11 @@
+import parse from 'jsonpath-rfc9535/parser';
+
 /**
  * SPEC: Field Projection contracts.
  *
  * Pure functions for applying field selection to MCP tool call responses.
- * No dependencies — pure TypeScript projection logic.
+ * Core projection logic is pure TypeScript. Field path validation uses
+ * `jsonpath-rfc9535/parser` for RFC 9535 compliance.
  */
 
 // ---------------------------------------------------------------------------
@@ -39,6 +42,8 @@ export interface ProjectionMap {
  *
  * Strips leading `$.` and `$[*].` prefixes so the path works with the
  * split-on-"." projection algorithm. Non-prefixed paths are returned as-is.
+ * Syntax validation delegates to `jsonpath-rfc9535/parser` for RFC 9535
+ * compliance (FR-010).
  *
  * @param path — A JSONPath string (e.g., `$.field`, `$[*].a.b`, `field`)
  * @returns Dot-notation path (e.g., `field`, `a.b`)
@@ -47,30 +52,35 @@ export interface ProjectionMap {
 export function normalizeJsonPath(path: string): string {
   if (!path) throw new Error('Path must not be empty');
 
+  try {
+    if (path.startsWith('$')) {
+      parse(path);
+    } else {
+      parse(`$.${path}`);
+    }
+  } catch {
+    throw new Error(`Invalid JSONPath syntax: "${path}"`);
+  }
+
   let normalized = path;
+
   if (normalized === '$' || normalized === '$[*]') {
     throw new Error(`Invalid bare path: "${path}"`);
   }
+
   if (normalized.startsWith('$.')) {
     normalized = normalized.slice(2);
   } else if (normalized.startsWith('$[*].')) {
     normalized = normalized.slice(5);
+  } else if (normalized === '$') {
+    normalized = '';
   }
+
   normalized = normalized.replace(/\[(\d+)\]/g, '.$1');
+  normalized = normalized.replace(/\[\*\]/g, '');
 
   if (normalized.startsWith('.') || normalized.endsWith('.')) {
     throw new Error(`Malformed path: "${path}"`);
-  }
-
-  const openBrackets = (normalized.match(/\[/g) || []).length;
-  const closeBrackets = (normalized.match(/\]/g) || []).length;
-  if (openBrackets !== closeBrackets) {
-    throw new Error(`Unbalanced brackets in path: "${path}"`);
-  }
-
-  const forbidden = /[@?()!^~]/;
-  if (forbidden.test(normalized)) {
-    throw new Error(`Unsupported JSONPath operator in path: "${path}"`);
   }
 
   return normalized;

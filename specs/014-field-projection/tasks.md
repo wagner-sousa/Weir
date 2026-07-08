@@ -184,5 +184,5 @@ Task: "T008 Implement applyFieldSelection, includeNode, removePath"
 
 ## Phase 8: Convergence
 
-- [ ] T028 Resolve `jsonpath-rfc9535` dependency contradiction: either replace with pure-TS validation to match plan's "zero new external dependencies" mandate, OR update plan.md / contracts to acknowledge the external dep (plan.md: dependency decision — contradicts)
-- [ ] T029 Compile and start the application via docker-compose for manual testing per Constitution Dev Workflow Rule 10 (Constitution Rule 10 — missing)
+- [x] T028 Resolve `jsonpath-rfc9535` dependency contradiction: either replace with pure-TS validation to match plan's "zero new external dependencies" mandate, OR update plan.md / contracts to acknowledge the external dep (plan.md: dependency decision — contradicts)
+- [x] T029 Compile and start the application via docker-compose for manual testing per Constitution Dev Workflow Rule 10 (Constitution Rule 10 — missing)
