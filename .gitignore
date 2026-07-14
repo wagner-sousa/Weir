@@ -7,6 +7,7 @@ build/
 .mcp.json
 mcp-auth.json
 mcp-cache.json
+tool-visibility.json
 .DS_Store
 Thumbs.db
 *.tmp

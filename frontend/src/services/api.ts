@@ -43,8 +43,20 @@ export interface StatusEvent {
 }
 
 export interface ToolsResponse {
-  tools: Array<{ name: string; description?: string }>;
+  tools: Array<{ name: string; description?: string; enabled?: boolean }>;
   count: number;
+}
+
+export interface ToolVisibilityResponse {
+  visibility: Record<string, boolean>;
+  totalCount: number;
+  enabledCount: number;
+}
+
+export interface ToolWithVisibility {
+  name: string;
+  description?: string;
+  enabled: boolean;
 }
 
 export async function fetchMCPs(): Promise<MCPResponse> {
@@ -110,8 +122,10 @@ export async function addMCP(
 
 export async function getMCPTools(
   name: string,
+  includeDisabled?: boolean,
 ): Promise<ToolsResponse> {
-  const res = await fetch(`${API_BASE}/mcps/${encodeURIComponent(name)}/tools`);
+  const params = includeDisabled ? '?includeDisabled=true' : '';
+  const res = await fetch(`${API_BASE}/mcps/${encodeURIComponent(name)}/tools${params}`);
   if (!res.ok) {
     return { tools: [], count: 0 };
   }
@@ -146,6 +160,40 @@ export async function updateMCP(
     return { success: false, error: body.error || `HTTP ${res.status}`, status: res.status };
   }
   return body;
+}
+
+export async function getToolVisibility(
+  name: string,
+): Promise<ToolVisibilityResponse> {
+  const res = await fetch(`${API_BASE}/mcps/${encodeURIComponent(name)}/tools/visibility`);
+  if (!res.ok) {
+    return { visibility: {}, totalCount: 0, enabledCount: 0 };
+  }
+  return res.json();
+}
+
+export async function setToolVisibility(
+  name: string,
+  toolName: string,
+  enabled: boolean,
+): Promise<void> {
+  await fetch(`${API_BASE}/mcps/${encodeURIComponent(name)}/tools/visibility/${encodeURIComponent(toolName)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
+  });
+}
+
+export async function setBulkToolVisibility(
+  name: string,
+  enabled: boolean,
+  tools?: string[],
+): Promise<void> {
+  await fetch(`${API_BASE}/mcps/${encodeURIComponent(name)}/tools/visibility`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled, tools }),
+  });
 }
 
 export function connectWebSocket(

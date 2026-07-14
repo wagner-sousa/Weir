@@ -1,7 +1,8 @@
 import type { MCPClient } from '../services/api';
 import { Badge } from './Badge';
-import { ShieldAlert, CircleCheck, CircleX, LoaderCircle, Circle, Pencil, RotateCcw, Trash2, Plug } from 'lucide-react';
+import { ShieldAlert, CircleCheck, CircleX, LoaderCircle, Circle, Pencil, RotateCcw, Trash2, Plug, Wrench } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { EnabledToolBadge } from './EnabledToolBadge';
 
 interface MCPCardProps {
   client: MCPClient;
@@ -10,6 +11,7 @@ interface MCPCardProps {
   onReconnect?: (client: MCPClient) => void;
   onAuth?: (client: MCPClient) => void;
   onConfig?: (name: string) => void;
+  onTools?: (name: string) => void;
   removing?: boolean;
   reconnecting?: boolean;
 }
@@ -36,7 +38,7 @@ const transportVariant: Record<string, string> = {
   sse: 'sse',
 };
 
-export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, onConfig, removing, reconnecting }: MCPCardProps) {
+export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, onConfig, onTools, removing, reconnecting }: MCPCardProps) {
   const status = client.status || 'disconnected';
   const si = statusIcons[status] || statusIcons.disconnected;
   const known = transportVariant[client.transport];
@@ -110,6 +112,19 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, onConfi
         >
           <Plug className="h-4 w-4" />
         </button>
+        {client.status === 'connected' && (client.toolCount ?? 0) > 0 && (
+          <button
+            onClick={() => onTools?.(client.name)}
+            aria-label="Tool visibility"
+            title="Toggle tool visibility for this MCP"
+            className="relative rounded p-1.5 text-gray-400 hover:bg-teal-600/20 hover:text-teal-400"
+          >
+            <Wrench className="h-4 w-4" />
+            <span className="absolute -right-1 -top-1">
+              <EnabledToolBadge mcpName={client.name} />
+            </span>
+          </button>
+        )}
         <button
           onClick={() => onEdit?.(client)}
           aria-label="Edit MCP"

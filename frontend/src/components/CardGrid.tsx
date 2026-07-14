@@ -5,6 +5,7 @@ import type { MCPClient } from '../services/api';
 import { MCPCard } from './MCPCard';
 import { AddMCPModal } from './AddMCPModal';
 import { MCPConnectionModal } from './MCPConnectionModal';
+import { ToolsModal } from './ToolsModal';
 import { useTestConnection } from '../hooks/useMCPs';
 import { Plus, Plug } from 'lucide-react';
 
@@ -21,8 +22,10 @@ export function CardGrid({ clients, onRemove, removePending, mcpPort }: CardGrid
   const [reconnectingName, setReconnectingName] = useState<string | null>(null);
   const [configName, setConfigName] = useState<string | null>(null);
   const [globalConfigOpen, setGlobalConfigOpen] = useState(false);
+  const [toolsName, setToolsName] = useState<string | null>(null);
   const editModalOpen = editingMCP !== null;
   const configModalOpen = configName !== null;
+  const toolsModalOpen = toolsName !== null;
   const testMutation = useTestConnection();
   const queryClient = useQueryClient();
 
@@ -32,6 +35,10 @@ export function CardGrid({ clients, onRemove, removePending, mcpPort }: CardGrid
 
   function handleConfig(name: string) {
     setConfigName(name);
+  }
+
+  function handleTools(name: string) {
+    setToolsName(name);
   }
 
   function closeEditModal() {
@@ -176,6 +183,7 @@ export function CardGrid({ clients, onRemove, removePending, mcpPort }: CardGrid
             onRemove={onRemove}
             onEdit={handleEdit}
             onConfig={handleConfig}
+            onTools={handleTools}
             onReconnect={handleReconnect}
             onAuth={handleAuth}
             removing={removePending}
@@ -205,6 +213,13 @@ export function CardGrid({ clients, onRemove, removePending, mcpPort }: CardGrid
           names={[configName]}
           onClose={() => setConfigName(null)}
           mcpPort={mcpPort}
+        />
+      )}
+      {toolsName && (
+        <ToolsModal
+          open={toolsModalOpen}
+          mcpName={toolsName}
+          onClose={() => setToolsName(null)}
         />
       )}
       <MCPConnectionModal

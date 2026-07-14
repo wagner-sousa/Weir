@@ -6,7 +6,8 @@ import { testConnection, queryTools } from '../services/mcp-client.js';
 import { getCachedStatus, setCachedStatus, deleteCachedStatus } from '../services/status-cache.js';
 import { getAuthConfig, deleteAuthConfig } from '../services/auth-storage.js';
 import { refreshTokenIfExpired } from '../services/token-refresh.js';
-import { resolve, dirname } from 'node:path';
+import { loadToolVisibility, setToolEnabled, setBulkVisibility, filterTools, getVisibilitySummary } from '../tool-visibility/index.js';
+import { resolve, dirname, join } from 'node:path';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { broadcast } from './ws.js';
 import type { MCPClient, CachedStatus, StatusUpdate } from '../config/types.js';
@@ -275,7 +276,9 @@ export async function mcpRoutes(app: FastifyInstance) {
 
   app.get('/api/mcps/:name/tools', async (request, reply) => {
     const { name } = request.params as { name: string };
+    const { includeDisabled } = request.query as { includeDisabled?: string };
     const configPath = getConfigPath();
+    const configDir = dirname(configPath);
     const result = loadMCPConfig(configPath);
     const client = result.clients.find((c) => c.name === name);
 
@@ -289,7 +292,7 @@ export async function mcpRoutes(app: FastifyInstance) {
     const authCfg = getAuthConfig(name);
     const accessToken: string | undefined = authCfg?.accessToken || raw.mcpServers[name]?.accessToken;
 
-    const tools = await queryTools(name, {
+    const allTools = await queryTools(name, {
       type: client.transport as 'stdio' | 'http' | 'sse',
       command: client.command,
       args: client.args,
@@ -298,7 +301,115 @@ export async function mcpRoutes(app: FastifyInstance) {
       accessToken,
     });
 
+    if (includeDisabled === 'true') {
+      const visibility = loadToolVisibility(configDir);
+      const mcpVisibility = visibility[name] ?? {};
+      const toolsWithEnabled = allTools.map((tool) => ({
+        ...tool,
+        enabled: mcpVisibility[tool.name] ?? true,
+      }));
+      return { tools: toolsWithEnabled, count: toolsWithEnabled.length };
+    }
+
+    const tools = filterTools(configDir, name, allTools);
     return { tools, count: tools.length };
+  });
+
+  app.get('/api/mcps/:name/tools/visibility', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    const configPath = getConfigPath();
+    const configDir = dirname(configPath);
+    const result = loadMCPConfig(configPath);
+    const client = result.clients.find((c) => c.name === name);
+
+    if (!client) {
+      return reply.status(404).send({ success: false, error: `MCP '${name}' not found.` });
+    }
+
+    const raw = existsSync(configPath)
+      ? JSON.parse(readFileSync(configPath, 'utf-8'))
+      : { mcpServers: {} };
+    const authCfg = getAuthConfig(name);
+    const accessToken: string | undefined = authCfg?.accessToken || raw.mcpServers[name]?.accessToken;
+
+    const allTools = await queryTools(name, {
+      type: client.transport as 'stdio' | 'http' | 'sse',
+      command: client.command,
+      args: client.args,
+      url: client.url,
+      env: client.env,
+      accessToken,
+    });
+
+    const toolNames = allTools.map((t) => t.name);
+    return getVisibilitySummary(configDir, name, toolNames);
+  });
+
+  app.put('/api/mcps/:name/tools/visibility/:toolName', async (request, reply) => {
+    const { name, toolName } = request.params as { name: string; toolName: string };
+    const { enabled } = request.body as { enabled: boolean };
+    const configPath = getConfigPath();
+    const configDir = dirname(configPath);
+
+    if (typeof enabled !== 'boolean') {
+      return reply.status(400).send({ success: false, error: '`enabled` must be a boolean.' });
+    }
+
+    const result = loadMCPConfig(configPath);
+    const client = result.clients.find((c) => c.name === name);
+
+    if (!client) {
+      return reply.status(404).send({ success: false, error: `MCP '${name}' not found.` });
+    }
+
+    setToolEnabled(configDir, name, toolName, enabled);
+    broadcast('config:changed', { path: join(configDir, 'tool-visibility.json') });
+
+    return { success: true, tool: toolName, enabled };
+  });
+
+  app.put('/api/mcps/:name/tools/visibility', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    const { enabled, tools: toolNames } = request.body as { enabled: boolean; tools?: string[] };
+    const configPath = getConfigPath();
+    const configDir = dirname(configPath);
+
+    if (typeof enabled !== 'boolean') {
+      return reply.status(400).send({ success: false, error: '`enabled` must be a boolean.' });
+    }
+
+    const result = loadMCPConfig(configPath);
+    const client = result.clients.find((c) => c.name === name);
+
+    if (!client) {
+      return reply.status(404).send({ success: false, error: `MCP '${name}' not found.` });
+    }
+
+    let resolvedToolNames = toolNames;
+
+    if (!resolvedToolNames || resolvedToolNames.length === 0) {
+      const raw = existsSync(configPath)
+        ? JSON.parse(readFileSync(configPath, 'utf-8'))
+        : { mcpServers: {} };
+      const authCfg = getAuthConfig(name);
+      const accessToken: string | undefined = authCfg?.accessToken || raw.mcpServers[name]?.accessToken;
+
+      const allTools = await queryTools(name, {
+        type: client.transport as 'stdio' | 'http' | 'sse',
+        command: client.command,
+        args: client.args,
+        url: client.url,
+        env: client.env,
+        accessToken,
+      });
+
+      resolvedToolNames = allTools.map((t) => t.name);
+    }
+
+    setBulkVisibility(configDir, name, resolvedToolNames, enabled);
+    broadcast('config:changed', { path: join(configDir, 'tool-visibility.json') });
+
+    return { success: true, enabled, affectedTools: resolvedToolNames.length };
   });
 
   app.put('/api/mcps/:name', async (request, reply) => {

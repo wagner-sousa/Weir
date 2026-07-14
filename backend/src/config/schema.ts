@@ -76,6 +76,11 @@ export const TestConnectionResponse = z.object({
   authConfig: AuthConfig.optional(),
 });
 
+export const ToolVisibilityConfig = z.record(
+  z.string(),
+  z.record(z.string(), z.boolean()),
+);
+
 export const EnvConfig = z.object({
   WEIR_MCP_PORT: z.coerce.number().int().min(0).default(4000),
   WEIR_PROXY_RECONNECT_BASE_DELAY: z.coerce.number().int().min(100).default(1000),

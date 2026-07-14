@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { buildApp } from '../../src/index';
 import type { FastifyInstance } from 'fastify';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -163,5 +163,156 @@ describe('T011: testSingleMCP error message detail', () => {
     const body = JSON.parse(res.body);
     expect(body.success).toBe(true);
     expect(body.testResult.error).toContain('Connection refused');
+  });
+});
+
+describe('Tool Visibility Endpoints', () => {
+  let tmpDir: string;
+  let origConfigPath: string | undefined;
+
+  beforeEach(() => {
+    origConfigPath = process.env.MCP_CONFIG_PATH;
+    tmpDir = join(tmpdir(), `weir-mcp-vis-test-${Date.now()}`);
+    mkdirSync(tmpDir, { recursive: true });
+    process.env.MCP_CONFIG_PATH = join(tmpDir, '.mcp.json');
+    writeFileSync(process.env.MCP_CONFIG_PATH, JSON.stringify({
+      mcpServers: {
+        'test-mcp': { type: 'stdio', command: 'echo', args: ['hello'] },
+      },
+    }));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+    process.env.MCP_CONFIG_PATH = origConfigPath;
+  });
+
+  describe('GET /api/mcps/:name/tools/visibility', () => {
+    it('returns empty visibility when no config exists', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/mcps/test-mcp/tools/visibility',
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.visibility).toEqual({});
+      expect(body.totalCount).toBe(0);
+      expect(body.enabledCount).toBe(0);
+    });
+
+    it('returns visibility config when file exists', async () => {
+      const config = { 'test-mcp': { tool1: true, tool2: false } };
+      writeFileSync(join(tmpDir, 'tool-visibility.json'), JSON.stringify(config));
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/mcps/test-mcp/tools/visibility',
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.visibility).toEqual({ tool1: true, tool2: false });
+    });
+
+    it('returns 404 for non-existent MCP', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/mcps/nonexistent/tools/visibility',
+      });
+
+      expect(res.statusCode).toBe(404);
+    });
+  });
+
+  describe('PUT /api/mcps/:name/tools/visibility/:toolName', () => {
+    it('sets tool visibility', async () => {
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/mcps/test-mcp/tools/visibility/myTool',
+        payload: { enabled: false },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.success).toBe(true);
+
+      const config = JSON.parse(readFileSync(join(tmpDir, 'tool-visibility.json'), 'utf-8'));
+      expect(config['test-mcp'].myTool).toBe(false);
+    });
+
+    it('toggles existing tool visibility', async () => {
+      const config = { 'test-mcp': { myTool: true } };
+      writeFileSync(join(tmpDir, 'tool-visibility.json'), JSON.stringify(config));
+
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/mcps/test-mcp/tools/visibility/myTool',
+        payload: { enabled: false },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const updated = JSON.parse(readFileSync(join(tmpDir, 'tool-visibility.json'), 'utf-8'));
+      expect(updated['test-mcp'].myTool).toBe(false);
+    });
+
+    it('returns 400 for missing enabled field', async () => {
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/mcps/test-mcp/tools/visibility/myTool',
+        payload: {},
+      });
+
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
+  describe('PUT /api/mcps/:name/tools/visibility (bulk)', () => {
+    it('sets all tools to disabled', async () => {
+      const config = { 'test-mcp': { a: true, b: true } };
+      writeFileSync(join(tmpDir, 'tool-visibility.json'), JSON.stringify(config));
+
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/mcps/test-mcp/tools/visibility',
+        payload: { enabled: false, tools: ['a', 'b'] },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.success).toBe(true);
+
+      const updated = JSON.parse(readFileSync(join(tmpDir, 'tool-visibility.json'), 'utf-8'));
+      expect(updated['test-mcp']).toEqual({ a: false, b: false });
+    });
+
+    it('sets all tools to enabled', async () => {
+      const config = { 'test-mcp': { a: false, b: false } };
+      writeFileSync(join(tmpDir, 'tool-visibility.json'), JSON.stringify(config));
+
+      const res = await app.inject({
+        method: 'PUT',
+        url: '/api/mcps/test-mcp/tools/visibility',
+        payload: { enabled: true, tools: ['a', 'b'] },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const updated = JSON.parse(readFileSync(join(tmpDir, 'tool-visibility.json'), 'utf-8'));
+      expect(updated['test-mcp']).toEqual({ a: true, b: true });
+    });
+  });
+
+  describe('GET /api/mcps/:name/tools (with includeDisabled)', () => {
+    it('returns all tools when includeDisabled=true', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/mcps/test-mcp/tools?includeDisabled=true',
+      });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body).toHaveProperty('tools');
+      expect(Array.isArray(body.tools)).toBe(true);
+    });
   });
 });

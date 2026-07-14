@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TransportType, TransportConfig, MCPServerEntry, MCPConfig, TestConnectionRequest, TestConnectionResponse, OutputMode, ToonOptions } from './schema.js';
+import { TransportType, TransportConfig, MCPServerEntry, MCPConfig, TestConnectionRequest, TestConnectionResponse, OutputMode, ToonOptions, ToolVisibilityConfig } from './schema.js';
 
 export type TransportType = z.infer<typeof TransportType>;
 
@@ -16,6 +16,14 @@ export type TestConnectionResponse = z.infer<typeof TestConnectionResponse>;
 export type OutputMode = z.infer<typeof OutputMode>;
 
 export type ToonOptions = z.infer<typeof ToonOptions>;
+
+export type ToolVisibilityMap = z.infer<typeof ToolVisibilityConfig>;
+
+export interface ToolWithVisibility {
+  name: string;
+  description?: string;
+  enabled: boolean;
+}
 
 export interface MCPClient {
   name: string;

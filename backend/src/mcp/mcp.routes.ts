@@ -1,11 +1,13 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import pino from 'pino';
-import { createProxySession, sendOneMessage, resolveAccessToken, resolveBackendConfig } from '../proxy/index.js';
+import { createProxySession, sendOneMessage, resolveAccessToken, resolveBackendConfig, resolveMcpConfigPath } from '../proxy/index.js';
 import { detectAuthRequired } from '../services/mcp-client.js';
 import { ToonConverter } from '../toon/converter.js';
 import { parseEnvConfig } from '../config/schema.js';
+import { filterToolsListResponse } from '../tool-visibility/index.js';
 import type { JsonRpcMessage, ProxySessionHandle } from '../proxy/types.js';
 import { randomBytes } from 'node:crypto';
+import { dirname } from 'node:path';
 
 interface SessionEntry {
   session: ProxySessionHandle;
@@ -92,19 +94,28 @@ export async function mcpPortRoutes(app: FastifyInstance) {
     const logger = pino({ name: 'weir-mcp' });
 
     session.onMessage((msg: JsonRpcMessage) => {
-      if (msg.result) {
+      let outgoingMsg = msg;
+
+      if (msg.result && typeof msg.result === 'object' && 'tools' in msg.result && Array.isArray((msg.result as { tools: unknown }).tools)) {
+        const configPath = resolveMcpConfigPath();
+        const configDir = dirname(configPath);
+        const filtered = filterToolsListResponse(configDir, name, msg.result as { tools: Array<{ name: string }> });
+        outgoingMsg = { ...msg, result: filtered } as JsonRpcMessage;
+      }
+
+      if (outgoingMsg.result) {
         try {
-          const converted = converter.convertResult(msg.result);
+          const converted = converter.convertResult(outgoingMsg.result);
           if (converted.converted && converted.savings) {
             logger.info({ savings: converted.savings }, `TOON: converted ${name}: ${converted.savings.originalTokens}→${converted.savings.toonTokens} tok (${converted.savings.percent}% savings)`);
           }
-          reply.raw.write(`event: message\ndata: ${JSON.stringify({ ...msg, result: converted.result })}\n\n`);
+          reply.raw.write(`event: message\ndata: ${JSON.stringify({ ...outgoingMsg, result: converted.result })}\n\n`);
           return;
         } catch (_err) {
           logger.warn({ name }, `TOON: conversion failed for ${name}, returning original`);
         }
       }
-      reply.raw.write(`event: message\ndata: ${JSON.stringify(msg)}\n\n`);
+      reply.raw.write(`event: message\ndata: ${JSON.stringify(outgoingMsg)}\n\n`);
     });
 
     session.onDisconnect(() => {

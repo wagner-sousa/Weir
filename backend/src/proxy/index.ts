@@ -6,6 +6,7 @@ import { createTransport } from './transport.js';
 import { startProxy } from './proxy.js';
 import { ToonConverter } from '../toon/converter.js';
 import { parseEnvConfig } from '../config/schema.js';
+import { filterToolsListResponse } from '../tool-visibility/index.js';
 
 const logger = pino({ name: 'weir-proxy' });
 
@@ -241,6 +242,11 @@ export async function sendOneMessage(
               logger.warn({ err }, `TOON: conversion failed for ${name}, returning original JSON`);
               resolvePromise(msg);
             }
+          } else if (msg.result && message.method === 'tools/list') {
+            const configPath = resolveMcpConfigPath();
+            const configDir = dirname(configPath);
+            const filtered = filterToolsListResponse(configDir, name, msg.result as { tools?: Array<{ name: string }> });
+            resolvePromise({ ...msg, result: filtered } as JsonRpcMessage);
           } else {
             resolvePromise(msg);
           }
