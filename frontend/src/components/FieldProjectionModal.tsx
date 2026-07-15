@@ -298,6 +298,11 @@ export function FieldProjectionModal({ open, mcpName, onClose }: FieldProjection
                               Exclude
                             </button>
                           </div>
+                          <p className="text-xs text-theme-muted">
+                            {editMode === 'include'
+                              ? 'Only the specified fields will be kept in the response.'
+                              : 'The specified fields will be removed from the response.'}
+                          </p>
                           <div>
                             <div className="mb-1 flex items-center justify-between">
                               <label className="text-xs text-theme-muted">
@@ -344,11 +349,6 @@ export function FieldProjectionModal({ open, mcpName, onClose }: FieldProjection
                                 </div>
                               );
                             })}
-                            <p className="mt-1 text-xs text-theme-muted">
-                              {editMode === 'include'
-                                ? 'Only the specified fields will be kept in the response.'
-                                : 'The specified fields will be removed from the response.'}
-                            </p>
                           </div>
                         </div>
                       )}
