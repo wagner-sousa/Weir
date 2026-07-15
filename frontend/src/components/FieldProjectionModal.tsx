@@ -225,9 +225,9 @@ export function FieldProjectionModal({ open, mcpName, onClose }: FieldProjection
                                     ? 'bg-green-700 text-green-200'
                                     : 'bg-red-700 text-red-200'
                                 }`}
-                                title={tool.projection.mode === 'include' ? 'Include mode' : 'Exclude mode'}
+                                title={`${tool.projection.fields.length} field${tool.projection.fields.length !== 1 ? 's' : ''} (${tool.projection.mode})`}
                               >
-                                {tool.projection.mode === 'include' ? '+' : '−'}
+                                {tool.projection.fields.length}
                               </span>
                             )}
                           </button>
