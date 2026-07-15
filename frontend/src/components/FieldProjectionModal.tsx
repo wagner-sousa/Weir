@@ -212,25 +212,27 @@ export function FieldProjectionModal({ open, mcpName, onClose }: FieldProjection
                         </div>
 
                         <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => startEdit(tool)}
-                            className="relative rounded p-1.5 text-gray-400 hover:bg-blue-600/20 hover:text-blue-400"
-                            title={tool.projection ? 'Edit projection' : 'Add projection'}
-                          >
-                            <Filter className="h-4 w-4" />
-                            {tool.projection && (
-                              <span
-                                className={`absolute -right-1 -top-1 rounded-full px-1 py-0.5 text-[9px] font-bold ${
-                                  tool.projection.mode === 'include'
-                                    ? 'bg-green-700 text-green-200'
-                                    : 'bg-red-700 text-red-200'
-                                }`}
-                                title={`${tool.projection.fields.length} field${tool.projection.fields.length !== 1 ? 's' : ''} (${tool.projection.mode})`}
-                              >
-                                {tool.projection.fields.length}
-                              </span>
-                            )}
-                          </button>
+                          {tool.projection ? (
+                            <button
+                              onClick={() => startEdit(tool)}
+                              className={`flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold transition-colors ${
+                                tool.projection.mode === 'include'
+                                  ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
+                                  : 'bg-red-600/20 text-red-400 hover:bg-red-600/30'
+                              }`}
+                              title={`${tool.projection.fields.length} field${tool.projection.fields.length !== 1 ? 's' : ''} (${tool.projection.mode}) - click to edit`}
+                            >
+                              {tool.projection.fields.length}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => startEdit(tool)}
+                              className="rounded p-1.5 text-gray-400 hover:bg-blue-600/20 hover:text-blue-400"
+                              title="Add projection"
+                            >
+                              <Filter className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -309,7 +311,7 @@ export function FieldProjectionModal({ open, mcpName, onClose }: FieldProjection
                               );
                             })}
                           </div>
-                          <div className="mt-3 flex justify-end gap-2 border-t border-theme-border pt-3">
+                          <div className="mt-3 flex justify-between gap-2 border-t border-theme-border pt-3">
                             {tool.projection && (
                               <button
                                 onClick={() => handleRemove(tool.toolName)}
@@ -319,29 +321,31 @@ export function FieldProjectionModal({ open, mcpName, onClose }: FieldProjection
                                 {saving === tool.toolName ? (
                                   <LoaderCircle className="h-4 w-4 animate-spin" />
                                 ) : (
-                                  <Trash2 className="h-4 w-4" />
+                                  <X className="h-4 w-4" />
                                 )}
-                                Remove
+                                Clear
                               </button>
                             )}
-                            <button
-                              onClick={cancelEdit}
-                              disabled={saving === tool.toolName}
-                              className="rounded px-3 py-1.5 text-sm text-theme-muted hover:bg-theme-border"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              onClick={() => handleSave(tool.toolName)}
-                              disabled={saving === tool.toolName}
-                              className="rounded bg-theme-accent px-3 py-1.5 text-sm font-medium text-gray-900 hover:bg-theme-accent-dark disabled:opacity-50"
-                            >
-                              {saving === tool.toolName ? (
-                                <LoaderCircle className="h-4 w-4 animate-spin" />
-                              ) : (
-                                'Save'
-                              )}
-                            </button>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={cancelEdit}
+                                disabled={saving === tool.toolName}
+                                className="rounded px-3 py-1.5 text-sm text-theme-muted hover:bg-theme-border"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleSave(tool.toolName)}
+                                disabled={saving === tool.toolName}
+                                className="rounded bg-theme-accent px-3 py-1.5 text-sm font-medium text-gray-900 hover:bg-theme-accent-dark disabled:opacity-50"
+                              >
+                                {saving === tool.toolName ? (
+                                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  'Save'
+                                )}
+                              </button>
+                            </div>
                           </div>
                         </div>
                       )}
