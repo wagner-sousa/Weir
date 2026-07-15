@@ -212,25 +212,27 @@ export function FieldProjectionModal({ open, mcpName, onClose }: FieldProjection
                         </div>
 
                         <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => startEdit(tool)}
-                            className="relative rounded p-1.5 text-gray-400 hover:bg-blue-600/20 hover:text-blue-400"
-                            title={tool.projection ? 'Edit projection' : 'Add projection'}
-                          >
-                            <Filter className="h-4 w-4" />
-                            {tool.projection && (
-                              <span
-                                className={`absolute -right-1 -top-1 rounded-full px-1 py-0.5 text-[9px] font-bold ${
-                                  tool.projection.mode === 'include'
-                                    ? 'bg-green-700 text-green-200'
-                                    : 'bg-red-700 text-red-200'
-                                }`}
-                                title={tool.projection.mode === 'include' ? 'Include mode' : 'Exclude mode'}
-                              >
-                                {tool.projection.mode === 'include' ? '+' : '−'}
-                              </span>
-                            )}
-                          </button>
+                          {tool.projection ? (
+                            <button
+                              onClick={() => startEdit(tool)}
+                              className={`flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold transition-colors ${
+                                tool.projection.mode === 'include'
+                                  ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
+                                  : 'bg-red-600/20 text-red-400 hover:bg-red-600/30'
+                              }`}
+                              title={tool.projection.mode === 'include' ? 'Include mode - click to edit' : 'Exclude mode - click to edit'}
+                            >
+                              {tool.projection.mode === 'include' ? '+' : '−'}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => startEdit(tool)}
+                              className="rounded p-1.5 text-gray-400 hover:bg-blue-600/20 hover:text-blue-400"
+                              title="Add projection"
+                            >
+                              <Filter className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
 
