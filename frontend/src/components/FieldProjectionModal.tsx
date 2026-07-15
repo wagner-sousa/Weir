@@ -198,17 +198,6 @@ export function FieldProjectionModal({ open, mcpName, onClose }: FieldProjection
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-theme-text">{tool.toolName}</span>
-                            {tool.projection && (
-                              <span
-                                className={`rounded px-1.5 py-0.5 text-xs font-medium ${
-                                  tool.projection.mode === 'include'
-                                    ? 'bg-green-900/30 text-green-400'
-                                    : 'bg-red-900/30 text-red-400'
-                                }`}
-                              >
-                                {tool.projection.mode}
-                              </span>
-                            )}
                           </div>
                           {tool.toolDescription && (
                             <p className="mt-0.5 text-xs text-theme-muted">
@@ -225,10 +214,22 @@ export function FieldProjectionModal({ open, mcpName, onClose }: FieldProjection
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => startEdit(tool)}
-                            className="rounded p-1.5 text-gray-400 hover:bg-blue-600/20 hover:text-blue-400"
+                            className="relative rounded p-1.5 text-gray-400 hover:bg-blue-600/20 hover:text-blue-400"
                             title={tool.projection ? 'Edit projection' : 'Add projection'}
                           >
                             <Filter className="h-4 w-4" />
+                            {tool.projection && (
+                              <span
+                                className={`absolute -right-1 -top-1 rounded-full px-1 py-0.5 text-[9px] font-bold ${
+                                  tool.projection.mode === 'include'
+                                    ? 'bg-green-700 text-green-200'
+                                    : 'bg-red-700 text-red-200'
+                                }`}
+                                title={tool.projection.mode === 'include' ? 'Include mode' : 'Exclude mode'}
+                              >
+                                {tool.projection.mode === 'include' ? '+' : '−'}
+                              </span>
+                            )}
                           </button>
                           {tool.projection && (
                             <button
