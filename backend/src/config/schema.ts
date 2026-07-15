@@ -2,6 +2,16 @@ import { z } from 'zod';
 
 export const TransportType = z.enum(['stdio', 'http', 'sse']);
 
+export const OutputMode = z.enum(['dynamic', 'json', 'toon']);
+
+export const ToonOptions = z.object({
+  indent: z.coerce.number().int().min(0).max(8).default(2),
+  flattenDepth: z.coerce.number().int().min(0).default(4),
+  threshold: z.coerce.number().int().min(0).default(100),
+  outputMode: OutputMode.default('dynamic'),
+  autoConvert: z.boolean().default(true),
+});
+
 export const TransportConfig = z
   .object({
     type: TransportType,
@@ -29,6 +39,7 @@ export const MCPServerEntry = z.preprocess(
   },
   z.object({
     transport: TransportConfig,
+    outputMode: OutputMode.optional(),
   }),
 );
 
@@ -83,6 +94,11 @@ export const EnvConfig = z.object({
   WEIR_PROXY_BUFFER_LIMIT: z.coerce.number().int().min(1).default(100),
   WEIR_PROXY_BACKEND_TIMEOUT: z.coerce.number().int().min(100).default(5000),
   WEIR_PROXY_KEEPALIVE_MS: z.coerce.number().int().min(1000).default(15000),
+  WEIR_TOON_AUTO_CONVERT: z.coerce.boolean().default(true),
+  WEIR_TOON_INDENT: z.coerce.number().int().min(0).max(8).default(2),
+  WEIR_TOON_FLATTEN_DEPTH: z.coerce.number().int().min(0).default(4),
+  WEIR_TOON_THRESHOLD: z.coerce.number().int().min(0).default(100),
+  WEIR_TOON_OUTPUT_MODE: OutputMode.default('dynamic'),
 });
 
 export function parseEnvConfig(): z.infer<typeof EnvConfig> {

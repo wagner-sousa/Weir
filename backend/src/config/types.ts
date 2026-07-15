@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TransportType, TransportConfig, MCPServerEntry, MCPConfig, TestConnectionRequest, TestConnectionResponse, FieldSelectionSchema, FieldProjectionConfig } from './schema.js';
+import { TransportType, TransportConfig, MCPServerEntry, MCPConfig, TestConnectionRequest, TestConnectionResponse, FieldSelectionSchema, FieldProjectionConfig, OutputMode, ToonOptions } from './schema.js';
 
 export type TransportType = z.infer<typeof TransportType>;
 
@@ -23,6 +23,10 @@ export interface ProjectionMap {
   };
 }
 
+export type OutputMode = z.infer<typeof OutputMode>;
+
+export type ToonOptions = z.infer<typeof ToonOptions>;
+
 export interface MCPClient {
   name: string;
   transport: TransportType;
@@ -45,7 +49,7 @@ export interface CachedStatus {
 
 export interface StatusUpdate {
   name: string;
-  status: 'connected' | 'error' | 'needsAuth' | 'testing' | 'unknown' | 'disconnected';
+  status: 'connected' | 'error' | 'testing' | 'needsAuth' | 'unknown' | 'disconnected';
   error: string | null;
   toolCount: number | null;
   needsAuth?: boolean;

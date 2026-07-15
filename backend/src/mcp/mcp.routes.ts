@@ -1,6 +1,9 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import pino from 'pino';
 import { createProxySession, sendOneMessage, resolveAccessToken, resolveBackendConfig } from '../proxy/index.js';
 import { detectAuthRequired } from '../services/mcp-client.js';
+import { ToonConverter } from '../toon/converter.js';
+import { parseEnvConfig } from '../config/schema.js';
 import type { JsonRpcMessage, ProxySessionHandle } from '../proxy/types.js';
 import { randomBytes } from 'node:crypto';
 
@@ -76,7 +79,31 @@ export async function mcpPortRoutes(app: FastifyInstance) {
       return;
     }
 
+    const envConfig = parseEnvConfig();
+    const backendConfig = resolveBackendConfig(name);
+    const converter = new ToonConverter({
+      indent: envConfig.WEIR_TOON_INDENT,
+      flattenDepth: envConfig.WEIR_TOON_FLATTEN_DEPTH,
+      threshold: envConfig.WEIR_TOON_THRESHOLD,
+      outputMode: backendConfig.outputMode || envConfig.WEIR_TOON_OUTPUT_MODE,
+      autoConvert: envConfig.WEIR_TOON_AUTO_CONVERT,
+    });
+
+    const logger = pino({ name: 'weir-mcp' });
+
     session.onMessage((msg: JsonRpcMessage) => {
+      if (msg.result) {
+        try {
+          const converted = converter.convertResult(msg.result);
+          if (converted.converted && converted.savings) {
+            logger.info({ savings: converted.savings }, `TOON: converted ${name}: ${converted.savings.originalTokens}→${converted.savings.toonTokens} tok (${converted.savings.percent}% savings)`);
+          }
+          reply.raw.write(`event: message\ndata: ${JSON.stringify({ ...msg, result: converted.result })}\n\n`);
+          return;
+        } catch (_err) {
+          logger.warn({ name }, `TOON: conversion failed for ${name}, returning original`);
+        }
+      }
       reply.raw.write(`event: message\ndata: ${JSON.stringify(msg)}\n\n`);
     });
 

@@ -17,6 +17,7 @@ export interface ProxyConfig {
   transport: BackendTransport;
   accessToken?: string;
   env?: Record<string, string>;
+  outputMode?: 'dynamic' | 'json' | 'toon';
 }
 
 export interface ProxyOptions {
