@@ -223,51 +223,26 @@ export function FieldProjectionModal({ open, mcpName, onClose }: FieldProjection
                         </div>
 
                         <div className="flex items-center gap-1">
-                          {editingTool === tool.toolName ? (
-                            <>
-                              <button
-                                onClick={() => handleSave(tool.toolName)}
-                                disabled={saving === tool.toolName}
-                                className="rounded bg-theme-accent px-2 py-1 text-xs font-medium text-gray-900 hover:bg-theme-accent-dark disabled:opacity-50"
-                              >
-                                {saving === tool.toolName ? (
-                                  <LoaderCircle className="h-3 w-3 animate-spin" />
-                                ) : (
-                                  'Save'
-                                )}
-                              </button>
-                              <button
-                                onClick={cancelEdit}
-                                disabled={saving === tool.toolName}
-                                className="rounded px-2 py-1 text-xs text-theme-muted hover:bg-theme-border"
-                              >
-                                Cancel
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => startEdit(tool)}
-                                className="rounded p-1.5 text-gray-400 hover:bg-blue-600/20 hover:text-blue-400"
-                                title={tool.projection ? 'Edit projection' : 'Add projection'}
-                              >
-                                <Filter className="h-4 w-4" />
-                              </button>
-                              {tool.projection && (
-                                <button
-                                  onClick={() => handleRemove(tool.toolName)}
-                                  disabled={saving === tool.toolName}
-                                  className="rounded p-1.5 text-gray-400 hover:bg-red-600/20 hover:text-red-400 disabled:opacity-50"
-                                  title="Remove projection"
-                                >
-                                  {saving === tool.toolName ? (
-                                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-4 w-4" />
-                                  )}
-                                </button>
+                          <button
+                            onClick={() => startEdit(tool)}
+                            className="rounded p-1.5 text-gray-400 hover:bg-blue-600/20 hover:text-blue-400"
+                            title={tool.projection ? 'Edit projection' : 'Add projection'}
+                          >
+                            <Filter className="h-4 w-4" />
+                          </button>
+                          {tool.projection && (
+                            <button
+                              onClick={() => handleRemove(tool.toolName)}
+                              disabled={saving === tool.toolName}
+                              className="rounded p-1.5 text-gray-400 hover:bg-red-600/20 hover:text-red-400 disabled:opacity-50"
+                              title="Remove projection"
+                            >
+                              {saving === tool.toolName ? (
+                                <LoaderCircle className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
                               )}
-                            </>
+                            </button>
                           )}
                         </div>
                       </div>
@@ -346,6 +321,26 @@ export function FieldProjectionModal({ open, mcpName, onClose }: FieldProjection
                                 </div>
                               );
                             })}
+                          </div>
+                          <div className="mt-3 flex justify-end gap-2 border-t border-theme-border pt-3">
+                            <button
+                              onClick={cancelEdit}
+                              disabled={saving === tool.toolName}
+                              className="rounded px-3 py-1.5 text-sm text-theme-muted hover:bg-theme-border"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => handleSave(tool.toolName)}
+                              disabled={saving === tool.toolName}
+                              className="rounded bg-theme-accent px-3 py-1.5 text-sm font-medium text-gray-900 hover:bg-theme-accent-dark disabled:opacity-50"
+                            >
+                              {saving === tool.toolName ? (
+                                <LoaderCircle className="h-4 w-4 animate-spin" />
+                              ) : (
+                                'Save'
+                              )}
+                            </button>
                           </div>
                         </div>
                       )}
