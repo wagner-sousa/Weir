@@ -278,31 +278,28 @@ export function FieldProjectionModal({ open, mcpName, onClose }: FieldProjection
                             <button
                               type="button"
                               onClick={() => setEditMode('include')}
-                              className={`flex-1 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+                              className={`flex-1 rounded px-3 py-2 text-left transition-colors ${
                                 editMode === 'include'
                                   ? 'bg-green-900/30 text-green-400 border border-green-700'
                                   : 'bg-theme-bg text-theme-muted border border-theme-border hover:text-theme-text'
                               }`}
                             >
-                              Include
+                              <div className="text-sm font-medium">Include</div>
+                              <div className="text-xs opacity-75">Only the specified fields will be kept in the response.</div>
                             </button>
                             <button
                               type="button"
                               onClick={() => setEditMode('exclude')}
-                              className={`flex-1 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+                              className={`flex-1 rounded px-3 py-2 text-left transition-colors ${
                                 editMode === 'exclude'
                                   ? 'bg-red-900/30 text-red-400 border border-red-700'
                                   : 'bg-theme-bg text-theme-muted border border-theme-border hover:text-theme-text'
                               }`}
                             >
-                              Exclude
+                              <div className="text-sm font-medium">Exclude</div>
+                              <div className="text-xs opacity-75">The specified fields will be removed from the response.</div>
                             </button>
                           </div>
-                          <p className="text-xs text-theme-muted">
-                            {editMode === 'include'
-                              ? 'Only the specified fields will be kept in the response.'
-                              : 'The specified fields will be removed from the response.'}
-                          </p>
                           <div>
                             <div className="mb-1 flex items-center justify-between">
                               <label className="text-xs text-theme-muted">
