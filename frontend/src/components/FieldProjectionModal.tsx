@@ -231,20 +231,6 @@ export function FieldProjectionModal({ open, mcpName, onClose }: FieldProjection
                               </span>
                             )}
                           </button>
-                          {tool.projection && (
-                            <button
-                              onClick={() => handleRemove(tool.toolName)}
-                              disabled={saving === tool.toolName}
-                              className="rounded p-1.5 text-gray-400 hover:bg-red-600/20 hover:text-red-400 disabled:opacity-50"
-                              title="Remove projection"
-                            >
-                              {saving === tool.toolName ? (
-                                <LoaderCircle className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </button>
-                          )}
                         </div>
                       </div>
 
@@ -324,6 +310,20 @@ export function FieldProjectionModal({ open, mcpName, onClose }: FieldProjection
                             })}
                           </div>
                           <div className="mt-3 flex justify-end gap-2 border-t border-theme-border pt-3">
+                            {tool.projection && (
+                              <button
+                                onClick={() => handleRemove(tool.toolName)}
+                                disabled={saving === tool.toolName}
+                                className="flex items-center gap-1 rounded px-3 py-1.5 text-sm text-red-400 hover:bg-red-600/20 disabled:opacity-50"
+                              >
+                                {saving === tool.toolName ? (
+                                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                                Remove
+                              </button>
+                            )}
                             <button
                               onClick={cancelEdit}
                               disabled={saving === tool.toolName}
