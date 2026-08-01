@@ -62,7 +62,7 @@ export function resolveBackendConfig(name: string): ProxyConfig {
     } else {
       proxyConfig.url = transportEntry['url'] as string;
     }
-    proxyConfig.env = entry['env'] as Record<string, string> | undefined;
+    proxyConfig.env = transportEntry['env'] as Record<string, string> | undefined;
     return proxyConfig;
   }
 
@@ -164,6 +164,7 @@ function createConverterForConfig(config: ProxyConfig): ToonConverter {
   const envConfig = parseEnvConfig();
   return new ToonConverter({
     indent: envConfig.WEIR_TOON_INDENT,
+    delimiter: envConfig.WEIR_TOON_DELIMITER,
     flattenDepth: envConfig.WEIR_TOON_FLATTEN_DEPTH,
     threshold: envConfig.WEIR_TOON_THRESHOLD,
     outputMode: config.outputMode || envConfig.WEIR_TOON_OUTPUT_MODE,
@@ -268,7 +269,7 @@ export async function runProxy(name: string, _argv: string[]): Promise<void> {
           process.stderr.write(`[proxy] ${state}: ${error}\n`);
         }
       },
-    });
+    }, () => resolveBackendConfig(name));
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     process.stderr.write(`Error: ${message}\n`);

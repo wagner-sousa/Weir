@@ -9,6 +9,7 @@ export interface TokenSavings {
 }
 
 export interface ToonOptions {
+  delimiter?: 'comma' | 'tab' | 'pipe';
   indent: number;
   flattenDepth: number;
   threshold: number;

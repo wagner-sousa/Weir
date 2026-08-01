@@ -8,6 +8,16 @@ For validation scenarios, see specs/013-json-toon-conversion/quickstart.md
 
 ## Conhecidos Pitfalls (Docker & ESM)
 
+<!-- LIFECYCLE START -->
+## Lifecycle: 013-json-toon-conversion — LOCKED since 2026-08-01T19:30:00-03:00
+
+**Blocked commands:** specify, clarify, plan, tasks, checklist, analyze, sync.apply, sync.backfill
+
+**Allowed modifications:** refine.*, bugfix.*
+
+To unlock: /speckit.lifecycle.unlock
+<!-- LIFECYCLE END -->
+
 ### Dev service subshell
 O servico `dev` no `docker-compose.dev.yml` usa `sh -c` com `&` para rodar backend e frontend no mesmo container. Isso faz com que Ctrl+C mate apenas o processo em foreground. Use `docker compose down` para parar.
 

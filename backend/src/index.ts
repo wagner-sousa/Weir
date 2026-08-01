@@ -107,8 +107,10 @@ export async function start() {
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (isMain) {
   const mcpIndex = process.argv.indexOf('--mcp');
-  if (mcpIndex !== -1 && process.argv[mcpIndex + 1]) {
-    const name = process.argv[mcpIndex + 1];
+  const proxyIndex = process.argv.indexOf('--proxy');
+  const proxyArgIndex = mcpIndex !== -1 ? mcpIndex : proxyIndex;
+  if (proxyArgIndex !== -1 && process.argv[proxyArgIndex + 1]) {
+    const name = process.argv[proxyArgIndex + 1];
     const { runProxy } = await import('./proxy/index.js');
     await runProxy(name, process.argv);
   } else {

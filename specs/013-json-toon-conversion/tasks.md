@@ -194,3 +194,14 @@ Task: "Implement optimizer.ts in backend/src/toon/optimizer.ts"
 ## Phase 7: Convergence
 
 - [X] T027 Forward `envConfig.WEIR_TOON_AUTO_CONVERT` to `ToonOptions.autoConvert` in `createConverterForConfig` (`backend/src/proxy/index.ts:165-171`) and `startProxy` (`backend/src/proxy/proxy.ts:117-123`) so that `WEIR_TOON_AUTO_CONVERT=false` is honored per FR-008 (partial)
+
+## Phase 8: Convergence
+
+- [X] T028 [US2] Re-read TOON environment configuration and effective backend output mode for each incoming CLI proxy conversion, so runtime env changes take effect without restart per FR-008 (partial)
+- [X] T029 [US1] Restrict CLI proxy TOON conversion to responses belonging to `tools/call` requests, leaving initialize, list, and other JSON-RPC results unchanged per FR-001 and the feature assumptions (partial)
+
+## Phase 9: Convergence
+
+- [X] T030 Propagate delimiter configuration through schema, env parsing, and all TOON conversion paths.
+- [X] T031 Preserve flat-format `outputMode` and nested transport `env` during proxy config resolution.
+- [X] T032 Track buffered `tools/call` request IDs so reconnect responses receive the same conversion filter.

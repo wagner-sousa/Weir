@@ -82,6 +82,7 @@ export async function startProxy(
   transport: TransportAdapter,
   options: ProxyOptions,
   callbacks?: ProxyCallbacks,
+  resolveConfig: () => ProxyConfig = () => config,
 ): Promise<void> {
   const buffer = createMessageBuffer(options.bufferLimit);
   const backoff = createBackoffState(options.reconnectBaseDelay, options.reconnectMaxDelay, options.reconnectMaxRetries);
@@ -113,31 +114,38 @@ export async function startProxy(
     emitStatus(ProxyState.CLOSED, err.message);
   });
 
-  const envConfig = parseEnvConfig();
-  const converter = new ToonConverter({
-    indent: envConfig.WEIR_TOON_INDENT,
-    flattenDepth: envConfig.WEIR_TOON_FLATTEN_DEPTH,
-    threshold: envConfig.WEIR_TOON_THRESHOLD,
-    outputMode: config.outputMode || envConfig.WEIR_TOON_OUTPUT_MODE,
-    autoConvert: envConfig.WEIR_TOON_AUTO_CONVERT,
-  });
-
   const rl = createInterface({ input: process.stdin, crlfDelay: Infinity });
+  const toolCallIds = new Set<string | number>();
   const agentWrite = (msg: JsonRpcMessage) => {
     process.stdout.write(JSON.stringify(msg) + '\n');
   };
 
   incomingHandler = (msg: JsonRpcMessage) => {
     const isToolCall = msg.id !== undefined && (msg.result !== undefined || msg.error !== undefined);
-    if (isToolCall && msg.result) {
-      try {
-        const converted = converter.convertResult(msg.result);
-        if (converted.converted && converted.savings) {
-          logger.info({ savings: converted.savings }, `TOON: converted ${config.name}: ${converted.savings.originalTokens}→${converted.savings.toonTokens} tok (${converted.savings.percent}% savings)`);
+    if (isToolCall && msg.id !== undefined && msg.id !== null && toolCallIds.has(msg.id)) {
+      toolCallIds.delete(msg.id);
+      if (msg.result) {
+        try {
+          const freshConfig = resolveConfig();
+          const envConfig = parseEnvConfig();
+          const converter = new ToonConverter({
+            indent: envConfig.WEIR_TOON_INDENT,
+            delimiter: envConfig.WEIR_TOON_DELIMITER,
+            flattenDepth: envConfig.WEIR_TOON_FLATTEN_DEPTH,
+            threshold: envConfig.WEIR_TOON_THRESHOLD,
+            outputMode: freshConfig.outputMode || envConfig.WEIR_TOON_OUTPUT_MODE,
+            autoConvert: envConfig.WEIR_TOON_AUTO_CONVERT,
+          });
+          const converted = converter.convertResult(msg.result);
+          if (converted.converted && converted.savings) {
+            logger.info({ savings: converted.savings }, `TOON: converted ${config.name}: ${converted.savings.originalTokens}→${converted.savings.toonTokens} tok (${converted.savings.percent}% savings)`);
+          }
+          agentWrite({ ...msg, result: converted.result } as JsonRpcMessage);
+        } catch (err) {
+          logger.warn({ err }, `TOON: conversion failed for ${config.name}, returning original JSON`);
+          agentWrite(msg);
         }
-        agentWrite({ ...msg, result: converted.result } as JsonRpcMessage);
-      } catch (err) {
-        logger.warn({ err }, `TOON: conversion failed for ${config.name}, returning original JSON`);
+      } else {
         agentWrite(msg);
       }
     } else {
@@ -207,6 +215,10 @@ export async function startProxy(
       msg = JSON.parse(trimmed) as JsonRpcMessage;
     } catch {
       return;
+    }
+
+    if (msg.method === 'tools/call' && msg.id !== undefined && msg.id !== null) {
+      toolCallIds.add(msg.id);
     }
 
     if (sessionState === ProxyState.RECONNECTING || sessionState === ProxyState.CONNECTING) {

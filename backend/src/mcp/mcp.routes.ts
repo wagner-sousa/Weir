@@ -10,6 +10,7 @@ import { randomBytes } from 'node:crypto';
 interface SessionEntry {
   session: ProxySessionHandle;
   reply: FastifyReply;
+  pendingToolCalls: Set<string | number>;
 }
 
 const sessions = new Map<string, SessionEntry>();
@@ -64,7 +65,8 @@ export async function mcpPortRoutes(app: FastifyInstance) {
       'X-Accel-Buffering': 'no',
     });
 
-    sessions.set(sessionId, { session, reply });
+    const pendingToolCalls = new Set<string | number>();
+    sessions.set(sessionId, { session, reply, pendingToolCalls });
 
     reply.raw.write(`event: endpoint\ndata: ${postUrl}\n\n`);
 
@@ -79,28 +81,29 @@ export async function mcpPortRoutes(app: FastifyInstance) {
       return;
     }
 
-    const envConfig = parseEnvConfig();
-    const backendConfig = resolveBackendConfig(name);
-    const converter = new ToonConverter({
-      indent: envConfig.WEIR_TOON_INDENT,
-      flattenDepth: envConfig.WEIR_TOON_FLATTEN_DEPTH,
-      threshold: envConfig.WEIR_TOON_THRESHOLD,
-      outputMode: backendConfig.outputMode || envConfig.WEIR_TOON_OUTPUT_MODE,
-      autoConvert: envConfig.WEIR_TOON_AUTO_CONVERT,
-    });
-
     const logger = pino({ name: 'weir-mcp' });
 
     session.onMessage((msg: JsonRpcMessage) => {
-      if (msg.result) {
+      const isToolResult = msg.id !== undefined && msg.id !== null && sessions.get(sessionId)?.pendingToolCalls.delete(msg.id);
+      if (isToolResult && msg.result) {
         try {
+          const envConfig = parseEnvConfig();
+          const backendConfig = resolveBackendConfig(name);
+          const converter = new ToonConverter({
+            indent: envConfig.WEIR_TOON_INDENT,
+            delimiter: envConfig.WEIR_TOON_DELIMITER,
+            flattenDepth: envConfig.WEIR_TOON_FLATTEN_DEPTH,
+            threshold: envConfig.WEIR_TOON_THRESHOLD,
+            outputMode: backendConfig.outputMode || envConfig.WEIR_TOON_OUTPUT_MODE,
+            autoConvert: envConfig.WEIR_TOON_AUTO_CONVERT,
+          });
           const converted = converter.convertResult(msg.result);
           if (converted.converted && converted.savings) {
             logger.info({ savings: converted.savings }, `TOON: converted ${name}: ${converted.savings.originalTokens}→${converted.savings.toonTokens} tok (${converted.savings.percent}% savings)`);
           }
           reply.raw.write(`event: message\ndata: ${JSON.stringify({ ...msg, result: converted.result })}\n\n`);
           return;
-        } catch (_err) {
+        } catch {
           logger.warn({ name }, `TOON: conversion failed for ${name}, returning original`);
         }
       }
@@ -212,6 +215,9 @@ export async function mcpPortRoutes(app: FastifyInstance) {
       }
 
       try {
+        if (body.method === 'tools/call' && body.id !== undefined && body.id !== null) {
+          sessionEntry.pendingToolCalls.add(body.id);
+        }
         await sessionEntry.session.send(body);
         return reply.status(202).send({ ok: true });
       } catch (err) {

@@ -43,9 +43,7 @@ function extractBalanced(text: string, startChar: '{' | '['): { start: number; e
 function findJsonInText(text: string): JsonExtraction | null {
   try {
     const parsed = JSON.parse(text);
-    if (typeof parsed === 'object' && parsed !== null) {
-      return { json: text, parsed, start: 0, end: text.length };
-    }
+    return { json: text, parsed, start: 0, end: text.length };
   } catch { /* not pure JSON */ }
 
   const codeBlockRegex = /```(?:json|javascript|typescript|js|ts)?\s*\n?([\s\S]*?)```/i;
@@ -54,9 +52,7 @@ function findJsonInText(text: string): JsonExtraction | null {
     const candidate = match[1].trim();
     try {
       const parsed = JSON.parse(candidate);
-      if (typeof parsed === 'object' && parsed !== null) {
-        return { json: candidate, parsed, start: match.index!, end: match.index! + match[0].length };
-      }
+      return { json: candidate, parsed, start: match.index!, end: match.index! + match[0].length };
     } catch { /* not valid JSON in code block */ }
   }
 
@@ -65,9 +61,7 @@ function findJsonInText(text: string): JsonExtraction | null {
     const candidate = text.substring(balanced.start, balanced.end);
     try {
       const parsed = JSON.parse(candidate);
-      if (typeof parsed === 'object' && parsed !== null) {
-        return { json: candidate, parsed, start: balanced.start, end: balanced.end };
-      }
+      return { json: candidate, parsed, start: balanced.start, end: balanced.end };
     } catch { /* balanced block not valid JSON */ }
   }
 
@@ -75,6 +69,7 @@ function findJsonInText(text: string): JsonExtraction | null {
 }
 
 const DEFAULT_OPTIONS: ToonOptions = {
+  delimiter: 'comma',
   indent: 2,
   flattenDepth: 4,
   threshold: 100,
@@ -95,6 +90,7 @@ export class ToonConverter {
 
   encode(data: unknown): string {
     return encode(data, {
+      delimiter: this.options.delimiter,
       indent: this.options.indent,
       flattenDepth: this.options.flattenDepth,
     } as Record<string, unknown>);
@@ -172,7 +168,7 @@ export class ToonConverter {
           if (!firstItemTokens) {
             firstItemTokens = { original: latestSavings.originalTokens, toon: latestSavings.toonTokens };
           }
-        } catch (_err) {
+        } catch {
           continue;
         }
       } else {
@@ -201,7 +197,7 @@ export class ToonConverter {
           } else {
             latestSavings = savings;
           }
-        } catch (_err) {
+        } catch {
           continue;
         }
       }
@@ -218,7 +214,7 @@ export class ToonConverter {
     }
 
     return {
-      result: { ...input, content, _meta: meta },
+      result: meta ? { ...input, content, _meta: meta } : result,
       savings: latestSavings,
       converted: overallConverted,
     };

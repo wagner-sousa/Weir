@@ -3,8 +3,10 @@ import { z } from 'zod';
 export const TransportType = z.enum(['stdio', 'http', 'sse']);
 
 export const OutputMode = z.enum(['dynamic', 'json', 'toon']);
+export const ToonDelimiter = z.enum(['comma', 'tab', 'pipe']);
 
 export const ToonOptions = z.object({
+  delimiter: ToonDelimiter.default('comma'),
   indent: z.coerce.number().int().min(0).max(8).default(2),
   flattenDepth: z.coerce.number().int().min(0).default(4),
   threshold: z.coerce.number().int().min(0).default(100),
@@ -32,8 +34,8 @@ export const TransportConfig = z
 export const MCPServerEntry = z.preprocess(
   (input) => {
     if (typeof input === 'object' && input !== null && !('transport' in input)) {
-      const { type, command, args, url, env } = input as Record<string, unknown>;
-      return { transport: { type, command, args, url, env } };
+      const { type, command, args, url, env, outputMode } = input as Record<string, unknown>;
+      return { transport: { type, command, args, url, env }, outputMode };
     }
     return input;
   },
@@ -84,7 +86,11 @@ export const EnvConfig = z.object({
   WEIR_PROXY_BUFFER_LIMIT: z.coerce.number().int().min(1).default(100),
   WEIR_PROXY_BACKEND_TIMEOUT: z.coerce.number().int().min(100).default(5000),
   WEIR_PROXY_KEEPALIVE_MS: z.coerce.number().int().min(1000).default(15000),
-  WEIR_TOON_AUTO_CONVERT: z.coerce.boolean().default(true),
+  WEIR_TOON_AUTO_CONVERT: z.preprocess(
+    (value) => typeof value === 'string' ? value.toLowerCase() === 'true' : value,
+    z.boolean(),
+  ).default(true),
+  WEIR_TOON_DELIMITER: ToonDelimiter.default('comma'),
   WEIR_TOON_INDENT: z.coerce.number().int().min(0).max(8).default(2),
   WEIR_TOON_FLATTEN_DEPTH: z.coerce.number().int().min(0).default(4),
   WEIR_TOON_THRESHOLD: z.coerce.number().int().min(0).default(100),
