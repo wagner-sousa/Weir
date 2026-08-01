@@ -1,72 +1,70 @@
 installed:
 - agent-context
 - git
+- lifecycle
 - review
+- switch
 - verify
-- conduct
-- docguard
 settings:
   auto_execute_hooks: true
 hooks:
-  before_specify:
+  before_implement:
   - extension: git
-    command: speckit.git.create-branch
+    command: speckit.git.commit
     enabled: true
     optional: false
     priority: 10
-    description: Create or switch to a git branch before specification
-    condition: null
-  after_specify:
-  - extension: agent-context
-    command: speckit.agent-context.update
-    enabled: true
-    optional: false
-    priority: 10
-    description: Refresh agent context after specification
-    condition: null
-  after_plan:
-  - extension: agent-context
-    command: speckit.agent-context.update
-    enabled: true
-    optional: false
-    priority: 10
-    description: Refresh agent context after planning
-    condition: null
-  before_tasks:
-  - extension: docguard
-    command: speckit.docguard.review
-    enabled: true
-    optional: false
-    priority: 10
-    description: Review specification documentation before task creation
-    condition: null
-  after_tasks:
-  - extension: docguard
-    command: speckit.docguard.score
-    enabled: true
-    optional: false
-    priority: 10
-    description: Score documentation quality after task creation
+    prompt: Commit outstanding changes before implementation?
+    description: Auto-commit before implementation
     condition: null
   after_implement:
+  - extension: git
+    command: speckit.git.commit
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Commit implementation changes?
+    description: Auto-commit after implementation
+    condition: null
   - extension: review
     command: speckit.review.run
     enabled: true
     optional: false
     priority: 10
-    description: Post-implementation code review
+    prompt: Run review after implementation?
+    description: Review implementation changes
     condition: null
   - extension: verify
     command: speckit.verify.run
     enabled: true
     optional: false
     priority: 10
-    description: Validate code against specification artifacts
+    prompt: Verify implementation against specification?
+    description: Validate implementation against spec
     condition: null
-  - extension: docguard
-    command: speckit.docguard.guard
+  after_converge:
+  - extension: lifecycle
+    command: speckit.lifecycle.status
     enabled: true
     optional: false
     priority: 10
-    description: Validate documentation after implementation
+    prompt: Show lifecycle status after convergence?
+    description: Report lifecycle status
+    condition: null
+  after_lifecycle_lock:
+  - extension: lifecycle
+    command: speckit.lifecycle.write-agents
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Update agent context with lifecycle lock rules?
+    description: Write lifecycle lock rules to AGENTS.md
+    condition: null
+  - extension: git
+    command: speckit.git.commit
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Commit lifecycle lock?
+    description: Commit lifecycle lock and agent context
     condition: null

@@ -1,0 +1,54 @@
+schema_version: "1.0"
+
+extension:
+  id: lifecycle
+  name: "SDD Lifecycle Manager"
+  version: "1.0.0"
+  description: "Phase-gate lifecycle for Spec Kit — lock spec artifacts after finalization, block destructive commands, allow only refine/bugfix"
+  author: "Wagner Sousa"
+  repository: "https://github.com/wagner-sousa/spec-kit-lifecycle"
+  license: "MIT"
+  homepage: "https://github.com/wagner-sousa/spec-kit-lifecycle"
+
+requires:
+  speckit_version: ">=0.4.0"
+
+provides:
+  commands:
+    - name: speckit.lifecycle.check
+      file: commands/speckit.lifecycle.check.md
+      description: "Check lifecycle phase — guard against locked specs"
+    - name: speckit.lifecycle.lock
+      file: commands/speckit.lifecycle.lock.md
+      description: "Lock the spec lifecycle — block specify/clarify/plan/tasks/checklist/analyze"
+    - name: speckit.lifecycle.unlock
+      file: commands/speckit.lifecycle.unlock.md
+      description: "Unlock the spec lifecycle — re-enable all commands"
+    - name: speckit.lifecycle.status
+      file: commands/speckit.lifecycle.status.md
+      description: "Show current lifecycle phase and lock metadata"
+    - name: speckit.lifecycle.write-agents
+      file: commands/speckit.lifecycle.write-agents.md
+      description: "Write lifecycle lock status into agent context file"
+
+  config:
+    - name: "lifecycle-config.yml"
+      template: "lifecycle-config.yml"
+      description: "Lifecycle configuration — blocked/allowed commands and auto-lock triggers"
+      required: false
+
+  hooks:
+    after_lifecycle_lock:
+      command: speckit.lifecycle.write-agents
+      optional: false
+      description: "Write lifecycle lock rules to agent context file"
+    after_lifecycle_unlock:
+      command: speckit.lifecycle.write-agents
+      optional: false
+      description: "Remove lifecycle lock rules from agent context file"
+
+tags:
+  - "lifecycle"
+  - "governance"
+  - "gates"
+  - "workflow"
