@@ -1,7 +1,18 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan at specs/010-mcp-transparent-proxy/plan.md
+shell commands, and other important information, read the current plan
+at specs/012-mcp-card-status/plan.md
 <!-- SPECKIT END -->
+
+<!-- LIFECYCLE START -->
+## Lifecycle: 012-mcp-card-status — LOCKED since 2026-08-01T19:14:00-03:00
+
+**Blocked commands:** specify, clarify, plan, tasks, checklist, analyze, sync.apply, sync.backfill
+
+**Allowed modifications:** refine.*, bugfix.*
+
+To unlock: /speckit.lifecycle.unlock
+<!-- LIFECYCLE END -->
 
 ## Conhecidos Pitfalls (Docker & ESM)
 
