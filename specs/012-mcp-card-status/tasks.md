@@ -114,8 +114,13 @@
 - [x] T021 [P] Run all tests to ensure no regressions: `docker compose -f docker-compose.dev.yml exec dev sh -c "cd /app/frontend && npm test -- --run"`
 - [x] T022 [P] Add test verifying FR-008: transport badge color classes do not overlap with status icon color classes in `frontend/tests/components/MCPCard.test.tsx`
 - [x] T023 Run quickstart.md validation scenarios manually
-- [ ] T024 [P] [US2] Add test for unknown/undefined transport type falling back to 'outline' badge variant in MCPCard.test.tsx
-- [ ] T025 [P] [US2] Add test for long error messages (>200 chars) being truncated in tooltip display
+- [x] T024 [P] [US2] Add test for unknown/undefined transport type falling back to 'outline' badge variant in MCPCard.test.tsx
+- [x] T025 [P] [US2] Add test for long error messages (>200 chars) being truncated in tooltip display
+
+## Phase 7: Convergence
+
+- [x] T026 [P] [US3] Add unknown/undefined transport fallback coverage per FR-006 (missing)
+- [x] T027 [US2] Truncate error tooltip text beyond 200 characters per edge-case requirement (missing)
 
 ---
 

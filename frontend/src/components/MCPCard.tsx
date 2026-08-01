@@ -41,6 +41,9 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, onConfi
   const si = statusIcons[status] || statusIcons.disconnected;
   const known = transportVariant[client.transport];
   const variant = known || 'outline';
+  const errorTooltip = client.error
+    ? `${si.label}: ${client.error.length > 200 ? `${client.error.slice(0, 197)}...` : client.error}`
+    : si.label;
 
   return (
     <div
@@ -54,7 +57,7 @@ export function MCPCard({ client, onRemove, onEdit, onReconnect, onAuth, onConfi
               {si.icon}
             </span>
             <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-              {client.error ? `${si.label}: ${client.error}` : si.label}
+              {errorTooltip}
             </span>
           </span>
           <h3 className="text-lg font-semibold text-theme-text">{client.name}</h3>

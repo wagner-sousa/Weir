@@ -166,6 +166,13 @@ describe('MCPCard', () => {
   });
 
   describe('transport badge colors', () => {
+    it('falls back to outline badge for unknown transport', () => {
+      const client = { name: 'unknown', transport: 'custom' };
+      render(<MCPCard client={client} />);
+      const badge = screen.getByText('Unknown');
+      expect(badge.className).toContain('border-theme-border');
+    });
+
     it('renders http transport badge with blue color', () => {
       const client = {
         name: 'api',
@@ -247,6 +254,19 @@ describe('MCPCard', () => {
       const icon = screen.getByLabelText('Unknown');
       expect(icon.className).toContain('text-gray-400');
     });
+  });
+
+  it('truncates long error messages in status tooltip', () => {
+    const error = 'x'.repeat(250);
+    const client = {
+      name: 'api',
+      transport: 'http' as const,
+      status: 'error' as const,
+      error,
+    };
+    render(<MCPCard client={client} />);
+    expect(screen.getByText(`Error: ${'x'.repeat(197)}...`)).toBeInTheDocument();
+    expect(screen.queryByText(`Error: ${error}`)).not.toBeInTheDocument();
   });
 
   describe('FR-008: badge colors distinct from status colors', () => {
