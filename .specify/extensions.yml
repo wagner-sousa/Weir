@@ -1,28 +1,42 @@
 installed:
 - agent-context
+- bugfix
+- doctor
 - git
+- lifecycle
+- refine
 - review
+- switch
+- sync
 - verify
-- conduct
-- docguard
+- verify-tasks
 settings:
   auto_execute_hooks: true
 hooks:
-  before_specify:
-  - extension: git
-    command: speckit.git.create-branch
-    enabled: true
-    optional: false
-    priority: 10
-    description: Create or switch to a git branch before specification
-    condition: null
   after_specify:
   - extension: agent-context
     command: speckit.agent-context.update
     enabled: true
     optional: false
     priority: 10
+    prompt: Execute speckit.agent-context.update?
     description: Refresh agent context after specification
+    condition: null
+  - extension: refine
+    command: speckit.refine.status
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Check artifact sync status after specification?
+    description: Show sync status after spec generation
+    condition: null
+  - extension: git
+    command: speckit.git.commit
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Commit specification changes?
+    description: Auto-commit after specification
     condition: null
   after_plan:
   - extension: agent-context
@@ -30,43 +44,299 @@ hooks:
     enabled: true
     optional: false
     priority: 10
+    prompt: Execute speckit.agent-context.update?
     description: Refresh agent context after planning
     condition: null
-  before_tasks:
-  - extension: docguard
-    command: speckit.docguard.review
+  - extension: refine
+    command: speckit.refine.status
     enabled: true
     optional: false
     priority: 10
-    description: Review specification documentation before task creation
+    prompt: Check artifact sync status after planning?
+    description: Show sync status after plan generation
+    condition: null
+  - extension: git
+    command: speckit.git.commit
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Commit plan changes?
+    description: Auto-commit after implementation planning
+    condition: null
+  before_constitution:
+  - extension: git
+    command: speckit.git.initialize
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.git.initialize?
+    description: Initialize Git repository before constitution setup
+    condition: null
+  before_specify:
+  - extension: lifecycle
+    command: speckit.lifecycle.check
+    enabled: true
+    optional: false
+    priority: 100
+    prompt: Checking lifecycle phase...
+    description: Block specify if spec is locked
+    condition: null
+  - extension: git
+    command: speckit.git.feature
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Execute speckit.git.feature?
+    description: Create feature branch before specification
+    condition: null
+  before_clarify:
+  - extension: lifecycle
+    command: speckit.lifecycle.check
+    enabled: true
+    optional: false
+    priority: 100
+    prompt: Checking lifecycle phase...
+    description: Block clarify if spec is locked
+    condition: null
+  - extension: git
+    command: speckit.git.commit
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Commit outstanding changes before clarification?
+    description: Auto-commit before spec clarification
+    condition: null
+  before_plan:
+  - extension: lifecycle
+    command: speckit.lifecycle.check
+    enabled: true
+    optional: false
+    priority: 100
+    prompt: Checking lifecycle phase...
+    description: Block plan if spec is locked
+    condition: null
+  - extension: git
+    command: speckit.git.commit
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Commit outstanding changes before planning?
+    description: Auto-commit before implementation planning
+    condition: null
+  before_tasks:
+  - extension: lifecycle
+    command: speckit.lifecycle.check
+    enabled: true
+    optional: false
+    priority: 100
+    prompt: Checking lifecycle phase...
+    description: Block tasks if spec is locked
+    condition: null
+  - extension: git
+    command: speckit.git.commit
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Commit outstanding changes before task generation?
+    description: Auto-commit before task generation
+    condition: null
+  before_implement:
+  - extension: git
+    command: speckit.git.commit
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Commit outstanding changes before implementation?
+    description: Auto-commit before implementation
+    condition: null
+  before_checklist:
+  - extension: lifecycle
+    command: speckit.lifecycle.check
+    enabled: true
+    optional: false
+    priority: 100
+    prompt: Checking lifecycle phase...
+    description: Block checklist if spec is locked
+    condition: null
+  - extension: git
+    command: speckit.git.commit
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Commit outstanding changes before checklist?
+    description: Auto-commit before checklist generation
+    condition: null
+  before_analyze:
+  - extension: lifecycle
+    command: speckit.lifecycle.check
+    enabled: true
+    optional: false
+    priority: 100
+    prompt: Checking lifecycle phase...
+    description: Block analyze if spec is locked
+    condition: null
+  - extension: git
+    command: speckit.git.commit
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Commit outstanding changes before analysis?
+    description: Auto-commit before analysis
+    condition: null
+  before_sync_apply:
+  - extension: lifecycle
+    command: speckit.lifecycle.check
+    enabled: true
+    optional: false
+    priority: 100
+    prompt: Checking lifecycle phase...
+    description: Block sync.apply if spec is locked
+    condition: null
+  before_sync_backfill:
+  - extension: lifecycle
+    command: speckit.lifecycle.check
+    enabled: true
+    optional: false
+    priority: 100
+    prompt: Checking lifecycle phase...
+    description: Block sync.backfill if spec is locked
+    condition: null
+  before_taskstoissues:
+  - extension: git
+    command: speckit.git.commit
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Commit outstanding changes before issue sync?
+    description: Auto-commit before tasks-to-issues conversion
+    condition: null
+  after_constitution:
+  - extension: git
+    command: speckit.git.commit
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Commit constitution changes?
+    description: Auto-commit after constitution update
+    condition: null
+  after_clarify:
+  - extension: git
+    command: speckit.git.commit
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Commit clarification changes?
+    description: Auto-commit after spec clarification
     condition: null
   after_tasks:
-  - extension: docguard
-    command: speckit.docguard.score
+  - extension: git
+    command: speckit.git.commit
     enabled: true
     optional: false
     priority: 10
-    description: Score documentation quality after task creation
+    prompt: Commit task changes?
+    description: Auto-commit after task generation
     condition: null
   after_implement:
+  - extension: git
+    command: speckit.git.commit
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Commit implementation changes?
+    description: Auto-commit after implementation
+    condition: null
   - extension: review
     command: speckit.review.run
     enabled: true
     optional: false
     priority: 10
-    description: Post-implementation code review
+    prompt: Run PR review on implemented changes?
+    description: Comprehensive review after implementation
     condition: null
   - extension: verify
     command: speckit.verify.run
     enabled: true
     optional: false
     priority: 10
-    description: Validate code against specification artifacts
+    prompt: Run verify to validate implementation against specification?
+    description: Post-implementation verification gate
     condition: null
-  - extension: docguard
-    command: speckit.docguard.guard
+  - extension: verify-tasks
+    command: speckit.verify-tasks.run
     enabled: true
     optional: false
     priority: 10
-    description: Validate documentation after implementation
+    prompt: Run verify-tasks in a fresh session to check for phantom completions
+    description: Post-implementation phantom completion detector
+    condition: null
+  - extension: sync
+    command: speckit.sync.analyze
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Check for spec drift after implementation?
+    description: ''
+    condition: null
+  - extension: bugfix
+    command: speckit.bugfix.verify
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Run bugfix consistency check after implementation?
+    description: Verify spec artifact consistency after implementation completes
+    condition: null
+  after_checklist:
+  - extension: git
+    command: speckit.git.commit
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Commit checklist changes?
+    description: Auto-commit after checklist generation
+    condition: null
+  after_analyze:
+  - extension: git
+    command: speckit.git.commit
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Commit analysis results?
+    description: Auto-commit after analysis
+    condition: null
+  after_lifecycle_lock:
+  - extension: lifecycle
+    command: speckit.lifecycle.write-agents
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Updating agent context with lifecycle lock rules...
+    description: Write lifecycle lock to agent context file
+    condition: null
+  after_lifecycle_unlock:
+  - extension: lifecycle
+    command: speckit.lifecycle.write-agents
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Removing lifecycle lock rules from agent context...
+    description: Remove lifecycle lock from agent context file
+    condition: null
+  after_converge:
+  - extension: lifecycle
+    command: speckit.lifecycle.status
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Show lifecycle status after convergence check?
+    description: Suggest locking when fully converged
+    condition: null
+  after_taskstoissues:
+  - extension: git
+    command: speckit.git.commit
+    enabled: true
+    optional: false
+    priority: 10
+    prompt: Commit after syncing issues?
+    description: Auto-commit after tasks-to-issues conversion
     condition: null

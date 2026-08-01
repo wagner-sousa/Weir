@@ -1,21 +1,15 @@
 <!--
   Sync Impact Report
   ==================
-  Version change: 1.7.0 → 1.8.0
+  Version change: 1.8.0 → 1.8.1
   Modified principles: None (principles unchanged)
-  Added sections:
-    - Principle IX: Spec Naming Convention
+  Added sections: None
   Removed sections: None
-  Modified sections: None
-  Templates requiring updates:
-    - .specify/templates/plan-template.md: ⚠ pending — add IX row to Constitution Check table
-    - .specify/templates/spec-template.md: ✅ no change needed
-    - .specify/templates/tasks-template.md: ✅ no change needed
-    - .specify/templates/checklist-template.md: ✅ no change needed
-    - .specify/templates/constitution-template.md: ✅ Template is source — no change needed
+  Modified sections:
+    - Development Workflow: added rule 10 (compile & run after spec impl)
+  Templates requiring updates: None
   Documentation requiring updates: None
-  Follow-up TODOs:
-    - Update plan-template.md Constitution Check table with IX
+  Follow-up TODOs: None
 -->
 
 # Weir Constitution
@@ -152,8 +146,12 @@ Every external dependency MUST be justified.
 8. Lints (ESLint, Prettier, typecheck) MUST pass before every
     commit. No commit with lint warnings or errors is acceptable.
 9. Every new spec, adjustment, or correction MUST be reflected
-    in documentation (README, docs/, quickstart) in the same
-    commit. Outdated documentation is considered a bug.
+     in documentation (README, docs/, quickstart) in the same
+     commit. Outdated documentation is considered a bug.
+10. After every spec implementation, the application MUST be
+    compiled and started (via docker-compose) so the user can
+    perform manual testing before the task is considered done.
+    Skipping this step is NOT acceptable.
 
 ## Governance
 
@@ -166,4 +164,4 @@ Every PR review MUST verify compliance with the principles
 defined herein. Omissions shall be resolved by the general
 principles of simplicity and developer experience.
 
-**Version**: 1.8.0 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-06-30
+**Version**: 1.8.1 | **Ratified**: 2026-06-19 | **Last Amended**: 2026-07-07

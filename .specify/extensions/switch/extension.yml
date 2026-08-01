@@ -1,0 +1,28 @@
+schema_version: "1.0"
+
+extension:
+  id: switch
+  name: "Spec Switcher"
+  version: "1.0.0"
+  description: "Navigate between specs — list available specs and switch active feature with git checkout"
+  author: "Wagner Sousa"
+  repository: "https://github.com/wagner-sousa/spec-kit-switch"
+  license: "MIT"
+  homepage: "https://github.com/wagner-sousa/spec-kit-switch"
+
+requires:
+  speckit_version: ">=0.4.0"
+
+provides:
+  commands:
+    - name: speckit.switch.list
+      file: commands/speckit.switch.list.md
+      description: "List all available specs with their branch and active status"
+    - name: speckit.switch.set
+      file: commands/speckit.switch.set.md
+      description: "Switch to a different spec — checkout matching branch"
+
+tags:
+  - "navigation"
+  - "workflow"
+  - "specs"

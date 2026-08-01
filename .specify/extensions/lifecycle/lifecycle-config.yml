@@ -1,0 +1,38 @@
+# Lifecycle Extension Configuration
+# Edit this file to customize blocking behavior.
+
+# Commands that are blocked when lifecycle is locked
+blocked_commands:
+  - specify
+  - clarify
+  - plan
+  - tasks
+  - checklist
+  - analyze
+  - sync.apply
+  - sync.backfill
+
+# Commands that remain available when lifecycle is locked
+allowed_commands:
+  - refine.*
+  - bugfix.*
+  - converge
+  - review.*
+  - verify.*
+  - verify-tasks.*
+  - sync.analyze
+  - sync.propose
+  - sync.conflicts
+  - doctor.*
+  - git.*
+  - agent-context.*
+  - switch.*
+  - lifecycle.*
+
+# Auto-lock triggers: events that suggest locking automatically
+# Set enabled: true to auto-suggest lock after an event
+auto_lock_triggers:
+  - event: after_converge
+    enabled: false
+  - event: after_implement
+    enabled: false

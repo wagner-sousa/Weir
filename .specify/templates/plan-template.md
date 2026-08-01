@@ -4,7 +4,7 @@
 
 **Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
 
-**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/plan-template.md` for the execution workflow.
+**Note**: This template is filled in by the `/speckit.plan` command; its definition describes the execution workflow.
 
 ## Summary
 
@@ -40,17 +40,7 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-| Principle | Gate |
-|-----------|------|
-| I. SDD | Schema defined before implementation? |
-| II. Test-First | Tests written and approved? |
-| III. English | UI/UX language verified? |
-| IV. .mcp.json SOT | Config derives from schema? |
-| V. Simplicity | No unnecessary duplication? |
-| VI. Icon Library | Icons from consistent package? |
-| VII. Dependency First | npm package preferred over custom code? |
-| VIII. Icon-First Buttons | Non-form controls prioritise icons? |
-| IX. Spec Naming Convention | User stories/FRs use generic roles, not real service names? |
+[Gates determined based on constitution file]
 
 ## Project Structure
 

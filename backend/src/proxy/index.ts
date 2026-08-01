@@ -4,10 +4,94 @@ import pino from 'pino';
 import { ProxyState, type ProxyConfig, type ProxyOptions, type JsonRpcMessage, type ProxySessionHandle, defaultProxyOptions } from './types.js';
 import { createTransport } from './transport.js';
 import { startProxy } from './proxy.js';
+import { loadFieldProjections } from '../projection/index.js';
+import { applyFieldSelection } from '../projection/project.js';
+import type { ProjectionMap, FieldSelection } from '../config/types.js';
 import { ToonConverter } from '../toon/converter.js';
 import { parseEnvConfig } from '../config/schema.js';
 
 const logger = pino({ name: 'weir-proxy' });
+
+let _projectionMap: ProjectionMap | null | undefined = undefined;
+
+function getProjectionMap(): ProjectionMap | null {
+  if (_projectionMap === undefined) {
+    try {
+      const configDir = dirname(resolveMcpConfigPath());
+      _projectionMap = loadFieldProjections(configDir);
+      if (_projectionMap) {
+        logger.info('Field projection config loaded');
+      }
+    } catch (err) {
+      logger.warn({ err }, 'Failed to load field-projection.json');
+      _projectionMap = null;
+    }
+  }
+  return _projectionMap;
+}
+
+function maybeApplyProjection(
+  name: string,
+  response: JsonRpcMessage,
+  request: JsonRpcMessage,
+): JsonRpcMessage {
+  logger.info({ hasResult: !!response.result, method: request.method }, 'maybeApplyProjection called');
+  if (!response.result) { logger.info('no result, returning early'); return response; }
+  const toolName = getToolName(request);
+  if (!toolName) { logger.info('no tool name, returning early'); return response; }
+  const projectionMap = getProjectionMap();
+  logger.info({ hasMap: !!projectionMap, name, toolName, sel: projectionMap?.[name]?.[toolName] ? 'found' : 'not found' }, 'projection lookup');
+  const serverProjections = projectionMap?.[name];
+  const sel: FieldSelection | undefined = serverProjections?.[toolName];
+  if (!sel) { logger.info('no selection found, returning early'); return response; }
+
+  try {
+    const result = response.result;
+
+    logger.debug({ tool: toolName, resultType: typeof result, isArray: Array.isArray(result), hasContent: typeof result === 'object' && result !== null && 'content' in result }, 'maybeApplyProjection: result shape');
+
+    if (result && typeof result === 'object' && 'content' in result && Array.isArray((result as Record<string, unknown>).content)) {
+      const r = result as Record<string, unknown>;
+      const content = r.content as Array<Record<string, unknown>>;
+      const projected = content.map((item: Record<string, unknown>) => {
+        if (item.type !== 'text' || typeof item.text !== 'string') return item;
+        try {
+          const parsed = JSON.parse(item.text);
+          const applied = applyFieldSelection(parsed, sel);
+          return { ...item, text: JSON.stringify(applied) };
+        } catch {
+          return item;
+        }
+      });
+      const newResult: Record<string, unknown> = { ...r, content: projected };
+      for (const key of Object.keys(r)) {
+        if (key === 'content' || key === 'isError') continue;
+        newResult[key] = applyFieldSelection(r[key], sel);
+      }
+      logger.info({ tool: toolName, mode: sel.mode, fields: sel.fields.length }, 'Field projection applied (content format)');
+      return { ...response, result: newResult };
+    }
+
+    const projected = applyFieldSelection(result, sel);
+    logger.info({ tool: toolName, mode: sel.mode, fields: sel.fields.length }, 'Field projection applied');
+    return { ...response, result: projected };
+  } catch (err) {
+    logger.warn({ err, tool: toolName }, 'Field projection failed, using original result');
+    return response;
+  }
+}
+
+function getToolName(message: JsonRpcMessage): string | undefined {
+  if (message.method === 'tools/call' && message.params && typeof message.params === 'object' && 'name' in (message.params as Record<string, unknown>)) {
+    return (message.params as Record<string, unknown>).name as string;
+  }
+  return message.method;
+}
+
+export function invalidateProjectionMap(): void {
+  _projectionMap = undefined;
+  logger.info('Field projection cache invalidated');
+}
 
 export function resolveMcpConfigPath(): string {
   return process.env['MCP_CONFIG_PATH'] || resolve(process.cwd(), '.mcp.json');
@@ -130,8 +214,24 @@ export function createProxySession(name: string): ProxySessionHandle {
   let disconnectHandler: (() => void) | null = null;
   let errorHandler: ((err: Error) => void) | null = null;
 
-  transport.onMessage((msg) => messageHandler?.(msg));
-  transport.onDisconnect(() => disconnectHandler?.());
+  const pendingRequests = new Map<string | number, JsonRpcMessage>();
+
+  transport.onMessage((msg) => {
+    let projected = msg;
+    if (msg.id != null) {
+      const req = pendingRequests.get(msg.id);
+      pendingRequests.delete(msg.id);
+      if (req) {
+        projected = maybeApplyProjection(name, msg, req);
+      }
+    }
+    messageHandler?.(projected);
+  });
+
+  transport.onDisconnect(() => {
+    pendingRequests.clear();
+    disconnectHandler?.();
+  });
   transport.onError((err) => errorHandler?.(err));
 
   return {
@@ -142,9 +242,13 @@ export function createProxySession(name: string): ProxySessionHandle {
     },
     disconnect() {
       state = ProxyState.CLOSED;
+      pendingRequests.clear();
       transport.disconnect();
     },
     async send(message) {
+      if (message.id != null) {
+        pendingRequests.set(message.id, message);
+      }
       await transport.send(message);
     },
     onMessage(handler) {
@@ -229,20 +333,24 @@ export async function sendOneMessage(
           clearTimeout(timeout);
           transport.disconnect();
 
-          if (msg.result && message.method === 'tools/call') {
+          // Apply field projection first
+          let processedMsg = maybeApplyProjection(name, msg, message);
+
+          // Then apply TOON conversion
+          if (processedMsg.result && message.method === 'tools/call') {
             try {
               const converter = createConverterForConfig(config);
-              const converted = converter.convertResult(msg.result);
+              const converted = converter.convertResult(processedMsg.result);
               if (converted.converted && converted.savings) {
                 logger.info({ savings: converted.savings }, `TOON: converted ${name}: ${converted.savings.originalTokens}→${converted.savings.toonTokens} tok (${converted.savings.percent}% savings)`);
               }
-              resolvePromise({ ...msg, result: converted.result } as JsonRpcMessage);
+              resolvePromise({ ...processedMsg, result: converted.result } as JsonRpcMessage);
             } catch (err) {
               logger.warn({ err }, `TOON: conversion failed for ${name}, returning original JSON`);
-              resolvePromise(msg);
+              resolvePromise(processedMsg);
             }
           } else {
-            resolvePromise(msg);
+            resolvePromise(processedMsg);
           }
         });
 

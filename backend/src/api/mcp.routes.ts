@@ -1,15 +1,16 @@
 import type { FastifyInstance } from 'fastify';
 import { loadMCPConfig } from '../config/loader.js';
 import { writeMCPConfig, addMCPEntry, removeMCPEntry, updateEntry } from '../config/writer.js';
-import { TestConnectionRequest } from '../config/schema.js';
+import { TestConnectionRequest, FieldSelectionSchema } from '../config/schema.js';
 import { testConnection, queryTools } from '../services/mcp-client.js';
 import { getCachedStatus, setCachedStatus, deleteCachedStatus } from '../services/status-cache.js';
 import { getAuthConfig, deleteAuthConfig } from '../services/auth-storage.js';
 import { refreshTokenIfExpired } from '../services/token-refresh.js';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, join } from 'node:path';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { broadcast } from './ws.js';
-import type { MCPClient, CachedStatus, StatusUpdate } from '../config/types.js';
+import type { MCPClient, CachedStatus, StatusUpdate, FieldSelection } from '../config/types.js';
+import { loadFieldProjections, saveFieldProjection, removeFieldProjection } from '../projection/index.js';
 
 function getConfigPath(): string {
   return process.env.MCP_CONFIG_PATH || resolve(process.cwd(), '.mcp.json');
@@ -447,6 +448,90 @@ export async function mcpRoutes(app: FastifyInstance) {
       return reply.status(404).send({
         success: false,
         error: `MCP '${name}' not found.`,
+      });
+    }
+  });
+
+  // Field Projection endpoints (US3)
+  app.get('/api/mcps/:name/projections', async (request, reply) => {
+    const { name } = request.params as { name: string };
+    const configPath = getConfigPath();
+    const configDir = dirname(configPath);
+
+    const projections = loadFieldProjections(configDir);
+    if (!projections || !projections[name]) {
+      return { projections: {} };
+    }
+
+    return { projections: projections[name] };
+  });
+
+  app.post('/api/mcps/:name/projections/:toolName', async (request, reply) => {
+    const { name, toolName } = request.params as { name: string; toolName: string };
+    const configPath = getConfigPath();
+    const configDir = dirname(configPath);
+
+    // Validate MCP exists
+    const result = loadMCPConfig(configPath);
+    if (!result.clients.some(c => c.name === name)) {
+      return reply.status(404).send({
+        success: false,
+        error: `MCP '${name}' not found.`,
+      });
+    }
+
+    // Validate body
+    const parsed = FieldSelectionSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({
+        success: false,
+        error: parsed.error.issues.map(i => i.message).join('; '),
+      });
+    }
+
+    try {
+      saveFieldProjection(configDir, name, toolName, parsed.data);
+      broadcast('config:changed', { path: join(configDir, 'field-projection.json') });
+      return { success: true, name, toolName, selection: parsed.data };
+    } catch (err) {
+      if (isPermissionError(err)) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Could not write field-projection.json: permission denied.',
+        });
+      }
+      return reply.status(400).send({
+        success: false,
+        error: err instanceof Error ? err.message : 'Invalid field projection.',
+      });
+    }
+  });
+
+  app.delete('/api/mcps/:name/projections/:toolName', async (request, reply) => {
+    const { name, toolName } = request.params as { name: string; toolName: string };
+    const configPath = getConfigPath();
+    const configDir = dirname(configPath);
+
+    try {
+      const removed = removeFieldProjection(configDir, name, toolName);
+      if (!removed) {
+        return reply.status(404).send({
+          success: false,
+          error: `Projection for '${name}.${toolName}' not found.`,
+        });
+      }
+      broadcast('config:changed', { path: join(configDir, 'field-projection.json') });
+      return { success: true };
+    } catch (err) {
+      if (isPermissionError(err)) {
+        return reply.status(403).send({
+          success: false,
+          error: 'Could not write field-projection.json: permission denied.',
+        });
+      }
+      return reply.status(500).send({
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to remove projection.',
       });
     }
   });

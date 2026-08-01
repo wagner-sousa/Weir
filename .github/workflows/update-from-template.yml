@@ -1,0 +1,73 @@
+name: Update from Spec Kit template
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+env:
+  TEMPLATE_REPO: wagner-sousa/spec-kit-docker
+
+jobs:
+  check-update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read synced version
+        id: current
+        run: |
+          echo "version=$(cat .template-version 2>/dev/null || printf 'v0.0.0')" >> "$GITHUB_OUTPUT"
+
+      - name: Read latest template release
+        id: latest
+        run: |
+          latest=$(git ls-remote --tags --sort=-version:refname \
+            "https://github.com/${{ env.TEMPLATE_REPO }}.git" 'v*' 2>/dev/null \
+            | sed '/\^{}$/d; s|.*/||' | sed -n '1p')
+          echo "version=${latest:-none}" >> "$GITHUB_OUTPUT"
+
+      - name: Compare versions
+        id: compare
+        run: |
+          current='${{ steps.current.outputs.version }}'
+          latest='${{ steps.latest.outputs.version }}'
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          echo "needs_update=$([[ "$latest" != none && "$current" != "$latest" ]] && printf true || printf false)" >> "$GITHUB_OUTPUT"
+
+      - name: Apply template files
+        if: steps.compare.outputs.needs_update == 'true'
+        run: |
+          branch="update/template-${{ steps.latest.outputs.version }}"
+          git remote add template "https://github.com/${{ env.TEMPLATE_REPO }}.git" 2>/dev/null || true
+          git fetch template tag '${{ steps.latest.outputs.version }}'
+          git checkout -b "$branch"
+
+          git checkout FETCH_HEAD -- \
+            specify \
+            post-create.sh \
+            .specify/ ':!.specify/memory/'
+          printf '%s\n' '${{ steps.latest.outputs.version }}' > .template-version
+
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add specify post-create.sh .specify .template-version
+          git diff --cached --quiet || git commit -m "chore: update Spec Kit template to ${{ steps.latest.outputs.version }}"
+
+      - name: Push branch and create PR
+        if: steps.compare.outputs.needs_update == 'true'
+        run: |
+          branch="update/template-${{ steps.latest.outputs.version }}"
+          git push origin "$branch" -f
+          gh pr create \
+            --title "Upgrade Spec Kit template to ${{ steps.latest.outputs.version }}" \
+            --body "Automated update from [spec-kit-docker](https://github.com/${{ env.TEMPLATE_REPO }}).\n\nSynced: \\`${{ steps.compare.outputs.current }}\` -> \\`${{ steps.compare.outputs.latest }}\`.\n\nPreserved: Weir Docker files, \\`.kilo/\\`, \\`.specify/memory/\\`, and project specs." \
+            --base main \
+            --head "$branch"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

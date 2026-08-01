@@ -5,6 +5,7 @@ import type { MCPClient } from '../services/api';
 import { MCPCard } from './MCPCard';
 import { AddMCPModal } from './AddMCPModal';
 import { MCPConnectionModal } from './MCPConnectionModal';
+import { FieldProjectionModal } from './FieldProjectionModal';
 import { useTestConnection } from '../hooks/useMCPs';
 import { Plus, Plug } from 'lucide-react';
 
@@ -21,8 +22,10 @@ export function CardGrid({ clients, onRemove, removePending, mcpPort }: CardGrid
   const [reconnectingName, setReconnectingName] = useState<string | null>(null);
   const [configName, setConfigName] = useState<string | null>(null);
   const [globalConfigOpen, setGlobalConfigOpen] = useState(false);
+  const [projectionName, setProjectionName] = useState<string | null>(null);
   const editModalOpen = editingMCP !== null;
   const configModalOpen = configName !== null;
+  const projectionModalOpen = projectionName !== null;
   const testMutation = useTestConnection();
   const queryClient = useQueryClient();
 
@@ -32,6 +35,10 @@ export function CardGrid({ clients, onRemove, removePending, mcpPort }: CardGrid
 
   function handleConfig(name: string) {
     setConfigName(name);
+  }
+
+  function handleProjection(name: string) {
+    setProjectionName(name);
   }
 
   function closeEditModal() {
@@ -176,6 +183,7 @@ export function CardGrid({ clients, onRemove, removePending, mcpPort }: CardGrid
             onRemove={onRemove}
             onEdit={handleEdit}
             onConfig={handleConfig}
+            onProjection={handleProjection}
             onReconnect={handleReconnect}
             onAuth={handleAuth}
             removing={removePending}
@@ -213,6 +221,13 @@ export function CardGrid({ clients, onRemove, removePending, mcpPort }: CardGrid
         onClose={() => setGlobalConfigOpen(false)}
         mcpPort={mcpPort}
       />
+      {projectionName && (
+        <FieldProjectionModal
+          open={projectionModalOpen}
+          mcpName={projectionName}
+          onClose={() => setProjectionName(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TransportType, TransportConfig, MCPServerEntry, MCPConfig, TestConnectionRequest, TestConnectionResponse, OutputMode, ToonOptions } from './schema.js';
+import { TransportType, TransportConfig, MCPServerEntry, MCPConfig, TestConnectionRequest, TestConnectionResponse, FieldSelectionSchema, FieldProjectionConfig, OutputMode, ToonOptions } from './schema.js';
 
 export type TransportType = z.infer<typeof TransportType>;
 
@@ -12,6 +12,16 @@ export type MCPConfig = z.infer<typeof MCPConfig>;
 export type TestConnectionRequest = z.infer<typeof TestConnectionRequest>;
 
 export type TestConnectionResponse = z.infer<typeof TestConnectionResponse>;
+
+export type FieldSelection = z.infer<typeof FieldSelectionSchema>;
+
+export type FieldProjectionConfig = z.infer<typeof FieldProjectionConfig>;
+
+export interface ProjectionMap {
+  [serverName: string]: {
+    [toolName: string]: FieldSelection;
+  };
+}
 
 export type OutputMode = z.infer<typeof OutputMode>;
 
@@ -39,7 +49,7 @@ export interface CachedStatus {
 
 export interface StatusUpdate {
   name: string;
-  status: 'connected' | 'error' | 'needsAuth' | 'testing' | 'unknown' | 'disconnected';
+  status: 'connected' | 'error' | 'testing' | 'needsAuth' | 'unknown' | 'disconnected';
   error: string | null;
   toolCount: number | null;
   needsAuth?: boolean;
