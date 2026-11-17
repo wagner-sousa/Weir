@@ -1,5 +1,7 @@
 # Weir
 
+[![As seen on Open Source Alternatives](https://www.opensourcealternatives.to/badge-osa.svg)](https://www.opensourcealternatives.to)
+
 The invisible gateway for your MCP servers, with visibly fewer tokens.
 
 ## Quickstart
